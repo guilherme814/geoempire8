@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4  # ← Atualizado para v4
     
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5  # ← Atualizado para v5
       with:
         python-version: '3.10'
     
@@ -61,19 +61,16 @@ jobs:
         mkdir -p ~/.buildozer/android/platform
         cd ~/.buildozer/android/platform
         
-        # Download Android SDK command line tools
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
         unzip -q commandlinetools-linux-11076708_latest.zip
         mkdir -p android-sdk/cmdline-tools
         mv cmdline-tools android-sdk/cmdline-tools/latest
         
-        # Accept licenses automaticamente
         yes | android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
         
         export ANDROIDSDK="$HOME/.buildozer/android/platform/android-sdk"
         export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
         
-        # Download NDK
         wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
         unzip -q android-ndk-r25b-linux.zip
     
@@ -87,44 +84,36 @@ jobs:
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,json,ttf,woff
         version = 0.1
-        requirements = python3,pygame,fastapi,uvicorn,websockets,redis,asyncpg,python-jose,passlib,pydantic
+        requirements = python3,pygame
         orientation = landscape
         fullscreen = 0
-        android.permissions = INTERNET,ACCESS_NETWORK_STATE
+        android.permissions = INTERNET
         android.api = 33
         android.minapi = 21
         android.ndk = 25b
         android.sdk = 33
         android.accept_sdk_license = True
-        android.skip_update = False
-        p4a.local_recipes = 
-        
+
         [buildozer]
         log_level = 2
         warn_on_root = 0
         EOF
     
-    - name: Build APK (non-interactive)
+    - name: Build APK
       run: |
-        # Configura variáveis de ambiente para não pedir input
         export BUILDOZER_WARN_ON_ROOT=0
         export ANDROIDSDK="$HOME/.buildozer/android/platform/android-sdk"
         export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
         export PATH="$ANDROIDSDK/cmdline-tools/latest/bin:$PATH"
         
-        # Build com timeout e sem interatividade
-        timeout 1800 buildozer android debug || true
-        
-        # Se falhar por root, tenta com flag
-        if [ ! -f "bin/*.apk" ]; then
-          buildozer android debug 2>&1 | head -100
-        fi
+        buildozer android debug 2>&1 | head -200
       env:
         BUILDOZER_WARN_ON_ROOT: 0
     
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
+    - name: Upload APK  # ← CORRIGIDO: v3 → v4
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: apk
+        name: geoempire-apk
         path: bin/*.apk
+        if-no-files-found: warn

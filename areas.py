@@ -10,3 +10,17 @@ AREAS = {
         "troops": 6
     }
 }
+
+
+
+with self.canvas:
+    self.map_texture = Rectangle(
+        source="assets/images/map.png",
+        pos=self.pos,
+        size=self.size
+    )
+
+
+
+Color(1, 0, 0, 0.4)
+Line(points=polygon_points, close=True, width=2)

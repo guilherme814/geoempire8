@@ -1,119 +1,80 @@
-name: Build APK
+name: Build APK (Godot)
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  GODOT_VERSION: "4.3.0"
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4  # ← Atualizado para v4
-    
-    - name: Setup Python
-      uses: actions/setup-python@v5  # ← Atualizado para v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          python3-pip \
-          build-essential \
-          git \
-          ffmpeg \
-          libsdl2-dev \
-          libsdl2-image-dev \
-          libsdl2-mixer-dev \
-          libsdl2-ttf-dev \
-          libportmidi-dev \
-          libswscale-dev \
-          libavformat-dev \
-          libavcodec-dev \
-          zlib1g-dev \
-          libgstreamer1.0 \
-          gstreamer1.0-plugins-base \
-          gstreamer1.0-plugins-good \
-          gstreamer1.0-plugins-ugly \
-          gstreamer1.0-plugins-bad \
-          gstreamer1.0-libav \
-          gstreamer1.0-tools \
-          libgstreamer1.0-dev \
-          libgirepository1.0-dev \
-          pkg-config \
-          cmake \
-          autoconf \
-          libtool \
-          libffi-dev \
-          libssl-dev \
-          automake
-    
-    - name: Install Buildozer
-      run: |
-        pip install --upgrade pip
-        pip install buildozer cython virtualenv
-    
-    - name: Setup Android SDK
-      run: |
-        mkdir -p ~/.buildozer/android/platform
-        cd ~/.buildozer/android/platform
-        
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip -q commandlinetools-linux-11076708_latest.zip
-        mkdir -p android-sdk/cmdline-tools
-        mv cmdline-tools android-sdk/cmdline-tools/latest
-        
-        yes | android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        
-        export ANDROIDSDK="$HOME/.buildozer/android/platform/android-sdk"
-        export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
-        
-        wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-        unzip -q android-ndk-r25b-linux.zip
-    
-    - name: Create buildozer.spec
-      run: |
-        cat > buildozer.spec << 'EOF'
-        [app]
-        title = GeoEmpire
-        package.name = geoempire
-        package.domain = com.example
-        source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas,json,ttf,woff
-        version = 0.1
-        requirements = python3,pygame
-        orientation = landscape
-        fullscreen = 0
-        android.permissions = INTERNET
-        android.api = 33
-        android.minapi = 21
-        android.ndk = 25b
-        android.sdk = 33
-        android.accept_sdk_license = True
 
-        [buildozer]
-        log_level = 2
-        warn_on_root = 0
-        EOF
-    
-    - name: Build APK
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install Android SDK packages
       run: |
-        export BUILDOZER_WARN_ON_ROOT=0
-        export ANDROIDSDK="$HOME/.buildozer/android/platform/android-sdk"
-        export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
-        export PATH="$ANDROIDSDK/cmdline-tools/latest/bin:$PATH"
-        
-        buildozer android debug 2>&1 | head -200
-      env:
-        BUILDOZER_WARN_ON_ROOT: 0
-    
-    - name: Upload APK  # ← CORRIGIDO: v3 → v4
+        yes | sdkmanager --licenses > /dev/null || true
+        sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34" "cmdline-tools;latest"
+
+    - name: Setup Godot + export templates
+      uses: chickensoft-games/setup-godot@v2
+      with:
+        version: ${{ env.GODOT_VERSION }}
+        use-dotnet: false
+        include-templates: true
+
+    - name: Create debug keystore
+      run: |
+        keytool -keyalg RSA -genkeypair -alias androiddebugkey \
+          -keypass android -keystore "$GITHUB_WORKSPACE/debug.keystore" \
+          -storepass android -dname "CN=Android Debug,O=Android,C=US" \
+          -validity 9999 -deststoretype pkcs12
+
+    - name: Configure Godot editor settings
+      run: |
+        mkdir -p ~/.config/godot
+        cat > ~/.config/godot/editor_settings-4.3.tres <<EOF
+        [gd_resource type="EditorSettings" format=3]
+
+        [resource]
+        export/android/android_sdk_path = "$ANDROID_HOME"
+        export/android/java_sdk_path = "$JAVA_HOME"
+        export/android/debug_keystore = "$GITHUB_WORKSPACE/debug.keystore"
+        export/android/debug_keystore_user = "androiddebugkey"
+        export/android/debug_keystore_pass = "android"
+        EOF
+
+    - name: Import project
+      # A primeira importação costuma terminar com código != 0; o log mostra erros de script.
+      run: godot --headless --path . --import || true
+
+    - name: Smoke test (roda a cena principal por 60 frames)
+      # Informativo: erros de script aparecem no log, mas não bloqueiam o APK.
+      continue-on-error: true
+      run: timeout 120 godot --headless --path . --quit-after 60
+
+    - name: Export APK
+      run: |
+        mkdir -p build
+        godot --headless --path . --export-debug "Android" build/geoempire-debug.apk
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: geoempire-apk
-        path: bin/*.apk
+        path: build/*.apk
         if-no-files-found: warn

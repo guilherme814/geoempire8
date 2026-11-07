@@ -1,0 +1,38 @@
+; Engine configuration file.
+; Não edite à mão se não souber o que está fazendo; abra no editor Godot 4.3+.
+
+config_version=5
+
+[application]
+
+config/name="GeoEmpire"
+config/description="Grand strategy para celular, inspirado em Age of History 3 e Victoria 3."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Events="*res://scripts/core/events.gd"
+Game="*res://scripts/core/game_state.gd"
+Net="*res://scripts/net/p2p_network.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.07, 0.15, 0.24, 1)

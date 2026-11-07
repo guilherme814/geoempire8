@@ -1,0 +1,16 @@
+# Godot
+.godot/
+.import/
+*.translation
+export_credentials.cfg
+
+# Builds
+build/
+*.apk
+*.aab
+*.keystore
+
+# Python (ferramentas)
+__pycache__/
+*.pyc
+tools/preview*.png

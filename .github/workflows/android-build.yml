@@ -21,13 +21,13 @@ jobs:
         distribution: temurin
         java-version: 17
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
     - name: Install Android SDK packages
+      # O runner ubuntu-latest já traz o Android SDK em $ANDROID_HOME.
       run: |
-        yes | sdkmanager --licenses > /dev/null || true
-        sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34" "cmdline-tools;latest"
+        SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+        echo "sdkmanager: $SDKM"
+        yes | "$SDKM" --licenses > /dev/null || true
+        "$SDKM" "platform-tools" "build-tools;34.0.0" "platforms;android-34"
 
     - name: Setup Godot + export templates
       uses: chickensoft-games/setup-godot@v2

@@ -7,11 +7,20 @@ extends RefCounted
 ##   type   -> uma das constantes abaixo
 ##   issuer -> id do país que emitiu (preenchido por Game.submit_command)
 ##
-## Para criar um comando novo: adicione a constante e a factory aqui e
-## trate-o em Game.apply_command() (e valide em Net._rpc_submit se precisar).
+## A VALIDAÇÃO fica em Game.apply_command (roda igual em todos os pares): o comando
+## só vale se o emissor for dono da província/exército, tiver ouro, etc.
+##
+## Para criar um comando novo: adicione a constante e a factory aqui e trate-o em
+## Game.apply_command().
 
 const SET_SPEED := "set_speed"
 const SET_TAX := "set_tax"
+const RECRUIT := "recruit"
+const BUILD := "build"
+const MOVE_ARMY := "move_army"
+const STOP_ARMY := "stop_army"
+const DISBAND_ARMY := "disband_army"
+const CHOOSE_EVENT := "choose_event"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
@@ -21,6 +30,33 @@ static func set_speed(speed: int) -> Dictionary:
 
 static func set_tax(country: int, pct: int) -> Dictionary:
 	return {"type": SET_TAX, "country": country, "pct": pct}
+
+
+## Recruta 1 regimento na província (custa ouro + mão de obra; treina por alguns dias).
+static func recruit(province: int) -> Dictionary:
+	return {"type": RECRUIT, "province": province}
+
+
+## kind: "workshop" (+25% produção por nível) ou "barracks" (+1% mão de obra por nível).
+static func build(province: int, kind: String) -> Dictionary:
+	return {"type": BUILD, "province": province, "kind": kind}
+
+
+static func move_army(army: int, to_province: int) -> Dictionary:
+	return {"type": MOVE_ARMY, "army": army, "to": to_province}
+
+
+static func stop_army(army: int) -> Dictionary:
+	return {"type": STOP_ARMY, "army": army}
+
+
+static func disband_army(army: int) -> Dictionary:
+	return {"type": DISBAND_ARMY, "army": army}
+
+
+## Escolhe uma opção de um evento pendente (uid vem de Game.pending_events).
+static func choose_event(uid: int, option: int) -> Dictionary:
+	return {"type": CHOOSE_EVENT, "uid": uid, "option": option}
 
 
 static func transfer_province(province: int, to_country: int) -> Dictionary:

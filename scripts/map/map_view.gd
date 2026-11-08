@@ -1,55 +1,69 @@
 class_name MapView
 extends Node2D
-## Renderização do mapa por províncias + seleção por toque.
+## Camada ESTÁTICA do mapa: malha colorida das províncias (GPU), fronteiras, costas e nomes.
+## Só é redesenhada quando algo muda (dono, modo de mapa) ou o zoom muda de "faixa";
+## seleção, exércitos e marcações dinâmicas ficam em MapOverlay.
 ##
-## Tudo é desenhado em _draw() só quando algo muda (queue_redraw), então o custo
-## em repouso é zero. Larguras de linha são divididas pelo zoom para manter a
-## espessura constante na tela.
+## A malha é uma única ArrayMesh (todas as províncias, triangulação feita uma vez em
+## Province.from_dict), então zoom e pan não custam CPU.
 
 enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE }
 
 const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos"]
-const GRID_SIZE := 120.0
+const GRID_SIZE := 100.0
 const OCEAN_COLOR := Color(0.13, 0.27, 0.42)
+const UNOWNED_COLOR := Color(0.62, 0.60, 0.55)
+const ZOOM_STEP := 1.35   # o zoom é agrupado em faixas deste fator para redesenhar pouco
 
 var mode: int = Mode.POLITICAL
-var selected_province: int = -1
 var zoom_level: float = 1.0
 
 var _terrain_colors: Dictionary = {
-	"plains": Color("a9c26b"),
-	"hills": Color("8f9a5b"),
-	"mountains": Color("8a7f78"),
-	"forest": Color("4f7f4a"),
-	"desert": Color("d9bd7a"),
+	"plains": Color("a9c26b"), "hills": Color("8f9a5b"), "mountains": Color("8a7f78"),
+	"forest": Color("4f7f4a"), "desert": Color("d9bd7a"), "jungle": Color("2f6b3a"),
+	"tundra": Color("c9d1cf"),
 }
 var _resource_colors: Dictionary = {
-	"grain": Color("e3c75a"),
-	"iron": Color("8c96a3"),
-	"coal": Color("3d3d46"),
-	"timber": Color("5b8a43"),
-	"cotton": Color("f1ede0"),
-	"fish": Color("4aa3c7"),
+	"grain": Color("e3c75a"), "livestock": Color("c98f5a"), "fish": Color("4aa3c7"),
+	"timber": Color("5b8a43"), "furs": Color("8a6a4a"), "wool": Color("e8e2d0"),
+	"cotton": Color("f1ede0"), "coal": Color("3d3d46"), "iron": Color("8c96a3"),
+	"salt": Color("d8d8f0"), "wine": Color("8a2f5a"), "sugar": Color("f4d6e8"),
+	"tobacco": Color("9a7a3a"), "coffee": Color("5a3a22"), "tea": Color("7aa84a"),
+	"silk": Color("d86aa8"), "spices": Color("d8662a"), "opium": Color("a06ad8"),
 	"gold": Color("ffc61a"),
-	"salt": Color("d8d8f0"),
 }
 
 var _fills: Array[Color] = []
-var _grid: Dictionary = {}     # Vector2i -> Array[int] de ids de províncias
+var _grid: Dictionary = {}        # Vector2i -> Array[int] de ids de províncias
 var _prov_lines: PackedVector2Array = PackedVector2Array()
 var _country_lines: PackedVector2Array = PackedVector2Array()
 var _coast_lines: PackedVector2Array = PackedVector2Array()
 var _sea_lines: PackedVector2Array = PackedVector2Array()
+var _ocean: Polygon2D
+var _mesh_node: MeshInstance2D
 var _font: Font
 var _max_pop: int = 1
+var _bucket: int = 0
 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+
+	# Filhos "atrás do pai": o oceano e a malha ficam sob o que _draw() desenha.
+	_ocean = Polygon2D.new()
+	_ocean.color = OCEAN_COLOR
+	_ocean.polygon = PackedVector2Array([
+		Vector2.ZERO, Vector2(Game.map_size.x, 0.0), Game.map_size, Vector2(0.0, Game.map_size.y),
+	])
+	_ocean.show_behind_parent = true
+	add_child(_ocean)
+	_mesh_node = MeshInstance2D.new()
+	_mesh_node.show_behind_parent = true
+	add_child(_mesh_node)
+
 	_build_grid()
 	_build_coast_and_sea()
 	_refresh_all()
-	Events.province_selected.connect(set_selected)
 	Events.province_changed.connect(_on_province_changed)
 	Events.month_changed.connect(_on_month_changed)
 	Events.state_loaded.connect(_refresh_all)
@@ -58,13 +72,12 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 # API pública
 # ---------------------------------------------------------------------------
-func set_selected(pid: int) -> void:
-	selected_province = pid
-	queue_redraw()
-
-
 func set_zoom_level(z: float) -> void:
-	zoom_level = z
+	var b := int(floor(log(maxf(z, 0.01)) / log(ZOOM_STEP)))
+	if b == _bucket:
+		return
+	_bucket = b
+	zoom_level = pow(ZOOM_STEP, float(b))
 	queue_redraw()
 
 
@@ -106,7 +119,6 @@ func _on_province_changed(_pid: int) -> void:
 func _on_month_changed(_date: Dictionary) -> void:
 	if mode == Mode.POPULATION:
 		_recolor()
-		queue_redraw()
 
 
 func _build_grid() -> void:
@@ -144,14 +156,15 @@ func _build_coast_and_sea() -> void:
 	_sea_lines.clear()
 	for p in Game.provinces:
 		var n := p.poly.size()
-		for i in n:
-			if p.edges[i] >= 0:
-				continue
-			var a := p.poly[i]
-			var b := p.poly[(i + 1) % n]
-			if not _on_map_boundary(a, b):
-				_coast_lines.append(a)
-				_coast_lines.append(b)
+		if p.edges.size() == n:
+			for i in n:
+				if p.edges[i] >= 0:
+					continue
+				var a := p.poly[i]
+				var b := p.poly[(i + 1) % n]
+				if not _on_map_boundary(a, b):
+					_coast_lines.append(a)
+					_coast_lines.append(b)
 		for s in p.sea_links:
 			if s > p.id:
 				_sea_lines.append(p.center)
@@ -164,10 +177,15 @@ func _rebuild_borders() -> void:
 	_country_lines.clear()
 	for p in Game.provinces:
 		var n := p.poly.size()
+		if p.edges.size() != n:
+			continue   # polígono substituído pelo casco convexo
 		for i in n:
 			var nb: int = p.edges[i]
-			if nb <= p.id:
-				continue   # mar (-1) ou já desenhada pelo vizinho de id menor
+			if nb < 0:
+				continue
+			# A aresta costuma existir nos dois lados; desenha uma vez só.
+			if nb < p.id and Game.provinces[nb].edges.has(p.id):
+				continue
 			var a := p.poly[i]
 			var b := p.poly[(i + 1) % n]
 			if Game.provinces[nb].owner_id != p.owner_id:
@@ -185,6 +203,7 @@ func _recolor() -> void:
 		_max_pop = maxi(_max_pop, p.population)
 	for p in Game.provinces:
 		_fills.append(_province_color(p))
+	_rebuild_mesh()
 
 
 func _province_color(p: Province) -> Color:
@@ -196,42 +215,52 @@ func _province_color(p: Province) -> Color:
 		var rc: Color = _resource_colors.get(p.resource_type, Color.GRAY)
 		return rc.darkened(shade)
 	if mode == Mode.POPULATION:
-		var t := sqrt(float(p.population) / float(_max_pop))
+		var t := pow(float(p.population) / float(_max_pop), 0.3)   # curva suave: realça diferenças
 		return Color(0.95, 0.92, 0.80).lerp(Color(0.62, 0.12, 0.08), t)
 	# Político
 	if p.owner_id < 0 or p.owner_id >= Game.countries.size():
-		return Color(0.6, 0.6, 0.6)
+		return UNOWNED_COLOR.darkened(shade)
 	return Game.countries[p.owner_id].color.darkened(shade)
+
+
+## Uma única malha com todas as províncias (cor por vértice).
+func _rebuild_mesh() -> void:
+	var verts := PackedVector2Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for p in Game.provinces:
+		var base := verts.size()
+		var col := _fills[p.id]
+		verts.append_array(p.poly)
+		for i in p.poly.size():
+			colors.append(col)
+		for t in p.tris:
+			indices.append(base + t)
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_mesh_node.mesh = mesh
 
 
 # ---------------------------------------------------------------------------
 # Desenho
 # ---------------------------------------------------------------------------
 func _draw() -> void:
-	if not Game.loaded or _fills.size() != Game.provinces.size():
+	if not Game.loaded:
 		return
 	var z := maxf(zoom_level, 0.05)
 
-	draw_rect(Rect2(Vector2.ZERO, Game.map_size), OCEAN_COLOR)
-
-	for p in Game.provinces:
-		draw_colored_polygon(p.poly, _fills[p.id])
-
-	draw_multiline(_prov_lines, Color(0, 0, 0, 0.28), 1.0 / z)
-	draw_multiline(_country_lines, Color(0.04, 0.04, 0.06, 0.95), 2.4 / z)
-	draw_multiline(_coast_lines, Color(0.05, 0.10, 0.16, 0.9), 1.8 / z)
+	draw_multiline(_prov_lines, Color(0, 0, 0, 0.30), -1.0)          # 1 px fixo na tela
+	draw_multiline(_country_lines, Color(0.04, 0.04, 0.06, 0.95), 2.2 / z)
+	draw_multiline(_coast_lines, Color(0.05, 0.10, 0.16, 0.9), 1.6 / z)
 	if mode == Mode.POLITICAL:
-		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), 1.5 / z)
-
-	if selected_province >= 0 and selected_province < Game.provinces.size():
-		var sp := Game.provinces[selected_province]
-		draw_colored_polygon(sp.poly, Color(1, 1, 1, 0.25))
-		var outline: PackedVector2Array = sp.poly.duplicate()
-		outline.append(sp.poly[0])
-		draw_polyline(outline, Color(1.0, 0.92, 0.35), 3.0 / z)
-
-	if mode == Mode.POLITICAL and z <= 3.0:
-		_draw_country_labels(z)
+		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
+		if z <= 3.0:
+			_draw_country_labels(z)
 
 
 func _draw_country_labels(z: float) -> void:

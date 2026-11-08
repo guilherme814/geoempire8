@@ -11,7 +11,7 @@ signal zoom_changed(zoom_value: float)
 
 const TAP_MAX_MOVE := 14.0       # px; acima disso vira arrasto
 const TAP_MAX_TIME_MS := 350
-const ZOOM_MAX := 5.0
+const ZOOM_MAX := 6.0
 const WHEEL_STEP := 1.15
 
 var map_size: Vector2 = Vector2(2400.0, 1200.0)

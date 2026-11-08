@@ -28,6 +28,8 @@ const RESOURCE_PRICE := {
 
 var id: int = 0
 var name: String = ""
+var city: String = ""                               # cidade-sede (município principal)
+var capital_city: bool = false                      # sede é capital nacional
 var poly: PackedVector2Array = PackedVector2Array()
 var tris: PackedInt32Array = PackedInt32Array()     # triângulos (índices em poly)
 var edges: PackedInt32Array = PackedInt32Array()    # edges[i] = vizinha do lado i -> i+1 (-1 = mar)
@@ -77,6 +79,8 @@ static func from_dict(d: Dictionary) -> Province:
 	p.resource_type = str(d["resource"])
 	p.coastal = bool(d["coastal"])
 	p.population = int(d["pop"])
+	p.city = str(d.get("city", ""))
+	p.capital_city = bool(d.get("capital_city", false))
 	p.owner_id = int(d["owner"])
 	p.lon = float(d.get("lon", 0.0))
 	p.lat = float(d.get("lat", 0.0))

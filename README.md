@@ -2,6 +2,7 @@
 
 Grand strategy para celular (Android), inspirado em **Age of History** e **Victoria 3**.
 Feito em **Godot 4.3** (GDScript, renderer GL Compatibility), com build por GitHub Actions.
+As províncias seguem as **divisões administrativas reais** (estados, regiões, departamentos...) com nome e cidade-sede (★ = capital nacional); divisões minúsculas são fundidas e as gigantes subdivididas.
 O mapa é **original**: a Terra em 1836, gerada a partir de dados abertos do Natural Earth (domínio público).
 
 ## Como rodar
@@ -21,7 +22,7 @@ O mapa é **original**: a Terra em 1836, gerada a partir de dados abertos do Nat
 ## Estrutura
 
 ```
-data/world.json            mundo 1836 (1114 províncias, 74 países, 3072x1394) - gerado
+data/world.json            mundo 1836 (947 províncias, 74 países, 3072x1394) - gerado
 data/events.json           eventos do jogo (texto, condições e efeitos)
 tools/generate_world_1836.py  gera world.json a partir do Natural Earth (ver abaixo)
 tools/world1836_data.py    tabela histórica: países, dono de cada região, densidade
@@ -48,7 +49,7 @@ python3 tools/generate_world_1836.py --ne natural-earth-vector/geojson \
         --width 3072 --density 1.3 --out data/world.json
 ```
 
-Requer `numpy` e `scipy`. `--density` maior = menos províncias (mapa mais leve).
+Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos províncias; `--min-frac`/`--max-frac` controlam fusão/divisão de divisões; `--voronoi` volta às células sintéticas.
 
 ## Regras para manter o online viável
 

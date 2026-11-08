@@ -442,6 +442,8 @@ func _refresh_info() -> void:
 	var mine := has_owner and p.owner_id == Game.player_country
 	_info_panel.visible = true
 	_info_title.text = p.name
+	if p.city != "":
+		_info_title.text += "\n%s%s" % ["★ " if p.capital_city else "", p.city]
 
 	var owner_name := "Sem dono"
 	var tint := Color(0.85, 0.85, 0.85)

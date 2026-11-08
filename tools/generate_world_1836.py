@@ -45,6 +45,12 @@ ap.add_argument("--width", type=int, default=4096)
 ap.add_argument("--tol", type=float, default=1.1, help="tolerância Douglas-Peucker (px)")
 ap.add_argument("--density", type=float, default=1.0,
                 help="multiplicador do espaçamento entre províncias (>1 = menos províncias, mapa mais leve)")
+ap.add_argument("--voronoi", action="store_true",
+                help="usa células Voronoi no lugar das fronteiras administrativas originais")
+ap.add_argument("--min-frac", type=float, default=0.35,
+                help="divisões menores que isso x área nominal são fundidas à vizinha do mesmo país")
+ap.add_argument("--max-frac", type=float, default=3.0,
+                help="divisões maiores que isso x área nominal são subdivididas")
 opt = ap.parse_args()
 
 T0 = time.time()
@@ -303,6 +309,110 @@ for k in range(0, len(D.STATES) + 1):
     prov[ys, xs] = idx[nn]
 log("voronoi por dono concluído")
 
+
+def real_border_labels():
+    """Província = divisão administrativa real (admin-1 do Natural Earth).
+
+    - divisões minúsculas são fundidas à vizinha do mesmo país com maior fronteira comum;
+    - divisões gigantes (Sibéria, Amazonas...) são subdivididas pelos sítios Voronoi;
+    - as fronteiras que sobram são, em quase toda parte, as originais.
+    """
+    import heapq
+    nu = len(feats) + 1
+    cnt = np.bincount(adm[land], minlength=nu).astype(np.int64)
+    ys, xs = np.nonzero(land)
+    ids = adm[ys, xs]
+    sx = np.bincount(ids, weights=xs, minlength=nu)
+    sy = np.bincount(ids, weights=ys, minlength=nu)
+    cxu = sx / np.maximum(cnt, 1) + 0.5
+    cyu = sy / np.maximum(cnt, 1) + 0.5
+    lon_u, lat_u = unproject(cxu, cyu)
+    r_u = density_km(np.asarray(lon_u), np.asarray(lat_u)) / km_per_px(np.asarray(lat_u))
+    nominal = (r_u ** 2).astype(np.float64)       # área-alvo de uma província (px^2)
+
+    # adjacência entre divisões do MESMO país (contagem de pixels de fronteira)
+    nbrs = defaultdict(Counter)
+    for a_, b_ in ((adm[:, :-1], adm[:, 1:]), (adm[:-1, :], adm[1:, :])):
+        m = (a_ != b_) & (a_ > 0) & (b_ > 0)
+        aa, bb = a_[m], b_[m]
+        same = lut[aa] == lut[bb]
+        aa, bb = aa[same].astype(np.int64), bb[same].astype(np.int64)
+        key = np.minimum(aa, bb) * nu + np.maximum(aa, bb)
+        u, c = np.unique(key, return_counts=True)
+        for k_, c_ in zip(u.tolist(), c.tolist()):
+            lo, hi = divmod(k_, nu)
+            nbrs[lo][hi] += c_
+            nbrs[hi][lo] += c_
+
+    parent = list(range(nu))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    garea = cnt.astype(np.float64)
+    gnom = nominal.copy()
+    heap = [(garea[i], i) for i in range(1, nu) if cnt[i] > 0 and garea[i] < opt.min_frac * gnom[i]]
+    heapq.heapify(heap)
+    merged = 0
+    while heap:
+        ar, i = heapq.heappop(heap)
+        if find(i) != i or ar != garea[i] or not nbrs[i]:
+            continue
+        j = max(nbrs[i].items(), key=lambda kv: (kv[1], -kv[0]))[0]
+        # i entra em j
+        parent[i] = j
+        tot = garea[i] + garea[j]
+        gnom[j] = (gnom[i] * garea[i] + gnom[j] * garea[j]) / tot
+        garea[j] = tot
+        for m_, c_ in nbrs[i].items():
+            if m_ == j:
+                continue
+            nbrs[m_].pop(i, None)
+            nbrs[m_][j] += c_
+            nbrs[j][m_] += c_
+        nbrs[j].pop(i, None)
+        nbrs[i] = Counter()
+        merged += 1
+        if garea[j] < opt.min_frac * gnom[j]:
+            heapq.heappush(heap, (garea[j], j))
+    log("divisões administrativas: %d | fundidas (muito pequenas): %d" % (int((cnt > 0).sum()), merged))
+
+    root_lut = np.array([find(i) for i in range(nu)], dtype=np.int32)
+    g = np.where(land, root_lut[adm], 0).astype(np.int32)
+    labels = np.where(land, g, -1).astype(np.int32)
+
+    # subdivide divisões gigantes com os sítios de densidade
+    roots = [i for i in range(1, nu) if find(i) == i and cnt[i] > 0 or (find(i) == i and garea[i] > 0)]
+    big = [r for r in roots if garea[r] > opt.max_frac * gnom[r]]
+    site_adm = adm[np.clip(sites_arr[:, 1].astype(int), 0, H - 1), np.clip(sites_arr[:, 0].astype(int), 0, W - 1)]
+    site_root = root_lut[site_adm]
+    objs_g = ndi.find_objects(g)
+    split = 0
+    for r in big:
+        idx = np.nonzero(site_root == r)[0]
+        if len(idx) < 2 or r - 1 >= len(objs_g) or objs_g[r - 1] is None:
+            continue
+        sl = objs_g[r - 1]
+        sub = g[sl] == r
+        yy, xx = np.nonzero(sub)
+        gy, gx = yy + sl[0].start, xx + sl[1].start
+        tree = cKDTree(sites_arr[idx])
+        q = np.stack([gx + 0.5 + nx_f[gy, gx] * AMP, gy + 0.5 + ny_f[gy, gx] * AMP], axis=1)
+        _, nn = tree.query(q)
+        view = labels[sl]
+        view[sub] = 100000 + idx[nn]
+        split += 1
+    log("divisões gigantes subdivididas: %d" % split)
+    return labels
+
+
+if not opt.voronoi:
+    prov = real_border_labels()
+    log("fronteiras administrativas originais aplicadas")
+
 # ---------------------------------------------------------------------------
 # 4. Componentes conexos = províncias; fundir fragmentos minúsculos
 # ---------------------------------------------------------------------------
@@ -560,6 +670,52 @@ for p in polys:
     owner = int(np.bincount(ow).argmax()) if len(ow) else 0
     infos[p] = {"area_px": area_px, "centroid": (cxm, cym), "pole": pole, "name": nm, "owner": owner}
 
+# Cidade-sede de cada província: o lugar povoado mais importante dentro dela
+# (capital do país > capital de estado/província > maior população).
+def load_places():
+    path = os.path.join(opt.ne, "ne_10m_populated_places_simple.geojson")
+    if not os.path.exists(path):
+        log("sem lugares povoados; províncias ficarão sem cidade-sede")
+        return []
+    with open(path) as f:
+        data = json.load(f)
+    out = []
+    for ft in data["features"]:
+        pr = ft["properties"]
+        cls = pr.get("featurecla") or ""
+        if cls in ("Scientific station", "Historic place"):
+            continue
+        lon, lat = ft["geometry"]["coordinates"][:2]
+        score = float(pr.get("pop_max") or 0)
+        if cls.startswith("Admin-0 capital"):
+            score += 2e9
+        elif cls.startswith("Admin-1"):
+            score += 1e8
+        out.append((lon, lat, score, pr.get("name") or pr.get("nameascii") or "?", cls.startswith("Admin-0 capital")))
+    return out
+
+
+places = load_places()
+best_city = {}
+if places:
+    pl = np.array([(p[0], p[1]) for p in places])
+    pxs, pys = project(pl[:, 0], pl[:, 1])
+    for (lon_, lat_, score, nm, is_cap), px_, py_ in zip(places, pxs.tolist(), pys.tolist()):
+        ix, iy = int(px_), int(py_)
+        if not (0 <= ix < W and 0 <= iy < H):
+            continue
+        lbl = int(comp[iy, ix])
+        if lbl <= 0:
+            continue
+        p_ = lbl - 1
+        if p_ not in best_city or score > best_city[p_][0]:
+            best_city[p_] = (score, nm, is_cap)
+    log("cidades-sede atribuídas: %d" % len(best_city))
+for p_, (_, nm, is_cap) in best_city.items():
+    if p_ in infos:
+        infos[p_]["city"] = nm
+        infos[p_]["capital_city"] = bool(is_cap)
+
 # províncias que não têm polígono (falha de montagem) são descartadas; ids por área decrescente
 valid = sorted(polys.keys(), key=lambda p: -infos[p]["area_px"])
 new_id = {p: i for i, p in enumerate(valid)}
@@ -620,6 +776,7 @@ for p in valid:
         "owner": state_final[owner_state] if owner_state in state_final else -1,
         "center": [int(round(cxp)), int(round(cyp))], "area": int(round(km2)),
         "lon": round(lon, 2), "lat": round(lat, 2), "pop": 0, "neighbors": sorted(neigh[pid]),
+        "city": info.get("city", ""), "capital_city": bool(info.get("capital_city", False)),
     })
 
 # nomes duplicados dentro do mesmo país ganham sufixo

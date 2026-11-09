@@ -45,6 +45,7 @@ var _btn_workshop: Button
 var _btn_barracks: Button
 var _btn_take: Button
 var _btn_annex: Button
+var _btn_war: Button
 
 var _army_box: VBoxContainer
 var _army_label: Label
@@ -84,6 +85,8 @@ func _ready() -> void:
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
+	Events.war_changed.connect(_refresh_top)
+	Events.war_changed.connect(_refresh_info)
 	Events.month_changed.connect(_on_month_changed)
 	Events.treasury_changed.connect(_on_treasury_changed)
 	Events.speed_changed.connect(_on_speed_changed)
@@ -317,6 +320,10 @@ func _build_info_panel() -> void:
 	_btn_take.pressed.connect(_on_take_pressed)
 	grid.add_child(_btn_take)
 
+	_btn_war = _make_button("Declarar guerra", bsize)
+	_btn_war.pressed.connect(_on_war_pressed)
+	grid.add_child(_btn_war)
+
 	_btn_annex = _make_button("Anexar (debug)", bsize)
 	_btn_annex.pressed.connect(_on_annex_pressed)
 	grid.add_child(_btn_annex)
@@ -518,8 +525,9 @@ func _refresh_top() -> void:
 	_country_label.text = c.name
 	var e := Game.estimate_monthly(c)
 	var net: int = int(e["income"]) - int(e["expense"])
-	_treasury_label.text = "Tesouro: %d  (%+d/mês)\nTropas: %d reg.  |  Mão de obra: %s" % [
+	_treasury_label.text = "Tesouro: %d  (%+d/mês)\nTropas: %d reg.  |  Mão de obra: %s%s" % [
 		c.treasury, net, int(e["regiments"]), _fmt_pop(Game.manpower_of(c.id)),
+		"" if Game.wars_of(c.id).is_empty() else "  |  GUERRAS: %d" % Game.wars_of(c.id).size(),
 	]
 	_date_label.text = Game.clock.format()
 	_refresh_economy()
@@ -557,6 +565,10 @@ func _refresh_info() -> void:
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
 	lines.append("Oficina nív. %d   Quartel nív. %d" % [p.workshop, p.barracks])
+	if Game.sieges.has(p.id):
+		lines.append("CERCO: %d/%d dias (%s)" % [int(Game.sieges[p.id]["days"]), Game.SIEGE_DAYS, Game.countries[int(Game.sieges[p.id]["by"])].name])
+	if has_owner and not mine and Game.at_war(Game.player_country, p.owner_id):
+		lines.append("Em GUERRA com este país")
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
@@ -573,6 +585,16 @@ func _refresh_info() -> void:
 		_set_build_button(_btn_barracks, "Quartel", p, "barracks", me)
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
 	_btn_annex.visible = DEBUG_TOOLS and not mine
+	_btn_war.visible = has_owner and not mine
+	if has_owner and not mine:
+		var me2 := Game.player_country
+		if Game.at_war(me2, p.owner_id):
+			var left := Game.WAR_MIN_DAYS - Game.war_days(me2, p.owner_id)
+			_btn_war.text = "Propor paz" if left <= 0 else "Paz em %d dias" % left
+			_btn_war.disabled = left > 0
+		else:
+			_btn_war.text = "Declarar guerra"
+			_btn_war.disabled = not Game.can_declare_war(me2, p.owner_id)
 
 
 func _set_build_button(btn: Button, label: String, p: Province, kind: String, me: int) -> void:
@@ -702,6 +724,16 @@ func _on_build_pressed(kind: String) -> void:
 func _on_take_pressed() -> void:
 	if _selected >= 0:
 		Game.set_player_country(Game.provinces[_selected].owner_id)
+
+
+func _on_war_pressed() -> void:
+	if _selected < 0:
+		return
+	var target := Game.provinces[_selected].owner_id
+	if Game.at_war(Game.player_country, target):
+		Game.submit_command(Cmd.make_peace(target))
+	else:
+		Game.submit_command(Cmd.declare_war(target))
 
 
 func _on_annex_pressed() -> void:

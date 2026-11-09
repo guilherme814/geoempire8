@@ -24,3 +24,6 @@ signal army_selected(army_id: int)           # -1 = nenhum
 signal game_event_changed                    # a lista de eventos pendentes mudou
 
 signal command_applied(cmd: Dictionary)
+
+## Guerras declaradas ou encerradas.
+signal war_changed

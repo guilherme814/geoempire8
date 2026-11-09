@@ -33,6 +33,11 @@ const RECRUIT_DAYS := 30
 const MAX_QUEUE_PER_PROVINCE := 3
 const MANPOWER_REGEN_PCT := 10   # % do máximo recuperado por mês
 
+# Guerra
+const WAR_MIN_DAYS := 30         # dias de guerra antes de poder pedir paz
+const SIEGE_DAYS := 10           # dias de ocupação até a província mudar de dono
+const BATTLE_LOSS_PCT := 25      # % do exército inimigo (arredondado p/ cima) perdido por dia de batalha
+
 var loaded: bool = false
 var map_size: Vector2 = Vector2(3072.0, 1394.0)
 var provinces: Array[Province] = []
@@ -43,6 +48,8 @@ var graph: ProvinceGraph
 var armies: Dictionary = {}      # id -> Army
 var training: Array = []         # [{province, owner, days}]
 var next_army_id: int = 1
+var wars: Array = []             # [{a, b, days}] com a < b
+var sieges: Dictionary = {}      # província -> {by, days}
 
 var event_defs: Array = []         # definições de data/events.json (somente leitura)
 var pending_events: Array = []     # [{uid, country, event, days}]
@@ -101,6 +108,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	provinces.clear()
 	armies.clear()
 	training.clear()
+	wars.clear()
+	sieges.clear()
 	next_army_id = 1
 	pending_events.clear()
 	fired_events.clear()
@@ -248,6 +257,20 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		Events.game_event_changed.emit()
 
+	elif t == Cmd.DECLARE_WAR:
+		var target: int = int(cmd.get("target", -1))
+		if not can_declare_war(issuer, target):
+			return
+		wars.append({"a": mini(issuer, target), "b": maxi(issuer, target), "days": 0})
+		Events.war_changed.emit()
+
+	elif t == Cmd.MAKE_PEACE:
+		var target: int = int(cmd.get("target", -1))
+		if not can_make_peace(issuer, target):
+			return
+		_end_war(issuer, target)
+		Events.war_changed.emit()
+
 	elif t == Cmd.TRANSFER_PROVINCE:
 		if not ALLOW_DEBUG_COMMANDS:
 			return
@@ -264,6 +287,59 @@ func set_player_country(id: int) -> void:
 		return
 	player_country = id
 	Events.player_country_changed.emit(id)
+
+
+func _war_index(x: int, y: int) -> int:
+	var lo := mini(x, y)
+	var hi := maxi(x, y)
+	for i in wars.size():
+		if int(wars[i]["a"]) == lo and int(wars[i]["b"]) == hi:
+			return i
+	return -1
+
+
+func at_war(x: int, y: int) -> bool:
+	return x != y and _war_index(x, y) >= 0
+
+
+func war_days(x: int, y: int) -> int:
+	var i := _war_index(x, y)
+	return int(wars[i]["days"]) if i >= 0 else 0
+
+
+func can_declare_war(attacker: int, target: int) -> bool:
+	if attacker < 0 or target < 0 or attacker >= countries.size() or target >= countries.size():
+		return false
+	if attacker == target or at_war(attacker, target):
+		return false
+	return countries[attacker].is_alive() and countries[target].is_alive()
+
+
+func can_make_peace(issuer: int, target: int) -> bool:
+	return at_war(issuer, target) and war_days(issuer, target) >= WAR_MIN_DAYS
+
+
+func wars_of(cid: int) -> Array:
+	var out: Array = []
+	for w in wars:
+		if int(w["a"]) == cid:
+			out.append(int(w["b"]))
+		elif int(w["b"]) == cid:
+			out.append(int(w["a"]))
+	return out
+
+
+func _end_war(x: int, y: int) -> void:
+	var i := _war_index(x, y)
+	if i >= 0:
+		wars.remove_at(i)
+	# cercos que dependiam dessa guerra caem
+	for pid in sieges.keys():
+		var by: int = int(sieges[pid]["by"])
+		var owner: int = provinces[int(pid)].owner_id
+		if not at_war(by, owner):
+			sieges.erase(pid)
+			Events.province_updated.emit(int(pid))
 
 
 func transfer_province(pid: int, to_country: int) -> void:
@@ -433,6 +509,7 @@ func _simulate_day() -> void:
 	var month_rolled := clock.advance_day()
 	_advance_training()
 	_advance_armies()
+	_advance_war()
 	_advance_events()
 	Events.day_changed.emit(clock.to_dict())
 	if month_rolled:
@@ -469,6 +546,91 @@ func _advance_armies() -> void:
 		else:
 			a.move_left = ProvinceGraph.hop_days(provinces[a.province_id], provinces[a.path[0]])
 			Events.army_changed.emit(a.id)
+
+
+## Guerra: batalhas, cercos e conquista. Ordem fixa (ids crescentes) para ser determinístico.
+@warning_ignore("integer_division")
+func _advance_war() -> void:
+	if wars.is_empty():
+		return
+	for w in wars:
+		w["days"] = int(w["days"]) + 1
+
+	# exércitos por província
+	var by_prov := {}
+	var ids: Array = armies.keys()
+	ids.sort()
+	for id in ids:
+		var a: Army = armies[id]
+		if not by_prov.has(a.province_id):
+			by_prov[a.province_id] = []
+		by_prov[a.province_id].append(a)
+	var pids: Array = by_prov.keys()
+	pids.sort()
+
+	# batalhas: um round por dia por par de exércitos inimigos
+	for pid in pids:
+		var list: Array = by_prov[pid]
+		for i in list.size():
+			for j in range(i + 1, list.size()):
+				var x: Army = list[i]
+				var y: Army = list[j]
+				if x.regiments <= 0 or y.regiments <= 0 or not at_war(x.owner_id, y.owner_id):
+					continue
+				var loss_x := (y.regiments * BATTLE_LOSS_PCT + 99) / 100
+				var loss_y := (x.regiments * BATTLE_LOSS_PCT + 99) / 100
+				if x.regiments == y.regiments:
+					# empate: o sorteio decide quem sofre o round
+					if rng.randi_range(0, 1) == 0:
+						loss_y = 0
+					else:
+						loss_x = 0
+				x.regiments = maxi(0, x.regiments - loss_x)
+				y.regiments = maxi(0, y.regiments - loss_y)
+	for id in ids:
+		var a: Army = armies[id]
+		if a.regiments <= 0:
+			armies.erase(id)
+			Events.army_removed.emit(id)
+		else:
+			Events.army_changed.emit(id)
+
+	# cercos: exército parado em província inimiga, sem defensores
+	var seen := {}
+	for pid in pids:
+		var p := provinces[int(pid)]
+		if p.owner_id < 0:
+			continue
+		var besieger := -1
+		var defended := false
+		for a in by_prov[pid]:
+			var army: Army = a
+			if not armies.has(army.id):
+				continue
+			if army.owner_id == p.owner_id:
+				defended = true
+			elif besieger < 0 and not army.is_moving() and at_war(army.owner_id, p.owner_id):
+				besieger = army.owner_id
+		if besieger < 0 or defended:
+			continue
+		seen[pid] = true
+		var s: Dictionary = sieges.get(pid, {"by": besieger, "days": 0})
+		if int(s["by"]) != besieger:
+			s = {"by": besieger, "days": 0}
+		s["days"] = int(s["days"]) + 1
+		sieges[pid] = s
+		if int(s["days"]) >= SIEGE_DAYS:
+			sieges.erase(pid)
+			var loser := p.owner_id
+			transfer_province(int(pid), besieger)
+			if not countries[loser].is_alive():
+				for o in wars_of(loser):
+					_end_war(loser, o)
+		Events.province_updated.emit(int(pid))
+	for pid in sieges.keys():
+		if not seen.has(pid):
+			sieges.erase(pid)
+			Events.province_updated.emit(int(pid))
 
 
 @warning_ignore("integer_division")
@@ -737,6 +899,14 @@ func state_hash() -> int:
 		h = _mix(h, a.regiments)
 		h = _mix(h, a.move_left)
 		h = _mix(h, a.path.size())
+	for w in wars:
+		h = _mix(h, int(w["a"]) * 1000 + int(w["b"]))
+		h = _mix(h, int(w["days"]))
+	var sk: Array = sieges.keys()
+	sk.sort()
+	for pid in sk:
+		h = _mix(h, int(pid))
+		h = _mix(h, int(sieges[pid]["by"]) * 100 + int(sieges[pid]["days"]))
 	for t in training:
 		h = _mix(h, int(t["province"]))
 		h = _mix(h, int(t["owner"]))
@@ -751,6 +921,15 @@ func state_hash() -> int:
 
 func _mix(h: int, v: int) -> int:
 	return ((h ^ (v & 0xFFFFFFFF)) * 16777619) & 0xFFFFFFFF
+
+
+func _sieges_to_list() -> Array:
+	var out: Array = []
+	var ks: Array = sieges.keys()
+	ks.sort()
+	for pid in ks:
+		out.append({"pid": int(pid), "by": int(sieges[pid]["by"]), "days": int(sieges[pid]["days"])})
+	return out
 
 
 func serialize_state() -> Dictionary:
@@ -792,6 +971,8 @@ func serialize_state() -> Dictionary:
 		"capitals": capitals,
 		"armies": army_list,
 		"training": training.duplicate(true),
+		"wars": wars.duplicate(true),
+		"sieges": _sieges_to_list(),
 		"next_army_id": next_army_id,
 		"events": pending_events.duplicate(true),
 		"fired": fired_events.keys(),
@@ -838,6 +1019,12 @@ func load_state(d: Dictionary) -> bool:
 	for t in raw_training:
 		training.append({"province": int(t["province"]), "owner": int(t["owner"]), "days": int(t["days"])})
 	next_army_id = int(d.get("next_army_id", 1))
+	wars.clear()
+	for w in d.get("wars", []):
+		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
+	sieges.clear()
+	for sd in d.get("sieges", []):
+		sieges[int(sd["pid"])] = {"by": int(sd["by"]), "days": int(sd["days"])}
 
 	pending_events.clear()
 	var raw_events: Array = d.get("events", [])

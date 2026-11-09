@@ -21,6 +21,8 @@ const MOVE_ARMY := "move_army"
 const STOP_ARMY := "stop_army"
 const DISBAND_ARMY := "disband_army"
 const CHOOSE_EVENT := "choose_event"
+const DECLARE_WAR := "declare_war"
+const MAKE_PEACE := "make_peace"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
@@ -61,3 +63,13 @@ static func choose_event(uid: int, option: int) -> Dictionary:
 
 static func transfer_province(province: int, to_country: int) -> Dictionary:
 	return {"type": TRANSFER_PROVINCE, "province": province, "to": to_country}
+
+
+## Declara guerra ao país alvo (o emissor é o agressor).
+static func declare_war(target: int) -> Dictionary:
+	return {"type": DECLARE_WAR, "target": target}
+
+
+## Propõe paz branca (vale após Game.WAR_MIN_DAYS dias de guerra; sem IA, é aceita na hora).
+static func make_peace(target: int) -> Dictionary:
+	return {"type": MAKE_PEACE, "target": target}

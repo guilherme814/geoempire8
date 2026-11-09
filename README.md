@@ -17,7 +17,7 @@ O mapa é **original**: a Terra em 1836, gerada a partir de dados abertos do Nat
 - **Economia:** cada província produz conforme população, terreno e recurso. O país cobra impostos (`+`/`-` ajusta a taxa) e paga manutenção de províncias e regimentos. **Oficina** aumenta a produção; **Quartel** aumenta a mão de obra.
 - **Exército:** em província sua, **Recrutar** (30 de ouro + 1000 de mão de obra; 30 dias de treino). Toque no marcador do exército para selecioná-lo e depois numa província para marchar. Exércitos parados do mesmo dono se fundem.
 - **Eventos:** surgem todo mês (sorteio determinístico). Escolha uma opção; sem escolha em 30 dias vale a primeira.
-- Ainda **não há guerra, diplomacia nem IA**; exércitos de países diferentes apenas coexistem.
+- **Guerra:** em província de outro país use **Declarar guerra**. Exércitos inimigos que se encontram lutam todo dia (perde 25% do efetivo inimigo por round; empate decidido por sorteio). Exército parado em província inimiga sem defensores faz **cerco**: em 10 dias ela passa a ser sua. **Propor paz** vale após 30 dias de guerra. Ainda **não há IA nem diplomacia**: os países inimigos não reagem.
 
 ## Estrutura
 

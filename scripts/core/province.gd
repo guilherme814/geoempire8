@@ -111,13 +111,23 @@ static func from_dict(d: Dictionary) -> Province:
 	return p
 
 
-## Produção mensal (ouro, antes de impostos): população x preço do recurso x terreno.
+## Preço de mercado (% do preço-base) de cada recurso; preenchido pelo Game (mercado mundial).
+static var price_pct: Dictionary = {}
+
+
+## Unidades do recurso produzidas por mês: população x terreno, com bônus de oficina.
+@warning_ignore("integer_division")
+func units() -> int:
+	var tm: int = TERRAIN_MULT.get(terrain, 1000)
+	return population * tm / 1500000 * (100 + 25 * workshop) / 100
+
+
+## Produção mensal em ouro (antes de impostos) = unidades x preço-base x preço de mercado.
 @warning_ignore("integer_division")
 func production() -> int:
 	var price: int = RESOURCE_PRICE.get(resource_type, 10)
-	var tm: int = TERRAIN_MULT.get(terrain, 1000)
-	var base: int = population * price * tm / 150000000
-	return base * (100 + 25 * workshop) / 100
+	var pct: int = int(price_pct.get(resource_type, 100))
+	return units() * price * pct / 10000
 
 
 ## Imposto mensal que o dono recebe.

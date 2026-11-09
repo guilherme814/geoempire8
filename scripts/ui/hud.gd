@@ -33,6 +33,8 @@ var _country_label: Label
 var _treasury_label: Label
 var _eco_panel: PanelContainer
 var _eco_label: Label
+var _market_panel: PanelContainer
+var _market_grid: GridContainer
 var _toast: Label
 var _date_label: Label
 var _speed_buttons: Array[Button] = []
@@ -84,6 +86,7 @@ func _ready() -> void:
 	_build_bottom_right()
 	_build_event_popup()
 	_build_economy_panel()
+	_build_market_panel()
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
@@ -185,6 +188,10 @@ func _build_top_bar() -> void:
 	eco_btn.pressed.connect(_on_economy_pressed)
 	row.add_child(eco_btn)
 
+	var mkt_btn := _make_button("Mercado", Vector2(100, 46))
+	mkt_btn.pressed.connect(_on_market_pressed)
+	row.add_child(mkt_btn)
+
 	_date_label = Label.new()
 	_date_label.custom_minimum_size = Vector2(130, 0)
 	_date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -247,6 +254,74 @@ func _refresh_economy() -> void:
 		var p := Game.provinces[int(r["id"])]
 		lines.append("  %s%s: +%d" % [p.name, "" if p.city == "" else " (%s)" % p.city, int(r["tax"])])
 	_eco_label.text = "\n".join(lines)
+
+
+func _build_market_panel() -> void:
+	_market_panel = PanelContainer.new()
+	_market_panel.anchor_left = 1.0
+	_market_panel.anchor_right = 1.0
+	_market_panel.offset_left = -(_inset.z + MARGIN)
+	_market_panel.offset_right = -(_inset.z + MARGIN)
+	_market_panel.offset_top = _inset.y + MARGIN + 80
+	_market_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_market_panel.visible = false
+	_root.add_child(_market_panel)
+	_blockers.append(_market_panel)
+	var col := VBoxContainer.new()
+	col.custom_minimum_size = Vector2(520, 0)
+	_market_panel.add_child(col)
+	var title := Label.new()
+	title.text = "MERCADO MUNDIAL  (preço = % do valor base; + falta, - sobra)"
+	col.add_child(title)
+	_market_grid = GridContainer.new()
+	_market_grid.columns = 5
+	_market_grid.add_theme_constant_override("h_separation", 14)
+	_market_grid.add_theme_constant_override("v_separation", 1)
+	col.add_child(_market_grid)
+	var close := _make_button("Fechar", Vector2(100, 40))
+	close.pressed.connect(_on_market_pressed)
+	col.add_child(close)
+
+
+func _refresh_market() -> void:
+	if _market_panel == null or not _market_panel.visible:
+		return
+	var sup := Game.market_supply()
+	var me := Game.countries[Game.player_country]
+	var mine := {}
+	for pid in me.province_ids:
+		var p := Game.provinces[pid]
+		mine[p.resource_type] = int(mine.get(p.resource_type, 0)) + p.units()
+	for c in _market_grid.get_children():
+		c.queue_free()
+	_market_row(["Bem", "Oferta", "Demanda", "Preço", "Seu"], true)
+	for g in Game.goods_list():
+		var d := Game.market_demand(g)
+		var s: int = int(sup[g])
+		var arrow := " "
+		if d > s * 102 / 100:
+			arrow = " +"      # falta: preço sobe
+		elif d * 102 / 100 < s:
+			arrow = " -"      # sobra: preço cai
+		_market_row([RESOURCE_PT.get(g, g), str(s), str(d), "%d%%%s" % [int(Game.market_price[g]), arrow], str(int(mine.get(g, 0)))], false)
+
+
+func _market_row(cells: Array, header: bool) -> void:
+	for i in cells.size():
+		var l := Label.new()
+		l.text = str(cells[i])
+		l.add_theme_font_size_override("font_size", 16)
+		if header:
+			l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+		if i > 0:
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		l.custom_minimum_size = Vector2(110 if i == 0 else 70, 0)
+		_market_grid.add_child(l)
+
+
+func _on_market_pressed() -> void:
+	_market_panel.visible = not _market_panel.visible
+	_refresh_market()
 
 
 func _show_toast(msg: String) -> void:
@@ -573,6 +648,7 @@ func _refresh_info() -> void:
 	lines.append("País: %s" % owner_name)
 	lines.append("%s  ·  %s" % [TERRAIN_PT.get(p.terrain, p.terrain), RESOURCE_PT.get(p.resource_type, p.resource_type)])
 	lines.append("População: %s" % _fmt_pop(p.population))
+	lines.append("Preço do recurso: %d%%" % int(Province.price_pct.get(p.resource_type, 100)))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
 	lines.append("Oficina nív. %d   Quartel nív. %d" % [p.workshop, p.barracks])
@@ -667,6 +743,7 @@ func _on_day_changed(_date: Dictionary) -> void:
 
 
 func _on_month_changed(_date: Dictionary) -> void:
+	_refresh_market()
 	_refresh_top()
 	_refresh_info()
 

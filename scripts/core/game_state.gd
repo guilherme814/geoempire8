@@ -57,6 +57,10 @@ var training: Array = []         # [{province, owner, days}]
 var next_army_id: int = 1
 var wars: Array = []             # [{a, b, days}] com a < b
 var sieges: Dictionary = {}      # província -> {by, days}
+# Mercado mundial: preço (% do base) por recurso, demanda-base e população de referência.
+var market_price: Dictionary = {}
+var market_dem: Dictionary = {}
+var market_pop0: int = 1
 var relations: Dictionary = {}   # par -> opinião (-100..100)
 var alliances: Array = []        # pares aliados
 var truces: Dictionary = {}      # par -> tick em que a trégua acaba
@@ -155,6 +159,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	speed = 1
 
 	_rebuild_all_countries()
+	_init_market()
 	graph = ProvinceGraph.new()
 	graph.setup(provinces)
 
@@ -905,6 +910,7 @@ func _simulate_month() -> void:
 		if at_war(int(k) / 1000, int(k) % 1000):
 			continue
 		relations[k] = v - signi(v) * mini(absi(v), 2)
+	_update_market()
 	_roll_events()
 	Events.month_changed.emit(clock.to_dict())
 	for c in countries:
@@ -1055,6 +1061,59 @@ func top_provinces(c: Country, n: int) -> Array:
 # ---------------------------------------------------------------------------
 # Derivados de país
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Mercado mundial: oferta (produção de todas as províncias) x demanda (proporcional à
+# população). Preço sobe se falta, cai se sobra; ele multiplica a renda de cada província.
+# ---------------------------------------------------------------------------
+func goods_list() -> Array:
+	var g: Array = Province.RESOURCE_PRICE.keys()
+	g.sort()
+	return g
+
+
+func market_supply() -> Dictionary:
+	var sup := {}
+	for g in goods_list():
+		sup[g] = 0
+	for p in provinces:
+		if p.owner_id >= 0 and sup.has(p.resource_type):
+			sup[p.resource_type] = int(sup[p.resource_type]) + p.units()
+	return sup
+
+
+func market_population() -> int:
+	var n := 0
+	for p in provinces:
+		if p.owner_id >= 0:
+			n += p.population
+	return maxi(1, n)
+
+
+func market_demand(g: String) -> int:
+	return int(market_dem.get(g, 0)) * market_population() / market_pop0
+
+
+func _init_market() -> void:
+	market_price.clear()
+	market_dem.clear()
+	var sup := market_supply()
+	for g in goods_list():
+		market_price[g] = 100
+		market_dem[g] = int(sup[g])
+	market_pop0 = market_population()
+	Province.price_pct = market_price
+
+
+@warning_ignore("integer_division")
+func _update_market() -> void:
+	var sup := market_supply()
+	for g in goods_list():
+		var s: int = int(sup[g])
+		var d: int = market_demand(g)
+		var delta: int = (d - s) * 20 / maxi(1, maxi(s, d))
+		market_price[g] = clampi(int(market_price[g]) + delta, 40, 250)
+
+
 func _rebuild_all_countries() -> void:
 	for c in countries:
 		c.province_ids.clear()
@@ -1162,6 +1221,8 @@ func state_hash() -> int:
 	for pid in sk:
 		h = _mix(h, int(pid))
 		h = _mix(h, int(sieges[pid]["by"]) * 100 + int(sieges[pid]["days"]))
+	for g in goods_list():
+		h = _mix(h, int(market_price.get(g, 100)))
 	var rk: Array = relations.keys()
 	rk.sort()
 	for k in rk:
@@ -1250,6 +1311,7 @@ func serialize_state() -> Dictionary:
 		"wars": wars.duplicate(true),
 		"sieges": _sieges_to_list(),
 		"relations": _dict_to_pairs(relations),
+		"market": {"price": market_price.duplicate(), "dem": market_dem.duplicate(), "pop0": market_pop0},
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
 		"next_army_id": next_army_id,
@@ -1301,6 +1363,12 @@ func load_state(d: Dictionary) -> bool:
 	wars.clear()
 	for w in d.get("wars", []):
 		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
+	if d.has("market"):
+		var mk: Dictionary = d["market"]
+		for g in goods_list():
+			market_price[g] = int(mk["price"].get(g, 100))
+			market_dem[g] = int(mk["dem"].get(g, 0))
+		market_pop0 = maxi(1, int(mk.get("pop0", 1)))
 	relations.clear()
 	for r in d.get("relations", []):
 		relations[int(r[0])] = int(r[1])

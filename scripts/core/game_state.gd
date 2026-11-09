@@ -609,12 +609,30 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 
 ## Previsão mensal de um país (usada pela simulação e pela UI).
 func estimate_monthly(c: Country) -> Dictionary:
-	var income := 0
+	var tax := 0
+	var flat := 0
+	var prod := 0
 	for pid in c.province_ids:
-		income += provinces[pid].monthly_tax(c.tax_pct)
+		var p := provinces[pid]
+		tax += p.monthly_tax(c.tax_pct)
+		flat += Province.FLAT_TAX
+		prod += p.production()
 	var regs := regiments_of(c.id)
-	var expense: int = c.province_ids.size() * EXPENSE_PER_PROVINCE + regs * REGIMENT_UPKEEP
-	return {"income": income, "expense": expense, "regiments": regs}
+	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
+	var up_army: int = regs * REGIMENT_UPKEEP
+	return {
+		"income": tax, "expense": up_prov + up_army, "regiments": regs,
+		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army,
+	}
+
+
+## As N províncias do país que mais rendem imposto: [{id, tax}].
+func top_provinces(c: Country, n: int) -> Array:
+	var rows: Array = []
+	for pid in c.province_ids:
+		rows.append({"id": pid, "tax": provinces[pid].monthly_tax(c.tax_pct)})
+	rows.sort_custom(func(a, b): return a["tax"] > b["tax"] or (a["tax"] == b["tax"] and a["id"] < b["id"]))
+	return rows.slice(0, n)
 
 
 # ---------------------------------------------------------------------------

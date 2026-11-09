@@ -61,9 +61,22 @@ func _on_map_tapped(world_pos: Vector2) -> void:
 	var pid := map_view.province_at(world_pos)
 	var sel: Army = Game.armies.get(overlay.selected_army)
 	if sel != null and pid >= 0 and sel.owner_id == Game.player_country:
+		if pid == sel.province_id and not sel.is_moving():
+			Events.army_selected.emit(-1)      # tocar na própria província desmarca
+			Events.province_selected.emit(pid)
+			return
 		Game.submit_command(Cmd.move_army(sel.id, pid))
 		Events.province_selected.emit(pid)
 		return
+
+	# Sem seleção: tocar numa província com exército SEU seleciona o exército (alvo grande no celular).
+	if pid >= 0:
+		for a in Game.armies.values():
+			var army: Army = a
+			if army.owner_id == Game.player_country and army.province_id == pid:
+				Events.army_selected.emit(army.id)
+				Events.province_selected.emit(pid)
+				return
 
 	Events.army_selected.emit(-1)
 	Events.province_selected.emit(pid)

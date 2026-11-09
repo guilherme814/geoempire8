@@ -31,6 +31,8 @@ var _inset: Vector4 = Vector4.ZERO   # esquerda, topo, direita, base (área segu
 var _flag: ColorRect
 var _country_label: Label
 var _treasury_label: Label
+var _eco_panel: PanelContainer
+var _eco_label: Label
 var _date_label: Label
 var _speed_buttons: Array[Button] = []
 
@@ -77,6 +79,7 @@ func _ready() -> void:
 	_build_info_panel()
 	_build_bottom_right()
 	_build_event_popup()
+	_build_economy_panel()
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
@@ -171,6 +174,10 @@ func _build_top_bar() -> void:
 	_treasury_label = Label.new()
 	row.add_child(_treasury_label)
 
+	var eco_btn := _make_button("Economia", Vector2(110, 46))
+	eco_btn.pressed.connect(_on_economy_pressed)
+	row.add_child(eco_btn)
+
 	_date_label = Label.new()
 	_date_label.custom_minimum_size = Vector2(130, 0)
 	_date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -186,6 +193,58 @@ func _build_top_bar() -> void:
 		b.pressed.connect(_on_speed_pressed.bind(i))
 		row.add_child(b)
 		_speed_buttons.append(b)
+
+
+func _build_economy_panel() -> void:
+	_eco_panel = PanelContainer.new()
+	_eco_panel.anchor_left = 1.0
+	_eco_panel.anchor_right = 1.0
+	_eco_panel.offset_left = -(_inset.z + MARGIN)
+	_eco_panel.offset_right = -(_inset.z + MARGIN)
+	_eco_panel.offset_top = _inset.y + MARGIN + 80
+	_eco_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_eco_panel.visible = false
+	_root.add_child(_eco_panel)
+	_blockers.append(_eco_panel)
+	var col := VBoxContainer.new()
+	col.custom_minimum_size = Vector2(380, 0)
+	_eco_panel.add_child(col)
+	_eco_label = Label.new()
+	_eco_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(_eco_label)
+	var close := _make_button("Fechar", Vector2(100, 44))
+	close.pressed.connect(_on_economy_pressed)
+	col.add_child(close)
+
+
+func _refresh_economy() -> void:
+	if _eco_panel == null or not _eco_panel.visible:
+		return
+	var c := Game.countries[Game.player_country]
+	var e := Game.estimate_monthly(c)
+	var net: int = int(e["income"]) - int(e["expense"])
+	var lines: Array[String] = []
+	lines.append("ECONOMIA - %s" % c.name)
+	lines.append("Taxa de imposto: %d%%   Províncias: %d" % [c.tax_pct, c.province_ids.size()])
+	lines.append("")
+	lines.append("Produção bruta: %d/mês" % int(e["production"]))
+	lines.append("Receita: +%d  (impostos %d%% + base %d)" % [int(e["income"]), c.tax_pct, int(e["flat"])])
+	lines.append("Manutenção de províncias: -%d" % int(e["upkeep_prov"]))
+	lines.append("Manutenção de exércitos: -%d  (%d reg.)" % [int(e["upkeep_army"]), int(e["regiments"])])
+	lines.append("SALDO: %+d/mês" % net)
+	if net < 0 and c.treasury > 0:
+		lines.append("Tesouro acaba em ~%d meses" % (c.treasury / -net))
+	lines.append("")
+	lines.append("Províncias que mais rendem:")
+	for r in Game.top_provinces(c, 5):
+		var p := Game.provinces[int(r["id"])]
+		lines.append("  %s%s: +%d" % [p.name, "" if p.city == "" else " (%s)" % p.city, int(r["tax"])])
+	_eco_label.text = "\n".join(lines)
+
+
+func _on_economy_pressed() -> void:
+	_eco_panel.visible = not _eco_panel.visible
+	_refresh_economy()
 
 
 func _build_info_panel() -> void:
@@ -428,6 +487,7 @@ func _refresh_top() -> void:
 		c.treasury, net, int(e["regiments"]), _fmt_pop(Game.manpower_of(c.id)),
 	]
 	_date_label.text = Game.clock.format()
+	_refresh_economy()
 	_tax_label.text = "%d%%" % c.tax_pct
 	var s := clampi(Game.speed, 0, _speed_buttons.size() - 1)
 	_speed_buttons[s].set_pressed_no_signal(true)

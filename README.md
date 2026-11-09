@@ -22,7 +22,7 @@ O mapa é **original**: a Terra em 1836, gerada a partir de dados abertos do Nat
 ## Estrutura
 
 ```
-data/world.json            mundo 1836 (947 províncias, 74 países, 3072x1394) - gerado
+data/world.json            mundo 1836 (862 províncias, 74 países, 3072x1394) - gerado
 data/events.json           eventos do jogo (texto, condições e efeitos)
 tools/generate_world_1836.py  gera world.json a partir do Natural Earth (ver abaixo)
 tools/world1836_data.py    tabela histórica: países, dono de cada região, densidade

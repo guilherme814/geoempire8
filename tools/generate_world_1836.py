@@ -49,6 +49,8 @@ ap.add_argument("--voronoi", action="store_true",
                 help="usa células Voronoi no lugar das fronteiras administrativas originais")
 ap.add_argument("--min-frac", type=float, default=0.35,
                 help="divisões menores que isso x área nominal são fundidas à vizinha do mesmo país")
+ap.add_argument("--wild-mult", type=float, default=6.0,
+                help="multiplicador do tamanho das províncias em terras sem dono")
 ap.add_argument("--max-frac", type=float, default=3.0,
                 help="divisões maiores que isso x área nominal são subdivididas")
 opt = ap.parse_args()
@@ -329,6 +331,8 @@ def real_border_labels():
     lon_u, lat_u = unproject(cxu, cyu)
     r_u = density_km(np.asarray(lon_u), np.asarray(lat_u)) / km_per_px(np.asarray(lat_u))
     nominal = (r_u ** 2).astype(np.float64)       # área-alvo de uma província (px^2)
+    # Terra sem dono em 1836 (interior da África, Ártico...): territórios grandes, como nos mapas da época
+    nominal[lut[:nu] == 0] *= opt.wild_mult
 
     # adjacência entre divisões do MESMO país (contagem de pixels de fronteira)
     nbrs = defaultdict(Counter)

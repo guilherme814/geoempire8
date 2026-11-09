@@ -11,8 +11,8 @@ enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE }
 
 const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos"]
 const GRID_SIZE := 100.0
-const OCEAN_COLOR := Color(0.13, 0.27, 0.42)
-const UNOWNED_COLOR := Color(0.62, 0.60, 0.55)
+const OCEAN_COLOR := Color(0.55, 0.68, 0.74)   # mar de mapa antigo
+const UNOWNED_COLOR := Color(0.86, 0.80, 0.64)  # pergaminho: terra sem dono
 const ZOOM_STEP := 1.35   # o zoom é agrupado em faixas deste fator para redesenhar pouco
 
 var mode: int = Mode.POLITICAL
@@ -254,9 +254,9 @@ func _draw() -> void:
 		return
 	var z := maxf(zoom_level, 0.05)
 
-	draw_multiline(_prov_lines, Color(0, 0, 0, 0.30), -1.0)          # 1 px fixo na tela
-	draw_multiline(_country_lines, Color(0.04, 0.04, 0.06, 0.95), 2.2 / z)
-	draw_multiline(_coast_lines, Color(0.05, 0.10, 0.16, 0.9), 1.6 / z)
+	draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, 0.35), -1.0)          # 1 px fixo na tela
+	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.6 / z)
+	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
 	if mode == Mode.POLITICAL:
 		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
 		if z <= 3.0:

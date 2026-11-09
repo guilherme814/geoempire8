@@ -19,6 +19,7 @@ const RESOURCE_PT := {
 	"furs": "Peles", "wool": "Lã", "cotton": "Algodão", "coal": "Carvão", "iron": "Ferro",
 	"salt": "Sal", "wine": "Vinho", "sugar": "Açúcar", "tobacco": "Tabaco", "coffee": "Café",
 	"tea": "Chá", "silk": "Seda", "spices": "Especiarias", "opium": "Ópio", "gold": "Ouro",
+	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis",
 }
 
 var map_view: MapView
@@ -45,6 +46,8 @@ var _info_body: Label
 var _btn_recruit: Button
 var _btn_workshop: Button
 var _btn_barracks: Button
+var _btn_fact: Array[Button] = []
+const FACTORY_PT := {"textile": "Tecelagem", "smithy": "Ferraria", "carpentry": "Marcenaria"}
 var _btn_take: Button
 var _btn_annex: Button
 var _btn_war: Button
@@ -242,7 +245,7 @@ func _refresh_economy() -> void:
 	lines.append("Taxa de imposto: %d%%   Províncias: %d" % [c.tax_pct, c.province_ids.size()])
 	lines.append("")
 	lines.append("Produção bruta: %d/mês" % int(e["production"]))
-	lines.append("Receita: +%d  (impostos %d%% + base %d)" % [int(e["income"]), c.tax_pct, int(e["flat"])])
+	lines.append("Receita: %+d  (impostos %d%% + base %d, indústria %+d)" % [int(e["income"]), c.tax_pct, int(e["flat"]), int(e["industry"])])
 	lines.append("Manutenção de províncias: -%d" % int(e["upkeep_prov"]))
 	lines.append("Manutenção de exércitos: -%d  (%d reg.)" % [int(e["upkeep_army"]), int(e["regiments"])])
 	lines.append("SALDO: %+d/mês" % net)
@@ -292,6 +295,9 @@ func _refresh_market() -> void:
 	for pid in me.province_ids:
 		var p := Game.provinces[pid]
 		mine[p.resource_type] = int(mine.get(p.resource_type, 0)) + p.units()
+		if p.factory != "":
+			var fo: String = Province.FACTORIES[p.factory]["out"]
+			mine[fo] = int(mine.get(fo, 0)) + int(Province.FACTORIES[p.factory]["amount"]) * p.factory_level
 	for c in _market_grid.get_children():
 		c.queue_free()
 	_market_row(["Bem", "Oferta", "Demanda", "Preço", "Seu"], true)
@@ -393,6 +399,12 @@ func _build_info_panel() -> void:
 	_btn_barracks = _make_button("Quartel", bsize)
 	_btn_barracks.pressed.connect(_on_build_pressed.bind("barracks"))
 	grid.add_child(_btn_barracks)
+
+	for k in Province.FACTORIES.keys():
+		var fb := _make_button(FACTORY_PT[k], bsize)
+		fb.pressed.connect(_on_build_pressed.bind(k))
+		grid.add_child(fb)
+		_btn_fact.append(fb)
 
 	_btn_take = _make_button("Assumir país", bsize)
 	_btn_take.pressed.connect(_on_take_pressed)
@@ -666,6 +678,8 @@ func _refresh_info() -> void:
 			if tl > 0:
 				rel += "  (trégua: %d dias)" % tl
 			lines.append(rel)
+	if p.factory != "":
+		lines.append("Indústria: %s nív. %d  (lucro %+d/mês)" % [FACTORY_PT[p.factory], p.factory_level, p.factory_profit()])
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
@@ -674,12 +688,17 @@ func _refresh_info() -> void:
 	_btn_recruit.visible = mine
 	_btn_workshop.visible = mine
 	_btn_barracks.visible = mine
+	for fb in _btn_fact:
+		fb.visible = mine
 	if mine:
 		var me := Game.player_country
 		_btn_recruit.text = "Recrutar (%d)" % Game.RECRUIT_COST
 		_btn_recruit.disabled = not Game.can_recruit(p.id, me)
 		_set_build_button(_btn_workshop, "Oficina", p, "workshop", me)
 		_set_build_button(_btn_barracks, "Quartel", p, "barracks", me)
+		var fkeys: Array = Province.FACTORIES.keys()
+		for i in fkeys.size():
+			_set_build_button(_btn_fact[i], FACTORY_PT[fkeys[i]], p, fkeys[i], me)
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
 	_btn_annex.visible = DEBUG_TOOLS and not mine
 	_btn_war.visible = has_owner and not mine

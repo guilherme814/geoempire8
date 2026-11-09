@@ -24,7 +24,7 @@ const DEFAULT_PLAYER_TAG := "GBR"
 const EXPENSE_PER_PROVINCE := 1
 const REGIMENT_UPKEEP := 2
 const MIN_START_TREASURY := 300
-const BUILD_COSTS := {"workshop": 120, "barracks": 100}   # x (nível atual + 1)
+const BUILD_COSTS := {"workshop": 120, "barracks": 100, "textile": 150, "smithy": 180, "carpentry": 130}   # x (nível atual + 1)
 
 # Exército
 const REGIMENT_SIZE := 1000
@@ -512,6 +512,8 @@ func can_build(pid: int, issuer: int, kind: String) -> bool:
 	var p := provinces[pid]
 	if p.owner_id != issuer or p.building_level(kind) >= Province.MAX_BUILDING:
 		return false
+	if Province.FACTORIES.has(kind) and p.factory != "" and p.factory != kind:
+		return false   # uma fábrica por província
 	return countries[issuer].treasury >= build_cost(p, kind)
 
 
@@ -1035,16 +1037,18 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var tax := 0
 	var flat := 0
 	var prod := 0
+	var industry := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
 		tax += p.monthly_tax(c.tax_pct)
+		industry += p.factory_profit()
 		flat += Province.FLAT_TAX
 		prod += p.production()
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var up_army: int = regs * REGIMENT_UPKEEP
 	return {
-		"income": tax, "expense": up_prov + up_army, "regiments": regs,
+		"income": tax + industry, "industry": industry, "expense": up_prov + up_army, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army,
 	}
 
@@ -1067,6 +1071,7 @@ func top_provinces(c: Country, n: int) -> Array:
 # ---------------------------------------------------------------------------
 func goods_list() -> Array:
 	var g: Array = Province.RESOURCE_PRICE.keys()
+	g.append_array(Province.PROCESSED.keys())
 	g.sort()
 	return g
 
@@ -1076,9 +1081,27 @@ func market_supply() -> Dictionary:
 	for g in goods_list():
 		sup[g] = 0
 	for p in provinces:
-		if p.owner_id >= 0 and sup.has(p.resource_type):
+		if p.owner_id < 0:
+			continue
+		if sup.has(p.resource_type):
 			sup[p.resource_type] = int(sup[p.resource_type]) + p.units()
+		if p.factory != "" and p.factory_level > 0:
+			var f: Dictionary = Province.FACTORIES[p.factory]
+			var out: String = f["out"]
+			sup[out] = int(sup[out]) + int(f["amount"]) * p.factory_level
 	return sup
+
+
+## Insumos que as fábricas do mundo querem comprar por mês (somam à demanda dos recursos).
+func factory_input_demand() -> Dictionary:
+	var dem := {}
+	for p in provinces:
+		if p.owner_id < 0 or p.factory == "" or p.factory_level <= 0:
+			continue
+		var ins: Dictionary = Province.FACTORIES[p.factory]["inputs"]
+		for g in ins.keys():
+			dem[g] = int(dem.get(g, 0)) + int(ins[g]) * p.factory_level
+	return dem
 
 
 func market_population() -> int:
@@ -1089,8 +1112,9 @@ func market_population() -> int:
 	return maxi(1, n)
 
 
-func market_demand(g: String) -> int:
-	return int(market_dem.get(g, 0)) * market_population() / market_pop0
+func market_demand(g: String, fin: Dictionary = {}) -> int:
+	var extra: Dictionary = fin if not fin.is_empty() else factory_input_demand()
+	return int(market_dem.get(g, 0)) * market_population() / market_pop0 + int(extra.get(g, 0))
 
 
 func _init_market() -> void:
@@ -1099,7 +1123,8 @@ func _init_market() -> void:
 	var sup := market_supply()
 	for g in goods_list():
 		market_price[g] = 100
-		market_dem[g] = int(sup[g])
+		# bens processados começam sem oferta: demanda-base fixa cria escassez e lucro
+		market_dem[g] = 3000 if Province.PROCESSED.has(g) else int(sup[g])
 	market_pop0 = market_population()
 	Province.price_pct = market_price
 
@@ -1107,9 +1132,10 @@ func _init_market() -> void:
 @warning_ignore("integer_division")
 func _update_market() -> void:
 	var sup := market_supply()
+	var fin := factory_input_demand()
 	for g in goods_list():
 		var s: int = int(sup[g])
-		var d: int = market_demand(g)
+		var d: int = market_demand(g, fin)
 		var delta: int = (d - s) * 20 / maxi(1, maxi(s, d))
 		market_price[g] = clampi(int(market_price[g]) + delta, 40, 250)
 
@@ -1202,6 +1228,7 @@ func state_hash() -> int:
 		h = _mix(h, p.population)
 		h = _mix(h, p.manpower)
 		h = _mix(h, p.workshop * 10 + p.barracks)
+		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
 	for c in countries:
 		h = _mix(h, c.treasury)
 		h = _mix(h, c.tax_pct)
@@ -1275,12 +1302,16 @@ func serialize_state() -> Dictionary:
 	var mps: Array = []
 	var workshops: Array = []
 	var barracks: Array = []
+	var fkinds: Array = []
+	var flevels: Array = []
 	for p in provinces:
 		owners.append(p.owner_id)
 		pops.append(p.population)
 		mps.append(p.manpower)
 		workshops.append(p.workshop)
 		barracks.append(p.barracks)
+		fkinds.append(p.factory)
+		flevels.append(p.factory_level)
 	var treasury: Array = []
 	var taxes: Array = []
 	var capitals: Array = []
@@ -1303,6 +1334,8 @@ func serialize_state() -> Dictionary:
 		"manpower": mps,
 		"workshops": workshops,
 		"barracks": barracks,
+		"factory": fkinds,
+		"factory_lvl": flevels,
 		"treasury": treasury,
 		"taxes": taxes,
 		"capitals": capitals,
@@ -1345,6 +1378,10 @@ func load_state(d: Dictionary) -> bool:
 		provinces[i].manpower = int(mps[i])
 		provinces[i].workshop = int(workshops[i])
 		provinces[i].barracks = int(barracks[i])
+		var fk: Array = d.get("factory", [])
+		var fl: Array = d.get("factory_lvl", [])
+		provinces[i].factory = str(fk[i]) if i < fk.size() else ""
+		provinces[i].factory_level = int(fl[i]) if i < fl.size() else 0
 	for i in countries.size():
 		countries[i].treasury = int(treasury[i])
 		countries[i].tax_pct = int(taxes[i])

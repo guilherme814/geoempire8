@@ -26,8 +26,19 @@ const RESOURCE_PRICE := {
 	"gold": 45,
 }
 
+## Bens processados (preço-base em décimos de ouro por unidade).
+const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28}
+## Fábricas: por nível produzem `amount` unidades de `out` por mês e consomem `inputs` do mercado.
+const FACTORIES := {
+	"textile": {"out": "fabric", "amount": 100, "inputs": {"cotton": 60, "wool": 60}},
+	"smithy": {"out": "tools", "amount": 100, "inputs": {"iron": 80, "timber": 40}},
+	"carpentry": {"out": "furniture", "amount": 100, "inputs": {"timber": 100}},
+}
+
 var id: int = 0
 var name: String = ""
+var factory: String = ""                            # "" ou chave de FACTORIES
+var factory_level: int = 0
 var city: String = ""                               # cidade-sede (município principal)
 var capital_city: bool = false                      # sede é capital nacional
 var poly: PackedVector2Array = PackedVector2Array()
@@ -142,7 +153,32 @@ func manpower_max() -> int:
 	return population * (200 + 100 * barracks) / 10000
 
 
+static func base_price(good: String) -> int:
+	return int(RESOURCE_PRICE.get(good, PROCESSED.get(good, 10)))
+
+
+static func market_pct(good: String) -> int:
+	return int(price_pct.get(good, 100))
+
+
+## Lucro mensal da fábrica: receita dos produtos - custo dos insumos (a preço de mercado).
+@warning_ignore("integer_division")
+func factory_profit() -> int:
+	if factory == "" or factory_level <= 0:
+		return 0
+	var f: Dictionary = FACTORIES[factory]
+	var out: String = f["out"]
+	var revenue: int = int(f["amount"]) * factory_level * base_price(out) * market_pct(out) / 10000
+	var cost := 0
+	var ins: Dictionary = f["inputs"]
+	for g in ins.keys():
+		cost += int(ins[g]) * factory_level * base_price(g) * market_pct(g) / 10000
+	return revenue - cost
+
+
 func building_level(kind: String) -> int:
+	if FACTORIES.has(kind):
+		return factory_level if factory == kind else 0
 	if kind == "workshop":
 		return workshop
 	if kind == "barracks":
@@ -151,7 +187,10 @@ func building_level(kind: String) -> int:
 
 
 func set_building_level(kind: String, level: int) -> void:
-	if kind == "workshop":
+	if FACTORIES.has(kind):
+		factory = kind
+		factory_level = level
+	elif kind == "workshop":
 		workshop = level
 	elif kind == "barracks":
 		barracks = level

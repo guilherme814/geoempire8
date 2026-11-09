@@ -27,3 +27,6 @@ signal command_applied(cmd: Dictionary)
 
 ## Guerras declaradas ou encerradas.
 signal war_changed
+
+## Aviso curto para o jogador local (ex.: paz recusada).
+signal notice(text: String)

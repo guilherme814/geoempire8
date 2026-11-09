@@ -194,11 +194,7 @@ func apply_command(cmd: Dictionary) -> void:
 		var pid: int = int(cmd.get("province", -1))
 		if not can_recruit(pid, issuer):
 			return
-		provinces[pid].manpower -= REGIMENT_SIZE
-		countries[issuer].treasury -= RECRUIT_COST
-		training.append({"province": pid, "owner": issuer, "days": RECRUIT_DAYS})
-		Events.province_updated.emit(pid)
-		Events.treasury_changed.emit(issuer)
+		_do_recruit(pid, issuer)
 
 	elif t == Cmd.BUILD:
 		var pid: int = int(cmd.get("province", -1))
@@ -267,6 +263,10 @@ func apply_command(cmd: Dictionary) -> void:
 	elif t == Cmd.MAKE_PEACE:
 		var target: int = int(cmd.get("target", -1))
 		if not can_make_peace(issuer, target):
+			return
+		if not is_human(target) and regiments_of(target) > regiments_of(issuer):
+			if issuer == player_country:
+				Events.notice.emit("%s recusou a paz: ainda se sente mais forte." % countries[target].name)
 			return
 		_end_war(issuer, target)
 		Events.war_changed.emit()
@@ -380,6 +380,14 @@ func can_recruit(pid: int, issuer: int) -> bool:
 	if p.manpower < REGIMENT_SIZE or countries[issuer].treasury < RECRUIT_COST:
 		return false
 	return queued_in(pid) < MAX_QUEUE_PER_PROVINCE
+
+
+func _do_recruit(pid: int, cid: int) -> void:
+	provinces[pid].manpower -= REGIMENT_SIZE
+	countries[cid].treasury -= RECRUIT_COST
+	training.append({"province": pid, "owner": cid, "days": RECRUIT_DAYS})
+	Events.province_updated.emit(pid)
+	Events.treasury_changed.emit(cid)
 
 
 func build_cost(p: Province, kind: String) -> int:
@@ -510,6 +518,7 @@ func _simulate_day() -> void:
 	_advance_training()
 	_advance_armies()
 	_advance_war()
+	_advance_ai()
 	_advance_events()
 	Events.day_changed.emit(clock.to_dict())
 	if month_rolled:
@@ -546,6 +555,103 @@ func _advance_armies() -> void:
 		else:
 			a.move_left = ProvinceGraph.hop_days(provinces[a.province_id], provinces[a.path[0]])
 			Events.army_changed.emit(a.id)
+
+
+# ---------------------------------------------------------------------------
+# IA simples (determinística: só usa o estado e ids em ordem; roda igual em todos os pares)
+# ---------------------------------------------------------------------------
+## Países controlados por jogadores (no online, vem da lista de jogadores, igual em todos).
+func is_human(cid: int) -> bool:
+	if Net.is_online():
+		for pid in Net.players.keys():
+			if int(Net.players[pid]["country"]) == cid:
+				return true
+		return false
+	return cid == player_country
+
+
+@warning_ignore("integer_division")
+func _advance_ai() -> void:
+	if tick % 5 != 0:
+		return
+	for c in countries:
+		if not c.is_alive() or is_human(c.id):
+			continue
+		if tick % 30 == 0:
+			_ai_recruit(c)
+		if not wars_of(c.id).is_empty():
+			_ai_war(c)
+
+
+@warning_ignore("integer_division")
+func _ai_recruit(c: Country) -> void:
+	var enemies := wars_of(c.id)
+	var want: int = 2 + c.province_ids.size() / 6 + (2 if not enemies.is_empty() else 0)
+	want = mini(want, 30)
+	if regiments_of(c.id) + _queued_for(c.id) >= want or c.treasury < RECRUIT_COST + 100:
+		return
+	if can_recruit(c.capital, c.id):
+		_do_recruit(c.capital, c.id)
+		return
+	for pid in c.province_ids:
+		if can_recruit(pid, c.id):
+			_do_recruit(pid, c.id)
+			return
+
+
+func _queued_for(cid: int) -> int:
+	var n := 0
+	for t in training:
+		if int(t["owner"]) == cid:
+			n += 1
+	return n
+
+
+func _ai_war(c: Country) -> void:
+	var enemies := wars_of(c.id)
+	var ids: Array = armies.keys()
+	ids.sort()
+	for id in ids:
+		var a: Army = armies[id]
+		if a.owner_id != c.id or a.is_moving():
+			continue
+		var here := provinces[a.province_id]
+		# mantém o cerco em andamento
+		if here.owner_id != c.id and sieges.has(here.id) and int(sieges[here.id]["by"]) == c.id:
+			continue
+		var target := _ai_pick_target(a, c, enemies)
+		if target >= 0 and target != a.province_id:
+			_order_move(a, target)
+
+
+func _ai_pick_target(a: Army, c: Country, enemies: Array) -> int:
+	var origin := provinces[a.province_id].center
+	# 1) expulsa invasores que estão em terra própria (o mais próximo)
+	var best := -1
+	var best_d := INF
+	var ids: Array = armies.keys()
+	ids.sort()
+	for id in ids:
+		var e: Army = armies[id]
+		if not enemies.has(e.owner_id) or provinces[e.province_id].owner_id != c.id:
+			continue
+		var d := origin.distance_squared_to(provinces[e.province_id].center)
+		if d < best_d:
+			best_d = d
+			best = e.province_id
+	if best >= 0:
+		return best
+	# 2) ataca a província inimiga mais próxima que seja alcançável
+	var cands: Array = []
+	for p in provinces:
+		if enemies.has(p.owner_id):
+			cands.append({"id": p.id, "d": origin.distance_squared_to(p.center)})
+	cands.sort_custom(func(x, y): return x["d"] < y["d"] or (x["d"] == y["d"] and x["id"] < y["id"]))
+	for i in mini(cands.size(), 4):
+		var pid: int = int(cands[i]["id"])
+		if not find_path(a.province_id, pid).is_empty():
+			return pid
+	return -1
 
 
 ## Guerra: batalhas, cercos e conquista. Ordem fixa (ids crescentes) para ser determinístico.

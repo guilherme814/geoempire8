@@ -85,6 +85,7 @@ func _ready() -> void:
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
+	Events.notice.connect(_show_toast)
 	Events.war_changed.connect(_refresh_top)
 	Events.war_changed.connect(_refresh_info)
 	Events.month_changed.connect(_on_month_changed)

@@ -38,6 +38,13 @@ const WAR_MIN_DAYS := 30         # dias de guerra antes de poder pedir paz
 const SIEGE_DAYS := 10           # dias de ocupação até a província mudar de dono
 const BATTLE_LOSS_PCT := 25      # % do exército inimigo (arredondado p/ cima) perdido por dia de batalha
 
+# Diplomacia
+const IMPROVE_COST := 50
+const ALLIANCE_MIN_OPINION := 40
+const TRUCE_DAYS := 360          # após a paz, ninguém declara guerra por 1 ano
+const AI_WAR_GRACE_TICKS := 360  # a IA só declara guerra depois do primeiro ano
+const AI_WAR_CHANCE := 12        # 1 em N por mês, por país elegível
+
 var loaded: bool = false
 var map_size: Vector2 = Vector2(3072.0, 1394.0)
 var provinces: Array[Province] = []
@@ -50,6 +57,9 @@ var training: Array = []         # [{province, owner, days}]
 var next_army_id: int = 1
 var wars: Array = []             # [{a, b, days}] com a < b
 var sieges: Dictionary = {}      # província -> {by, days}
+var relations: Dictionary = {}   # par -> opinião (-100..100)
+var alliances: Array = []        # pares aliados
+var truces: Dictionary = {}      # par -> tick em que a trégua acaba
 
 var event_defs: Array = []         # definições de data/events.json (somente leitura)
 var pending_events: Array = []     # [{uid, country, event, days}]
@@ -110,6 +120,9 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	training.clear()
 	wars.clear()
 	sieges.clear()
+	relations.clear()
+	alliances.clear()
+	truces.clear()
 	next_army_id = 1
 	pending_events.clear()
 	fired_events.clear()
@@ -257,8 +270,7 @@ func apply_command(cmd: Dictionary) -> void:
 		var target: int = int(cmd.get("target", -1))
 		if not can_declare_war(issuer, target):
 			return
-		wars.append({"a": mini(issuer, target), "b": maxi(issuer, target), "days": 0})
-		Events.war_changed.emit()
+		_start_war(issuer, target)
 
 	elif t == Cmd.MAKE_PEACE:
 		var target: int = int(cmd.get("target", -1))
@@ -269,6 +281,41 @@ func apply_command(cmd: Dictionary) -> void:
 				Events.notice.emit("%s recusou a paz: ainda se sente mais forte." % countries[target].name)
 			return
 		_end_war(issuer, target)
+		truces[_pair(issuer, target)] = tick + TRUCE_DAYS
+		Events.war_changed.emit()
+
+	elif t == Cmd.IMPROVE_RELATIONS:
+		var target: int = int(cmd.get("target", -1))
+		if not can_improve(issuer, target):
+			return
+		countries[issuer].treasury -= IMPROVE_COST
+		relations[_pair(issuer, target)] = mini(100, opinion(issuer, target) + 20)
+		Events.treasury_changed.emit(issuer)
+		Events.war_changed.emit()
+
+	elif t == Cmd.PROPOSE_ALLIANCE:
+		var target: int = int(cmd.get("target", -1))
+		if not can_ally(issuer, target):
+			return
+		if is_human(target):
+			if issuer == player_country:
+				Events.notice.emit("Alianças com jogadores ainda não existem.")
+			return
+		if opinion(issuer, target) < ALLIANCE_MIN_OPINION:
+			if issuer == player_country:
+				Events.notice.emit("%s não confia em você (opinião %d, precisa de %d)." % [countries[target].name, opinion(issuer, target), ALLIANCE_MIN_OPINION])
+			return
+		alliances.append(_pair(issuer, target))
+		if issuer == player_country:
+			Events.notice.emit("Aliança firmada com %s." % countries[target].name)
+		Events.war_changed.emit()
+
+	elif t == Cmd.BREAK_ALLIANCE:
+		var target: int = int(cmd.get("target", -1))
+		if not allied(issuer, target):
+			return
+		alliances.erase(_pair(issuer, target))
+		relations[_pair(issuer, target)] = opinion(issuer, target) - 20
 		Events.war_changed.emit()
 
 	elif t == Cmd.TRANSFER_PROVINCE:
@@ -287,6 +334,62 @@ func set_player_country(id: int) -> void:
 		return
 	player_country = id
 	Events.player_country_changed.emit(id)
+
+
+func _pair(x: int, y: int) -> int:
+	return mini(x, y) * 1000 + maxi(x, y)
+
+
+func opinion(x: int, y: int) -> int:
+	return int(relations.get(_pair(x, y), 0))
+
+
+func allied(x: int, y: int) -> bool:
+	return x != y and alliances.has(_pair(x, y))
+
+
+func truce_left(x: int, y: int) -> int:
+	return maxi(0, int(truces.get(_pair(x, y), 0)) - tick)
+
+
+func allies_of(cid: int) -> Array:
+	var out: Array = []
+	for pr in alliances:
+		var lo: int = int(pr) / 1000
+		var hi: int = int(pr) % 1000
+		if lo == cid:
+			out.append(hi)
+		elif hi == cid:
+			out.append(lo)
+	out.sort()
+	return out
+
+
+func can_improve(issuer: int, target: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	return countries[target].is_alive() and not at_war(issuer, target) \
+		and countries[issuer].treasury >= IMPROVE_COST and opinion(issuer, target) < 100
+
+
+func can_ally(issuer: int, target: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	return countries[target].is_alive() and not at_war(issuer, target) and not allied(issuer, target)
+
+
+## Declara a guerra e chama os aliados do alvo (defensivo).
+func _start_war(attacker: int, target: int) -> void:
+	wars.append({"a": mini(attacker, target), "b": maxi(attacker, target), "days": 0})
+	relations[_pair(attacker, target)] = -100
+	if attacker == player_country or target == player_country:
+		Events.notice.emit("%s declarou guerra a %s!" % [countries[attacker].name, countries[target].name])
+	for al in allies_of(target):
+		if al != attacker and not at_war(al, attacker) and not allied(al, attacker) and countries[al].is_alive():
+			wars.append({"a": mini(al, attacker), "b": maxi(al, attacker), "days": 0})
+			if al == player_country:
+				Events.notice.emit("Seu aliado %s foi atacado: você entrou na guerra." % countries[target].name)
+	Events.war_changed.emit()
 
 
 func _war_index(x: int, y: int) -> int:
@@ -310,7 +413,9 @@ func war_days(x: int, y: int) -> int:
 func can_declare_war(attacker: int, target: int) -> bool:
 	if attacker < 0 or target < 0 or attacker >= countries.size() or target >= countries.size():
 		return false
-	if attacker == target or at_war(attacker, target):
+	if attacker == target or at_war(attacker, target) or allied(attacker, target):
+		return false
+	if truce_left(attacker, target) > 0:
 		return false
 	return countries[attacker].is_alive() and countries[target].is_alive()
 
@@ -579,6 +684,7 @@ func _advance_ai() -> void:
 			continue
 		if tick % 30 == 0:
 			_ai_recruit(c)
+			_ai_declare_war(c)
 		if not wars_of(c.id).is_empty():
 			_ai_war(c)
 
@@ -597,6 +703,44 @@ func _ai_recruit(c: Country) -> void:
 		if can_recruit(pid, c.id):
 			_do_recruit(pid, c.id)
 			return
+
+
+## A IA ataca o vizinho mais fraco que não seja aliado, em trégua nem de boa relação.
+@warning_ignore("integer_division")
+func _ai_declare_war(c: Country) -> void:
+	if tick < AI_WAR_GRACE_TICKS or not wars_of(c.id).is_empty():
+		return
+	var mine := regiments_of(c.id)
+	if mine < 3 or c.treasury < 200:
+		return
+	var nbrs := {}
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		for n in p.neighbors:
+			var o := provinces[int(n)].owner_id
+			if o >= 0 and o != c.id:
+				nbrs[o] = true
+		for n in p.sea_links:
+			var o2 := provinces[int(n)].owner_id
+			if o2 >= 0 and o2 != c.id:
+				nbrs[o2] = true
+	var keys: Array = nbrs.keys()
+	keys.sort()
+	var best := -1
+	var best_regs := 1 << 30
+	for o in keys:
+		var oc := countries[int(o)]
+		if not oc.is_alive() or not can_declare_war(c.id, oc.id) or opinion(c.id, oc.id) >= 20:
+			continue
+		var r := regiments_of(oc.id)
+		if r * 2 > mine:
+			continue
+		if r < best_regs:
+			best_regs = r
+			best = oc.id
+	if best < 0 or rng.randi_range(0, AI_WAR_CHANCE - 1) != 0:
+		return
+	_start_war(c.id, best)
 
 
 func _queued_for(cid: int) -> int:
@@ -756,6 +900,11 @@ func _simulate_month() -> void:
 		c.last_income = int(e["income"])
 		c.last_expense = int(e["expense"])
 		c.treasury += c.last_income - c.last_expense
+	for k in relations.keys():
+		var v: int = int(relations[k])
+		if at_war(int(k) / 1000, int(k) % 1000):
+			continue
+		relations[k] = v - signi(v) * mini(absi(v), 2)
 	_roll_events()
 	Events.month_changed.emit(clock.to_dict())
 	for c in countries:
@@ -1013,6 +1162,18 @@ func state_hash() -> int:
 	for pid in sk:
 		h = _mix(h, int(pid))
 		h = _mix(h, int(sieges[pid]["by"]) * 100 + int(sieges[pid]["days"]))
+	var rk: Array = relations.keys()
+	rk.sort()
+	for k in rk:
+		h = _mix(h, int(k))
+		h = _mix(h, int(relations[k]) + 1000)
+	for pr in alliances:
+		h = _mix(h, int(pr))
+	var tk: Array = truces.keys()
+	tk.sort()
+	for k in tk:
+		h = _mix(h, int(k))
+		h = _mix(h, int(truces[k]))
 	for t in training:
 		h = _mix(h, int(t["province"]))
 		h = _mix(h, int(t["owner"]))
@@ -1027,6 +1188,15 @@ func state_hash() -> int:
 
 func _mix(h: int, v: int) -> int:
 	return ((h ^ (v & 0xFFFFFFFF)) * 16777619) & 0xFFFFFFFF
+
+
+func _dict_to_pairs(d: Dictionary) -> Array:
+	var out: Array = []
+	var ks: Array = d.keys()
+	ks.sort()
+	for k in ks:
+		out.append([int(k), int(d[k])])
+	return out
 
 
 func _sieges_to_list() -> Array:
@@ -1079,6 +1249,9 @@ func serialize_state() -> Dictionary:
 		"training": training.duplicate(true),
 		"wars": wars.duplicate(true),
 		"sieges": _sieges_to_list(),
+		"relations": _dict_to_pairs(relations),
+		"alliances": alliances.duplicate(),
+		"truces": _dict_to_pairs(truces),
 		"next_army_id": next_army_id,
 		"events": pending_events.duplicate(true),
 		"fired": fired_events.keys(),
@@ -1128,6 +1301,15 @@ func load_state(d: Dictionary) -> bool:
 	wars.clear()
 	for w in d.get("wars", []):
 		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
+	relations.clear()
+	for r in d.get("relations", []):
+		relations[int(r[0])] = int(r[1])
+	alliances.clear()
+	for pr in d.get("alliances", []):
+		alliances.append(int(pr))
+	truces.clear()
+	for r in d.get("truces", []):
+		truces[int(r[0])] = int(r[1])
 	sieges.clear()
 	for sd in d.get("sieges", []):
 		sieges[int(sd["pid"])] = {"by": int(sd["by"]), "days": int(sd["days"])}

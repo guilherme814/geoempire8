@@ -21,6 +21,9 @@ const MOVE_ARMY := "move_army"
 const STOP_ARMY := "stop_army"
 const DISBAND_ARMY := "disband_army"
 const CHOOSE_EVENT := "choose_event"
+const IMPROVE_RELATIONS := "improve_relations"
+const PROPOSE_ALLIANCE := "propose_alliance"
+const BREAK_ALLIANCE := "break_alliance"
 const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
@@ -73,3 +76,16 @@ static func declare_war(target: int) -> Dictionary:
 ## Propõe paz branca (vale após Game.WAR_MIN_DAYS dias de guerra; sem IA, é aceita na hora).
 static func make_peace(target: int) -> Dictionary:
 	return {"type": MAKE_PEACE, "target": target}
+
+
+## Gasta ouro para melhorar a opinião do país alvo (+20).
+static func improve_relations(target: int) -> Dictionary:
+	return {"type": IMPROVE_RELATIONS, "target": target}
+
+
+static func propose_alliance(target: int) -> Dictionary:
+	return {"type": PROPOSE_ALLIANCE, "target": target}
+
+
+static func break_alliance(target: int) -> Dictionary:
+	return {"type": BREAK_ALLIANCE, "target": target}

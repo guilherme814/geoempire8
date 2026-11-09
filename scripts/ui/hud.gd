@@ -46,6 +46,8 @@ var _btn_barracks: Button
 var _btn_take: Button
 var _btn_annex: Button
 var _btn_war: Button
+var _btn_improve: Button
+var _btn_ally: Button
 
 var _army_box: VBoxContainer
 var _army_label: Label
@@ -250,7 +252,7 @@ func _refresh_economy() -> void:
 func _show_toast(msg: String) -> void:
 	_toast.text = msg
 	_toast.visible = true
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(4.0).timeout
 	if is_instance_valid(_toast):
 		_toast.visible = false
 
@@ -324,6 +326,14 @@ func _build_info_panel() -> void:
 	_btn_war = _make_button("Declarar guerra", bsize)
 	_btn_war.pressed.connect(_on_war_pressed)
 	grid.add_child(_btn_war)
+
+	_btn_improve = _make_button("Melhorar relações (%d)" % Game.IMPROVE_COST, bsize)
+	_btn_improve.pressed.connect(_on_improve_pressed)
+	grid.add_child(_btn_improve)
+
+	_btn_ally = _make_button("Propor aliança", bsize)
+	_btn_ally.pressed.connect(_on_ally_pressed)
+	grid.add_child(_btn_ally)
 
 	_btn_annex = _make_button("Anexar (debug)", bsize)
 	_btn_annex.pressed.connect(_on_annex_pressed)
@@ -568,8 +578,18 @@ func _refresh_info() -> void:
 	lines.append("Oficina nív. %d   Quartel nív. %d" % [p.workshop, p.barracks])
 	if Game.sieges.has(p.id):
 		lines.append("CERCO: %d/%d dias (%s)" % [int(Game.sieges[p.id]["days"]), Game.SIEGE_DAYS, Game.countries[int(Game.sieges[p.id]["by"])].name])
-	if has_owner and not mine and Game.at_war(Game.player_country, p.owner_id):
-		lines.append("Em GUERRA com este país")
+	if has_owner and not mine:
+		var me4 := Game.player_country
+		if Game.at_war(me4, p.owner_id):
+			lines.append("Em GUERRA com este país")
+		else:
+			var rel := "Opinião: %+d" % Game.opinion(me4, p.owner_id)
+			if Game.allied(me4, p.owner_id):
+				rel += "  (ALIADO)"
+			var tl := Game.truce_left(me4, p.owner_id)
+			if tl > 0:
+				rel += "  (trégua: %d dias)" % tl
+			lines.append(rel)
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
@@ -587,6 +607,14 @@ func _refresh_info() -> void:
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
 	_btn_annex.visible = DEBUG_TOOLS and not mine
 	_btn_war.visible = has_owner and not mine
+	_btn_improve.visible = has_owner and not mine
+	_btn_ally.visible = has_owner and not mine
+	if has_owner and not mine:
+		var me3 := Game.player_country
+		_btn_improve.disabled = not Game.can_improve(me3, p.owner_id)
+		var is_ally := Game.allied(me3, p.owner_id)
+		_btn_ally.text = "Romper aliança" if is_ally else "Propor aliança"
+		_btn_ally.disabled = not is_ally and not Game.can_ally(me3, p.owner_id)
 	if has_owner and not mine:
 		var me2 := Game.player_country
 		if Game.at_war(me2, p.owner_id):
@@ -735,6 +763,21 @@ func _on_war_pressed() -> void:
 		Game.submit_command(Cmd.make_peace(target))
 	else:
 		Game.submit_command(Cmd.declare_war(target))
+
+
+func _on_improve_pressed() -> void:
+	if _selected >= 0:
+		Game.submit_command(Cmd.improve_relations(Game.provinces[_selected].owner_id))
+
+
+func _on_ally_pressed() -> void:
+	if _selected < 0:
+		return
+	var target := Game.provinces[_selected].owner_id
+	if Game.allied(Game.player_country, target):
+		Game.submit_command(Cmd.break_alliance(target))
+	else:
+		Game.submit_command(Cmd.propose_alliance(target))
 
 
 func _on_annex_pressed() -> void:

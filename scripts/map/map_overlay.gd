@@ -4,8 +4,8 @@ extends Node2D
 ## selecionada, marcadores de exércitos e a rota do exército selecionado.
 ## Redesenha em eventos de exército, seleção, a cada dia (se houver exércitos) e no zoom.
 
-const MARKER_W := 26.0   # tamanho na TELA, em pixels (convertido pelo zoom)
-const MARKER_H := 16.0
+const MARKER_W := 34.0   # tamanho na TELA, em pixels (convertido pelo zoom)
+const MARKER_H := 20.0
 
 var selected_province: int = -1
 var selected_army: int = -1
@@ -93,15 +93,24 @@ func _draw() -> void:
 		outline.append(sp.poly[0])
 		draw_polyline(outline, Color(1.0, 0.92, 0.35), 3.0 / z)
 
-	# Rota do exército selecionado
+	# Rota do exército selecionado: linha tracejada com seta e dias restantes
 	var sel: Army = Game.armies.get(selected_army)
 	if sel != null and sel.is_moving():
 		var pts := PackedVector2Array()
 		pts.append(Game.provinces[sel.province_id].center)
 		for pid in sel.path:
 			pts.append(Game.provinces[pid].center)
-		draw_polyline(pts, Color(1.0, 0.85, 0.2, 0.9), 2.5 / z)
-		draw_circle(pts[pts.size() - 1], 5.0 / z, Color(1.0, 0.85, 0.2))
+		var rc := Color(0.55, 0.12, 0.08, 0.95)
+		for i in range(pts.size() - 1):
+			draw_dashed_line(pts[i], pts[i + 1], rc, 2.5 / z, 7.0 / z)
+		var tip: Vector2 = pts[pts.size() - 1]
+		var dir: Vector2 = (tip - pts[pts.size() - 2]).normalized()
+		var sz := 11.0 / z
+		var nrm := Vector2(-dir.y, dir.x)
+		draw_colored_polygon(PackedVector2Array([tip + dir * sz, tip - dir * sz * 0.6 + nrm * sz * 0.7, tip - dir * sz * 0.6 - nrm * sz * 0.7]), rc)
+		var eta := "%d d" % Game.eta_days(sel)
+		draw_string_outline(_font, tip + Vector2(sz * 0.8, -sz), eta, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(8, int(13.0 / z)), 3, Color(0, 0, 0, 0.8))
+		draw_string(_font, tip + Vector2(sz * 0.8, -sz), eta, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(8, int(13.0 / z)), Color(1, 0.95, 0.7))
 
 	# Marcadores
 	var fs := maxi(8, int(12.0 / z))
@@ -111,6 +120,7 @@ func _draw() -> void:
 		var col := Color(0.5, 0.5, 0.5)
 		if a.owner_id >= 0 and a.owner_id < Game.countries.size():
 			col = Game.countries[a.owner_id].color
+		draw_rect(r.grow(1.5 / z), Color(0.96, 0.93, 0.82))
 		draw_rect(r, col)
 		var is_sel := a.id == selected_army
 		draw_rect(r, Color(1, 1, 0.3) if is_sel else Color(0, 0, 0, 0.85), false, (2.5 if is_sel else 1.2) / z)

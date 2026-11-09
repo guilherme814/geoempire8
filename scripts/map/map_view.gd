@@ -254,6 +254,9 @@ func _draw() -> void:
 		return
 	var z := maxf(zoom_level, 0.05)
 
+	if mode == Mode.POLITICAL:
+		_draw_graticule(z)
+		_draw_ocean_labels(z)
 	draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, 0.35), -1.0)          # 1 px fixo na tela
 	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.6 / z)
 	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
@@ -261,6 +264,43 @@ func _draw() -> void:
 		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
 		if z <= 3.0:
 			_draw_country_labels(z)
+
+
+const OCEAN_NAMES := [
+	["OCEANO ATLÂNTICO", 0.375, 0.34], ["OCEANO ATLÂNTICO", 0.43, 0.66],
+	["OCEANO PACÍFICO", 0.075, 0.60], ["OCEANO PACÍFICO", 0.93, 0.40],
+	["OCEANO ÍNDICO", 0.665, 0.66], ["OCEANO ÁRTICO", 0.5, 0.025],
+]
+
+
+## Grade de meridianos (30°) e paralelos (30°, projeção Miller), como nos mapas antigos.
+func _draw_graticule(z: float) -> void:
+	var w := Game.map_size.x
+	var h := Game.map_size.y
+	var col := Color(0.25, 0.17, 0.08, 0.14)
+	for lon in range(-150, 180, 30):
+		var x := (float(lon) + 180.0) / 360.0 * w
+		draw_line(Vector2(x, 0), Vector2(x, h), col, -1.0)
+	var top := _miller(85.0)
+	var bot := _miller(-85.0)
+	for lat in [-60.0, -30.0, 0.0, 30.0, 60.0]:
+		var y := (top - _miller(lat)) / (top - bot) * h
+		draw_line(Vector2(0, y), Vector2(w, y), col, -1.0)
+
+
+static func _miller(lat_deg: float) -> float:
+	return 1.25 * log(tan(PI / 4.0 + 0.4 * deg_to_rad(lat_deg)))
+
+
+func _draw_ocean_labels(z: float) -> void:
+	if z > 2.5:
+		return
+	var fs := clampi(int(34.0 / z), 14, 60)
+	for o in OCEAN_NAMES:
+		var text: String = o[0]
+		var pos := Vector2(float(o[1]) * Game.map_size.x, float(o[2]) * Game.map_size.y)
+		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.35, 0.45, 0.55))
 
 
 func _draw_country_labels(z: float) -> void:

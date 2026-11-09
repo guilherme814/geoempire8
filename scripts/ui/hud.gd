@@ -33,6 +33,7 @@ var _country_label: Label
 var _treasury_label: Label
 var _eco_panel: PanelContainer
 var _eco_label: Label
+var _toast: Label
 var _date_label: Label
 var _speed_buttons: Array[Button] = []
 
@@ -242,6 +243,25 @@ func _refresh_economy() -> void:
 	_eco_label.text = "\n".join(lines)
 
 
+func _show_toast(msg: String) -> void:
+	_toast.text = msg
+	_toast.visible = true
+	await get_tree().create_timer(2.5).timeout
+	if is_instance_valid(_toast):
+		_toast.visible = false
+
+
+func _on_save_pressed() -> void:
+	_show_toast("Jogo salvo." if Game.save_game() else "Falha ao salvar.")
+
+
+func _on_load_pressed() -> void:
+	if Net.is_online():
+		_show_toast("Indisponível online.")
+		return
+	_show_toast("Jogo carregado." if Game.load_game() else "Nenhum save encontrado.")
+
+
 func _on_economy_pressed() -> void:
 	_eco_panel.visible = not _eco_panel.visible
 	_refresh_economy()
@@ -375,6 +395,21 @@ func _build_bottom_right() -> void:
 	var plus := _make_button("+", Vector2(52, 48))
 	plus.pressed.connect(_on_tax_pressed.bind(5))
 	tax_row.add_child(plus)
+
+	var save_row := HBoxContainer.new()
+	save_row.add_theme_constant_override("separation", 6)
+	col.add_child(save_row)
+	var b_save := _make_button("Salvar", Vector2(140, 44))
+	b_save.pressed.connect(_on_save_pressed)
+	save_row.add_child(b_save)
+	var b_load := _make_button("Carregar", Vector2(140, 44))
+	b_load.pressed.connect(_on_load_pressed)
+	save_row.add_child(b_load)
+	_toast = Label.new()
+	_toast.custom_minimum_size = Vector2(300, 0)
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.visible = false
+	col.add_child(_toast)
 
 
 func _build_event_popup() -> void:

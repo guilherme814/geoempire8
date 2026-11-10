@@ -121,12 +121,11 @@ func _draw() -> void:
 		if a.owner_id >= 0 and a.owner_id < Game.countries.size():
 			col = Game.countries[a.owner_id].color
 		draw_rect(r.grow(1.5 / z), Color(0.96, 0.93, 0.82))
-		draw_rect(r, col)
+		Flag.draw(self, r, Game.countries[a.owner_id].tag if a.owner_id >= 0 and a.owner_id < Game.countries.size() else "", col)
 		var is_sel := a.id == selected_army
 		draw_rect(r, Color(1, 1, 0.3) if is_sel else Color(0, 0, 0, 0.85), false, (2.5 if is_sel else 1.2) / z)
 		var text := str(a.regiments)
-		var lum := col.get_luminance()
-		var tcol := Color(0, 0, 0) if lum > 0.55 else Color(1, 1, 1)
 		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-		draw_string(_font, Vector2(r.position.x, r.position.y + (r.size.y + ts.y * 0.7) * 0.5),
-			text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, tcol)
+		var tp := Vector2(r.position.x, r.position.y + (r.size.y + ts.y * 0.7) * 0.5)
+		draw_string_outline(_font, tp, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 4, Color(0, 0, 0, 0.9))
+		draw_string(_font, tp, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, Color.WHITE)

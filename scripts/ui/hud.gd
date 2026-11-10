@@ -29,7 +29,7 @@ var _theme: Theme
 var _blockers: Array[Control] = []
 var _inset: Vector4 = Vector4.ZERO   # esquerda, topo, direita, base (área segura)
 
-var _flag: ColorRect
+var _flag: FlagRect
 var _country_label: Label
 var _treasury_label: Label
 var _eco_panel: PanelContainer
@@ -173,8 +173,8 @@ func _build_top_bar() -> void:
 	row.add_theme_constant_override("separation", 12)
 	bar.add_child(row)
 
-	_flag = ColorRect.new()
-	_flag.custom_minimum_size = Vector2(40, 40)
+	_flag = FlagRect.new()
+	_flag.custom_minimum_size = Vector2(60, 40)
 	_flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_flag)
 
@@ -639,7 +639,7 @@ func _refresh_all() -> void:
 
 func _refresh_top() -> void:
 	var c := Game.countries[Game.player_country]
-	_flag.color = c.color
+	_flag.set_country(c.tag, c.color)
 	_country_label.text = c.name
 	var e := Game.estimate_monthly(c)
 	var net: int = int(e["income"]) - int(e["expense"])

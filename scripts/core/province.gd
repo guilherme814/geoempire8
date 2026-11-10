@@ -27,13 +27,31 @@ const RESOURCE_PRICE := {
 }
 
 ## Bens processados (preço-base em décimos de ouro por unidade).
-const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28}
+const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28, "steel": 42}
 ## Fábricas: por nível produzem `amount` unidades de `out` por mês e consomem `inputs` do mercado.
 const FACTORIES := {
 	"textile": {"out": "fabric", "amount": 100, "inputs": {"cotton": 60, "wool": 60}},
 	"smithy": {"out": "tools", "amount": 100, "inputs": {"iron": 80, "timber": 40}},
 	"carpentry": {"out": "furniture", "amount": 100, "inputs": {"timber": 100}},
+	"steel": {"out": "steel", "amount": 100, "inputs": {"iron": 100, "coal": 100}},
 }
+
+## Construções por aba: tab (gov/res/ind), nome, custo-base (x nível+1), tecnologia exigida, efeito.
+const BUILDINGS := {
+	"school": {"tab": "gov", "name": "Escola", "cost": 120, "tech": 0, "desc": "Alfabetização"},
+	"university": {"tab": "gov", "name": "Universidade", "cost": 320, "tech": 1, "desc": "Alfabetização e pesquisa"},
+	"barracks": {"tab": "gov", "name": "Quartel", "cost": 100, "tech": 0, "desc": "Mão de obra militar +1%"},
+	"mine": {"tab": "res", "name": "Mina", "cost": 140, "tech": 0, "desc": "+35% carvão, ferro, sal, ouro"},
+	"farm": {"tab": "res", "name": "Fazenda", "cost": 110, "tech": 0, "desc": "+35% produção agrícola"},
+	"logging": {"tab": "res", "name": "Madeireira", "cost": 110, "tech": 0, "desc": "+35% madeira (ou madeira extra em florestas)"},
+	"workshop": {"tab": "res", "name": "Oficina", "cost": 120, "tech": 0, "desc": "+25% produção do recurso"},
+	"textile": {"tab": "ind", "name": "Tecelagem", "cost": 150, "tech": 0, "desc": "Algodão + lã -> tecido"},
+	"carpentry": {"tab": "ind", "name": "Marcenaria", "cost": 130, "tech": 0, "desc": "Madeira -> móveis"},
+	"smithy": {"tab": "ind", "name": "Ferraria", "cost": 180, "tech": 1, "desc": "Ferro + madeira -> ferramentas"},
+	"steel": {"tab": "ind", "name": "Siderúrgica", "cost": 260, "tech": 3, "desc": "Ferro + carvão -> aço"},
+}
+const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging"]
+const MINE_RES := ["coal", "iron", "salt", "gold"]
 
 var id: int = 0
 var name: String = ""
@@ -59,6 +77,7 @@ var area: float = 0.0
 # Estado econômico/militar (entra no snapshot de rede)
 var workshop: int = 0
 var barracks: int = 0
+var bld: Dictionary = {}                            # escola, universidade, mina, fazenda, madeireira
 var manpower: int = 0
 
 # Derivados
@@ -137,9 +156,36 @@ func price_of(good: String) -> int:
 
 ## Unidades do recurso produzidas por mês: população x terreno, com bônus de oficina.
 @warning_ignore("integer_division")
-func units() -> int:
+func base_units() -> int:
 	var tm: int = TERRAIN_MULT.get(terrain, 1000)
-	return population * tm / 1500000 * (100 + 25 * workshop) / 100
+	return population * tm / 1500000
+
+
+@warning_ignore("integer_division")
+func units() -> int:
+	var boost: int = 25 * workshop + 35 * (int(bld.get("mine", 0)) + int(bld.get("farm", 0)))
+	if resource_type == "timber":
+		boost += 35 * int(bld.get("logging", 0))
+	return base_units() * (100 + boost) / 100
+
+
+## Madeira extra da madeireira em província cujo recurso principal não é madeira.
+@warning_ignore("integer_division")
+func side_timber() -> int:
+	if resource_type == "timber":
+		return 0
+	return base_units() * 60 * int(bld.get("logging", 0)) / 100
+
+
+## Esta província pode receber a construção?
+func can_host(kind: String) -> bool:
+	if kind == "mine":
+		return resource_type in MINE_RES
+	if kind == "farm":
+		return resource_type != "timber" and not (resource_type in MINE_RES)
+	if kind == "logging":
+		return resource_type == "timber" or terrain == "forest" or terrain == "jungle"
+	return BUILDINGS.has(kind)
 
 
 ## Produção mensal em ouro (antes de impostos) = unidades x preço-base x preço de mercado.
@@ -147,7 +193,8 @@ func units() -> int:
 func production() -> int:
 	var price: int = RESOURCE_PRICE.get(resource_type, 10)
 	var pct: int = price_of(resource_type)
-	return units() * price * pct / 10000
+	var extra: int = side_timber() * base_price("timber") * price_of("timber") / 10000
+	return units() * price * pct / 10000 + extra
 
 
 ## Imposto mensal que o dono recebe.
@@ -184,6 +231,8 @@ func factory_profit() -> int:
 func building_level(kind: String) -> int:
 	if FACTORIES.has(kind):
 		return factory_level if factory == kind else 0
+	if EXTRA_KINDS.has(kind):
+		return int(bld.get(kind, 0))
 	if kind == "workshop":
 		return workshop
 	if kind == "barracks":
@@ -195,6 +244,8 @@ func set_building_level(kind: String, level: int) -> void:
 	if FACTORIES.has(kind):
 		factory = kind
 		factory_level = level
+	elif EXTRA_KINDS.has(kind):
+		bld[kind] = level
 	elif kind == "workshop":
 		workshop = level
 	elif kind == "barracks":

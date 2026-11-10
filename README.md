@@ -79,3 +79,10 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - Atalhos (PC): `Espaço` pausa/continua, `+`/`-` mudam a velocidade.
 - Autosave anual em `user://autosave.json` (só no modo offline).
 - 16 eventos políticos, incluindo imprensa, escolas, ferrovias, revoltas, greves e abolição.
+
+## Construções (abas na parte de baixo)
+- **Governo**: Escola, Universidade (alfabetização e pesquisa, têm manutenção) e Quartel.
+- **Recursos**: Mina (carvão/ferro/sal/ouro), Fazenda (produção agrícola), Madeireira (madeira; em florestas gera madeira extra) e Oficina.
+- **Indústria**: Tecelagem, Marcenaria, Ferraria (tecnologia 1) e Siderúrgica (tecnologia 3, ferro + carvão -> aço).
+- **Tecnologia**: sobe todo mês com a alfabetização, escolas e universidades; libera indústrias mais avançadas.
+- Selecione uma província sua, abra a aba e toque em Construir.

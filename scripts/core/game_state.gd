@@ -24,7 +24,13 @@ const DEFAULT_PLAYER_TAG := "GBR"
 const EXPENSE_PER_PROVINCE := 1
 const REGIMENT_UPKEEP := 2
 const MIN_START_TREASURY := 300
-const BUILD_COSTS := {"workshop": 120, "barracks": 100, "textile": 150, "smithy": 180, "carpentry": 130}   # x (nível atual + 1)
+# Nível de tecnologia inicial (x Country.TECH_STEP pontos) por país em 1836; o padrão é 0
+const TECH_START := {
+	"GBR": 4, "FRA": 3, "PRU": 3, "BEL": 3, "USA": 2, "NED": 2, "SUI": 2, "AUT": 2,
+	"SWE": 2, "DEN": 2, "SAX": 2, "BAV": 2, "HAN": 2, "WUR": 2, "JAP": 1, "RUS": 1, "ESP": 1, "SAR": 1,
+}
+const SCHOOL_UPKEEP := 2         # por nível de escola / mês
+const UNIVERSITY_UPKEEP := 5     # por nível de universidade / mês
 
 # Exército
 const REGIMENT_SIZE := 1000
@@ -350,6 +356,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 
 	for c in countries:
 		c.literacy = int(LITERACY_START.get(c.tag, 10)) * 10
+		c.tech_pts = int(TECH_START.get(c.tag, 0)) * Country.TECH_STEP
+		c.lit_acc = 0
 	for c in countries:
 		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * 8)
 		if c.is_alive():
@@ -773,16 +781,21 @@ func _do_recruit(pid: int, cid: int) -> void:
 
 
 func build_cost(p: Province, kind: String) -> int:
-	return int(BUILD_COSTS.get(kind, 0)) * (p.building_level(kind) + 1)
+	var b: Dictionary = Province.BUILDINGS.get(kind, {})
+	return int(b.get("cost", 0)) * (p.building_level(kind) + 1)
 
 
 func can_build(pid: int, issuer: int, kind: String) -> bool:
-	if not BUILD_COSTS.has(kind):
+	if not Province.BUILDINGS.has(kind):
 		return false
 	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
 		return false
 	var p := provinces[pid]
 	if p.owner_id != issuer or p.building_level(kind) >= Province.MAX_BUILDING:
+		return false
+	if not p.can_host(kind):
+		return false
+	if countries[issuer].tech_level() < int(Province.BUILDINGS[kind]["tech"]):
 		return false
 	if Province.FACTORIES.has(kind) and p.factory != "" and p.factory != kind:
 		return false   # uma fábrica por província
@@ -1195,7 +1208,11 @@ func _simulate_month() -> void:
 	_run_trade()
 	for c in countries:
 		if c.is_alive():
-			c.literacy = mini(LITERACY_MAX, c.literacy + 1)
+			var edu := edu_levels(c)
+			c.lit_acc += 100 + (edu.x + 2 * edu.y) * 400 / maxi(1, c.province_ids.size())
+			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
+			c.lit_acc = c.lit_acc % 100
+			c.tech_pts += 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y
 	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
 	for c in countries:
 		if not c.is_alive():
@@ -1331,6 +1348,16 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 
 
 ## Previsão mensal de um país (usada pela simulação e pela UI).
+## Soma dos níveis de escolas (x) e universidades (y) do país.
+func edu_levels(c: Country) -> Vector2i:
+	var sc := 0
+	var un := 0
+	for pid in c.province_ids:
+		sc += int(provinces[pid].bld.get("school", 0))
+		un += int(provinces[pid].bld.get("university", 0))
+	return Vector2i(sc, un)
+
+
 func estimate_monthly(c: Country) -> Dictionary:
 	var tax := 0
 	var flat := 0
@@ -1347,10 +1374,12 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var up_army: int = regs * REGIMENT_UPKEEP
 	var up_navy: int = c.ships * SHIP_UPKEEP
+	var edu := edu_levels(c)
+	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
 	return {
 		"income": tax + industry + trade, "industry": industry, "trade": trade,
-		"expense": up_prov + up_army + up_navy, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -1402,6 +1431,8 @@ func market_supply() -> Dictionary:
 			continue
 		if sup.has(p.resource_type):
 			sup[p.resource_type] = int(sup[p.resource_type]) + p.units()
+		if p.side_timber() > 0:
+			sup["timber"] = int(sup["timber"]) + p.side_timber()
 		if p.factory != "" and p.factory_level > 0:
 			var f: Dictionary = Province.FACTORIES[p.factory]
 			var out: String = f["out"]
@@ -1463,6 +1494,8 @@ func market_tables() -> Array:
 		pops[o] += p.population
 		if sup[o].has(p.resource_type):
 			sup[o][p.resource_type] += p.units()
+		if p.side_timber() > 0:
+			sup[o]["timber"] += p.side_timber()
 		if p.factory != "" and p.factory_level > 0:
 			var f: Dictionary = Province.FACTORIES[p.factory]
 			sup[o][f["out"]] += int(f["amount"]) * p.factory_level
@@ -1646,6 +1679,8 @@ func state_hash() -> int:
 		h = _mix(h, p.population)
 		h = _mix(h, p.manpower)
 		h = _mix(h, p.workshop * 10 + p.barracks)
+		for k in Province.EXTRA_KINDS:
+			h = _mix(h, int(p.bld.get(k, 0)))
 		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
 	for c in countries:
 		h = _mix(h, c.treasury)
@@ -1699,6 +1734,8 @@ func state_hash() -> int:
 	for c in countries:
 		h = _mix(h, c.ships)
 		h = _mix(h, c.literacy)
+		h = _mix(h, c.tech_pts)
+		h = _mix(h, c.lit_acc)
 	for k in embargoes:
 		h = _mix(h, int(k))
 	for e in pending_events:
@@ -1729,6 +1766,22 @@ func _fleets_to_list() -> Array:
 	ids.sort()
 	for id in ids:
 		out.append((fleets[id] as Fleet).to_dict())
+	return out
+
+
+func _bld_str(p: Province) -> String:
+	var parts: Array[String] = []
+	for k in Province.EXTRA_KINDS:
+		var lv: int = int(p.bld.get(k, 0))
+		if lv > 0:
+			parts.append("%s:%d" % [k, lv])
+	return ",".join(parts)
+
+
+func _country_ints(field: String) -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(int(c.get(field)))
 	return out
 
 
@@ -1769,6 +1822,7 @@ func serialize_state() -> Dictionary:
 	var pops: Array = []
 	var mps: Array = []
 	var workshops: Array = []
+	var blds: Array = []
 	var barracks: Array = []
 	var fkinds: Array = []
 	var flevels: Array = []
@@ -1780,6 +1834,7 @@ func serialize_state() -> Dictionary:
 		barracks.append(p.barracks)
 		fkinds.append(p.factory)
 		flevels.append(p.factory_level)
+		blds.append(_bld_str(p))
 	var treasury: Array = []
 	var taxes: Array = []
 	var capitals: Array = []
@@ -1801,6 +1856,9 @@ func serialize_state() -> Dictionary:
 		"pops": pops,
 		"manpower": mps,
 		"workshops": workshops,
+		"bld": blds,
+		"tech": _country_ints("tech_pts"),
+		"lit_acc": _country_ints("lit_acc"),
 		"barracks": barracks,
 		"factory": fkinds,
 		"factory_lvl": flevels,
@@ -1854,6 +1912,13 @@ func load_state(d: Dictionary) -> bool:
 		var fl: Array = d.get("factory_lvl", [])
 		provinces[i].factory = str(fk[i]) if i < fk.size() else ""
 		provinces[i].factory_level = int(fl[i]) if i < fl.size() else 0
+		provinces[i].bld = {}
+		var bs: Array = d.get("bld", [])
+		if i < bs.size() and str(bs[i]) != "":
+			for part in str(bs[i]).split(","):
+				var kv := part.split(":")
+				if kv.size() == 2 and Province.EXTRA_KINDS.has(kv[0]):
+					provinces[i].bld[kv[0]] = int(kv[1])
 	for i in countries.size():
 		countries[i].treasury = int(treasury[i])
 		countries[i].tax_pct = int(taxes[i])
@@ -1887,6 +1952,11 @@ func load_state(d: Dictionary) -> bool:
 		for g in gl:
 			market_dem[g] = int(mk["dem"].get(g, 0))
 		market_pop0 = maxi(1, int(mk.get("pop0", 1)))
+	var tp: Array = d.get("tech", [])
+	var la: Array = d.get("lit_acc", [])
+	for i in countries.size():
+		countries[i].tech_pts = int(tp[i]) if i < tp.size() else countries[i].tech_pts
+		countries[i].lit_acc = int(la[i]) if i < la.size() else 0
 	var lit: Array = d.get("literacy", [])
 	for i in countries.size():
 		countries[i].literacy = int(lit[i]) if i < lit.size() else countries[i].literacy

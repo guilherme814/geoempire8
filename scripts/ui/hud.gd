@@ -19,7 +19,7 @@ const RESOURCE_PT := {
 	"furs": "Peles", "wool": "Lã", "cotton": "Algodão", "coal": "Carvão", "iron": "Ferro",
 	"salt": "Sal", "wine": "Vinho", "sugar": "Açúcar", "tobacco": "Tabaco", "coffee": "Café",
 	"tea": "Chá", "silk": "Seda", "spices": "Especiarias", "opium": "Ópio", "gold": "Ouro",
-	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis",
+	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis", "steel": "Aço",
 }
 
 var map_view: MapView
@@ -45,10 +45,12 @@ var _info_panel: PanelContainer
 var _info_title: Label
 var _info_body: Label
 var _btn_recruit: Button
-var _btn_workshop: Button
-var _btn_barracks: Button
-var _btn_fact: Array[Button] = []
-const FACTORY_PT := {"textile": "Tecelagem", "smithy": "Ferraria", "carpentry": "Marcenaria"}
+var _build_tab: String = ""
+var _build_panel: PanelContainer
+var _build_head: Label
+var _build_rows: VBoxContainer
+var _build_tab_btns: Dictionary = {}
+
 var _btn_take: Button
 var _btn_annex: Button
 var _btn_war: Button
@@ -92,6 +94,7 @@ func _ready() -> void:
 	_build_bottom_right()
 	_build_event_popup()
 	_build_stats_bar()
+	_build_construction_bar()
 	_build_economy_panel()
 	_build_market_panel()
 
@@ -227,6 +230,114 @@ func _build_stats_bar() -> void:
 	bar.add_child(_stats_label)
 
 
+const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria"}
+const TAB_ORDER := ["gov", "res", "ind"]
+
+
+func _build_construction_bar() -> void:
+	var box := VBoxContainer.new()
+	box.anchor_left = 0.5
+	box.anchor_right = 0.5
+	box.anchor_top = 1.0
+	box.anchor_bottom = 1.0
+	box.offset_left = -220
+	box.offset_right = 220
+	box.offset_top = -(_inset.w + MARGIN)
+	box.offset_bottom = -(_inset.w + MARGIN)
+	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	box.add_theme_constant_override("separation", 6)
+	_root.add_child(box)
+	_blockers.append(box)
+
+	_build_panel = PanelContainer.new()
+	_build_panel.visible = false
+	box.add_child(_build_panel)
+	var pcol := VBoxContainer.new()
+	pcol.add_theme_constant_override("separation", 6)
+	_build_panel.add_child(pcol)
+	_build_head = Label.new()
+	_build_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pcol.add_child(_build_head)
+	_build_rows = VBoxContainer.new()
+	_build_rows.add_theme_constant_override("separation", 6)
+	pcol.add_child(_build_rows)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
+	for tab in TAB_ORDER:
+		var b := _make_button(TAB_PT[tab], Vector2(140, 48))
+		b.toggle_mode = true
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(_on_build_tab_pressed.bind(tab))
+		row.add_child(b)
+		_build_tab_btns[tab] = b
+
+
+func _on_build_tab_pressed(tab: String) -> void:
+	_build_tab = "" if _build_tab == tab else tab
+	_refresh_build_panel()
+
+
+func _buildings_summary(p: Province) -> String:
+	var parts: Array[String] = []
+	for k in Province.BUILDINGS.keys():
+		var lv := p.building_level(k)
+		if lv > 0:
+			parts.append("%s %d" % [Province.BUILDINGS[k]["name"], lv])
+	return "Construções: " + ", ".join(parts) if not parts.is_empty() else ""
+
+
+func _refresh_build_panel() -> void:
+	for t in _build_tab_btns.keys():
+		_build_tab_btns[t].set_pressed_no_signal(t == _build_tab)
+	_build_panel.visible = _build_tab != ""
+	if _build_tab == "":
+		return
+	for ch in _build_rows.get_children():
+		_build_rows.remove_child(ch)
+		ch.queue_free()
+	var me := Game.player_country
+	var tech: int = Game.countries[me].tech_level()
+	var p: Province = null
+	if _selected >= 0 and _selected < Game.provinces.size():
+		p = Game.provinces[_selected]
+	var head := "%s  ·  Tecnologia nível %d" % [TAB_PT[_build_tab], tech]
+	if p == null or p.owner_id != me:
+		_build_head.text = head + "\nSelecione uma província sua para construir."
+		return
+	_build_head.text = head + "\nem %s" % p.name
+	for k in Province.BUILDINGS.keys():
+		var b: Dictionary = Province.BUILDINGS[k]
+		if b["tab"] != _build_tab or not p.can_host(k):
+			continue
+		var lv := p.building_level(k)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		_build_rows.add_child(row)
+		var lab := Label.new()
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lab.custom_minimum_size = Vector2(230, 0)
+		lab.text = "%s  nív. %d/%d\n%s" % [b["name"], lv, Province.MAX_BUILDING, b["desc"]]
+		row.add_child(lab)
+		var btn := _make_button("", Vector2(160, 48))
+		row.add_child(btn)
+		if lv >= Province.MAX_BUILDING:
+			btn.text = "Máximo"
+			btn.disabled = true
+		elif tech < int(b["tech"]):
+			btn.text = "Tecnologia %d" % int(b["tech"])
+			btn.disabled = true
+		elif Province.FACTORIES.has(k) and p.factory != "" and p.factory != k:
+			btn.text = "Outra fábrica"
+			btn.disabled = true
+		else:
+			btn.text = "Construir (%d)" % Game.build_cost(p, k)
+			btn.disabled = not Game.can_build(p.id, me, k)
+			btn.pressed.connect(_on_build_pressed.bind(k))
+
+
 func _build_economy_panel() -> void:
 	_eco_panel = PanelContainer.new()
 	_eco_panel.anchor_left = 1.0
@@ -264,6 +375,7 @@ func _refresh_economy() -> void:
 	lines.append("Manutenção de províncias: -%d" % int(e["upkeep_prov"]))
 	lines.append("Manutenção de exércitos: -%d  (%d reg.)" % [int(e["upkeep_army"]), int(e["regiments"])])
 	lines.append("Manutenção da frota: -%d  (%d navios)" % [int(e["upkeep_navy"]), c.ships])
+	lines.append("Manutenção de escolas e universidades: -%d" % int(e["upkeep_edu"]))
 	var cap := Game.sea_capacity(c.id)
 	lines.append("Capacidade de comércio marítimo: %d/mês%s" % [cap, "  (BLOQUEADO)" if Game.is_blockaded(c.id) else ""])
 	var emb := PackedStringArray()
@@ -416,20 +528,6 @@ func _build_info_panel() -> void:
 	_btn_recruit = _make_button("Recrutar", bsize)
 	_btn_recruit.pressed.connect(_on_recruit_pressed)
 	grid.add_child(_btn_recruit)
-
-	_btn_workshop = _make_button("Oficina", bsize)
-	_btn_workshop.pressed.connect(_on_build_pressed.bind("workshop"))
-	grid.add_child(_btn_workshop)
-
-	_btn_barracks = _make_button("Quartel", bsize)
-	_btn_barracks.pressed.connect(_on_build_pressed.bind("barracks"))
-	grid.add_child(_btn_barracks)
-
-	for k in Province.FACTORIES.keys():
-		var fb := _make_button(FACTORY_PT[k], bsize)
-		fb.pressed.connect(_on_build_pressed.bind(k))
-		grid.add_child(fb)
-		_btn_fact.append(fb)
 
 	_btn_take = _make_button("Assumir país", bsize)
 	_btn_take.pressed.connect(_on_take_pressed)
@@ -661,8 +759,8 @@ func _refresh_top() -> void:
 		"" if Game.wars_of(c.id).is_empty() else "  |  GUERRAS: %d" % Game.wars_of(c.id).size(),
 	]
 	var lit: int = c.literacy
-	_stats_label.text = "População: %s   |   Alfabetização: %d,%d%%   |   Padrão de vida: %.1f" % [
-		_fmt_pop(Game.population_of(c)), lit / 10, lit % 10, float(Game.standard_of_living_x10(c, e)) / 10.0,
+	_stats_label.text = "População: %s   |   Alfabetização: %d,%d%%   |   Padrão de vida: %.1f   |   Tecnologia: %d" % [
+		_fmt_pop(Game.population_of(c)), lit / 10, lit % 10, float(Game.standard_of_living_x10(c, e)) / 10.0, c.tech_level(),
 	]
 	_date_label.text = Game.clock.format()
 	_refresh_economy()
@@ -674,6 +772,7 @@ func _refresh_top() -> void:
 func _refresh_info() -> void:
 	if _selected < 0 or _selected >= Game.provinces.size():
 		_info_panel.visible = false
+		_refresh_build_panel()
 		return
 	var p := Game.provinces[_selected]
 	var has_owner := p.owner_id >= 0 and p.owner_id < Game.countries.size()
@@ -700,7 +799,9 @@ func _refresh_info() -> void:
 	lines.append("Preço do recurso: %d%%" % p.price_of(p.resource_type))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
-	lines.append("Oficina nív. %d   Quartel nív. %d" % [p.workshop, p.barracks])
+	var bl := _buildings_summary(p)
+	if bl != "":
+		lines.append(bl)
 	if Game.sieges.has(p.id):
 		lines.append("CERCO: %d/%d dias (%s)" % [int(Game.sieges[p.id]["days"]), Game.SIEGE_DAYS, Game.countries[int(Game.sieges[p.id]["by"])].name])
 	if has_owner and not mine:
@@ -716,26 +817,18 @@ func _refresh_info() -> void:
 				rel += "  (trégua: %d dias)" % tl
 			lines.append(rel)
 	if p.factory != "":
-		lines.append("Indústria: %s nív. %d  (lucro %+d/mês)" % [FACTORY_PT[p.factory], p.factory_level, p.factory_profit()])
+		lines.append("Indústria: %s nív. %d  (lucro %+d/mês)" % [Province.BUILDINGS[p.factory]["name"], p.factory_level, p.factory_profit()])
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
 	_info_body.text = "\n".join(lines)
 
 	_btn_recruit.visible = mine
-	_btn_workshop.visible = mine
-	_btn_barracks.visible = mine
-	for fb in _btn_fact:
-		fb.visible = mine
 	if mine:
 		var me := Game.player_country
 		_btn_recruit.text = "Recrutar (%d)" % Game.RECRUIT_COST
 		_btn_recruit.disabled = not Game.can_recruit(p.id, me)
-		_set_build_button(_btn_workshop, "Oficina", p, "workshop", me)
-		_set_build_button(_btn_barracks, "Quartel", p, "barracks", me)
-		var fkeys: Array = Province.FACTORIES.keys()
-		for i in fkeys.size():
-			_set_build_button(_btn_fact[i], FACTORY_PT[fkeys[i]], p, fkeys[i], me)
+	_refresh_build_panel()
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
 	_btn_annex.visible = DEBUG_TOOLS and not mine
 	_btn_war.visible = has_owner and not mine

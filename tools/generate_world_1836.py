@@ -47,7 +47,7 @@ ap.add_argument("--density", type=float, default=1.0,
                 help="multiplicador do espaçamento entre províncias (>1 = menos províncias, mapa mais leve)")
 ap.add_argument("--voronoi", action="store_true",
                 help="usa células Voronoi no lugar das fronteiras administrativas originais")
-ap.add_argument("--min-frac", type=float, default=0.35,
+ap.add_argument("--min-frac", type=float, default=0.2,
                 help="divisões menores que isso x área nominal são fundidas à vizinha do mesmo país")
 ap.add_argument("--wild-mult", type=float, default=6.0,
                 help="multiplicador do tamanho das províncias em terras sem dono")
@@ -695,16 +695,19 @@ def load_places():
             score += 2e9
         elif cls.startswith("Admin-1"):
             score += 1e8
-        out.append((lon, lat, score, pr.get("name") or pr.get("nameascii") or "?", cls.startswith("Admin-0 capital")))
+        out.append((lon, lat, score, pr.get("name") or pr.get("nameascii") or "?", cls.startswith("Admin-0 capital"), float(pr.get("pop_max") or 0)))
     return out
 
 
 places = load_places()
+objs_idx = set(polys.keys())
 best_city = {}
 if places:
     pl = np.array([(p[0], p[1]) for p in places])
     pxs, pys = project(pl[:, 0], pl[:, 1])
-    for (lon_, lat_, score, nm, is_cap), px_, py_ in zip(places, pxs.tolist(), pys.tolist()):
+    city_weight = defaultdict(float)
+    city_unit = {}
+    for (lon_, lat_, score, nm, is_cap, popmax), px_, py_ in zip(places, pxs.tolist(), pys.tolist()):
         ix, iy = int(px_), int(py_)
         if not (0 <= ix < W and 0 <= iy < H):
             continue
@@ -712,13 +715,29 @@ if places:
         if lbl <= 0:
             continue
         p_ = lbl - 1
+        city_weight[p_] += max(popmax, 5000.0) ** 0.85
         if p_ not in best_city or score > best_city[p_][0]:
             best_city[p_] = (score, nm, is_cap)
+            city_unit[p_] = int(adm[iy, ix])
+    for p_, wgt in city_weight.items():
+        if p_ in infos:
+            infos[p_]["city_w"] = wgt
     log("cidades-sede atribuídas: %d" % len(best_city))
 for p_, (_, nm, is_cap) in best_city.items():
     if p_ in infos:
         infos[p_]["city"] = nm
         infos[p_]["capital_city"] = bool(is_cap)
+        # província fundida leva o nome da divisão onde está a cidade principal (Rio, não Minas)
+        # (só se essa divisão for >= 25% da província; capital de país sem isso leva o nome da cidade)
+        un = city_unit.get(p_, 0)
+        if un > 0 and adm_names[un] and p_ in objs_idx:
+            sl_ = objs[p_]
+            m_ = comp[sl_] == p_ + 1
+            frac = float((adm[sl_][m_] == un).mean()) if m_.any() else 0.0
+            if frac >= 0.25:
+                infos[p_]["name"] = adm_names[un]
+            elif is_cap:
+                infos[p_]["name"] = nm
 
 # províncias que não têm polígono (falha de montagem) são descartadas; ids por área decrescente
 valid = sorted(polys.keys(), key=lambda p: -infos[p]["area_px"])
@@ -779,7 +798,7 @@ for p in valid:
         "edges": nb_ids, "terrain": terrain, "resource": resource, "coastal": bool(coastal),
         "owner": state_final[owner_state] if owner_state in state_final else -1,
         "center": [int(round(cxp)), int(round(cyp))], "area": int(round(km2)),
-        "lon": round(lon, 2), "lat": round(lat, 2), "pop": 0, "neighbors": sorted(neigh[pid]),
+        "lon": round(lon, 2), "lat": round(lat, 2), "pop": 0, "neighbors": sorted(neigh[pid]), "_cw": info.get("city_w", 0.0),
         "city": info.get("city", ""), "capital_city": bool(info.get("capital_city", False)),
     })
 
@@ -805,7 +824,8 @@ for (_, nm), lst in groups.items():
         for i, q in enumerate(lst):
             q["name"] = "%s %s" % (nm, roman[i] if i < len(roman) else str(i + 1))
 
-# população: total do Estado distribuído por área x fertilidade
+# população: total do Estado distribuído por (60% cidades + 40% área x fertilidade). Só por área,
+# o interior vazio ficava mais populoso que o litoral e as capitais.
 by_owner = defaultdict(list)
 for pr in out_provs:
     w = pr["area"] * D.TERRAIN_POP_FACTOR[pr["terrain"]] * (1.15 if pr["coastal"] else 1.0)
@@ -818,9 +838,13 @@ for pr in out_provs:
 for owner, lst in by_owner.items():
     if owner >= 0:
         total = D.STATES[used_states[owner] - 1][3] * 1e6
-        sw = sum(q["_w"] for q in lst)
+        sa = sum(q["_w"] for q in lst)
+        sc = sum(q["_cw"] for q in lst)
         for q in lst:
-            q["pop"] = int(round(total * q["_w"] / sw / 100.0)) * 100
+            share = q["_w"] / sa
+            if sc > 0:
+                share = 0.4 * share + 0.6 * q["_cw"] / sc
+            q["pop"] = int(round(total * share / 100.0)) * 100
     else:
         for q in lst:
             dens = D.unclaimed_density(q["lon"], q["lat"])
@@ -828,6 +852,7 @@ for owner, lst in by_owner.items():
 for pr in out_provs:
     pr["pop"] = max(pr["pop"], 100)
     del pr["_w"]
+    del pr["_cw"]
 
 # países
 countries = []

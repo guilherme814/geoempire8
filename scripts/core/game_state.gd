@@ -38,6 +38,15 @@ const WAR_MIN_DAYS := 30         # dias de guerra antes de poder pedir paz
 const SIEGE_DAYS := 10           # dias de ocupação até a província mudar de dono
 const BATTLE_LOSS_PCT := 25      # % do exército inimigo (arredondado p/ cima) perdido por dia de batalha
 
+# Alfabetização inicial (% por país em 1836, aproximada); o padrão é 10%
+const LITERACY_START := {
+	"GBR": 55, "FRA": 40, "PRU": 60, "SWE": 75, "DEN": 70, "NED": 65, "SUI": 60, "USA": 70,
+	"AUT": 35, "RUS": 5, "OTT": 5, "ESP": 20, "POR": 15, "SAR": 25, "SIC": 15, "BEL": 45,
+	"BAV": 55, "SAX": 60, "HAN": 55, "WUR": 60, "GRE": 15, "BRZ": 10, "MEX": 15, "ARG": 20,
+	"CHL": 20, "JAP": 40, "QNG": 20, "BIC": 8, "HAW": 30,
+}
+const LITERACY_MAX := 950        # teto (95,0%)
+
 # Marinha e comércio
 const SHIP_COST := 80
 const SHIP_DAYS := 40
@@ -339,6 +348,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	graph = ProvinceGraph.new()
 	graph.setup(provinces)
 
+	for c in countries:
+		c.literacy = int(LITERACY_START.get(c.tag, 10)) * 10
 	for c in countries:
 		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * 8)
 		if c.is_alive():
@@ -1182,6 +1193,9 @@ func _simulate_month() -> void:
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
 	_run_trade()
+	for c in countries:
+		if c.is_alive():
+			c.literacy = mini(LITERACY_MAX, c.literacy + 1)
 	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
 	for c in countries:
 		if not c.is_alive():
@@ -1308,6 +1322,8 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 		var cap := provinces[c.capital]
 		cap.manpower = clampi(cap.manpower + int(fx["manpower"]), 0, cap.manpower_max())
 		Events.province_updated.emit(cap.id)
+	if fx.has("literacy"):
+		c.literacy = clampi(c.literacy + int(fx["literacy"]), 0, LITERACY_MAX)
 	if fx.has("pop_pct"):
 		var pct: int = int(fx["pop_pct"])
 		for pid in c.province_ids:
@@ -1326,6 +1342,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 		industry += p.factory_profit()
 		flat += Province.FLAT_TAX
 		prod += p.production()
+	tax = tax * (1000 + c.literacy / 5) / 1000      # alfabetização: até ~+19% de imposto
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var up_army: int = regs * REGIMENT_UPKEEP
@@ -1336,6 +1353,21 @@ func estimate_monthly(c: Country) -> Dictionary:
 		"expense": up_prov + up_army + up_navy, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
+
+
+## População total do país.
+func population_of(c: Country) -> int:
+	var n := 0
+	for pid in c.province_ids:
+		n += provinces[pid].population
+	return n
+
+
+## Padrão de vida em décimos de ponto: produção por habitante (com indústria) + alfabetização.
+@warning_ignore("integer_division")
+func standard_of_living_x10(c: Country, e: Dictionary) -> int:
+	var pop := maxi(1, population_of(c))
+	return 30 + (int(e["production"]) + int(e["industry"])) * 1000000 / pop + c.literacy / 10
 
 
 ## As N províncias do país que mais rendem imposto: [{id, tax}].
@@ -1666,6 +1698,7 @@ func state_hash() -> int:
 		h = _mix(h, 1 if str(t.get("kind", "reg")) == "ship" else 0)
 	for c in countries:
 		h = _mix(h, c.ships)
+		h = _mix(h, c.literacy)
 	for k in embargoes:
 		h = _mix(h, int(k))
 	for e in pending_events:
@@ -1696,6 +1729,13 @@ func _fleets_to_list() -> Array:
 	ids.sort()
 	for id in ids:
 		out.append((fleets[id] as Fleet).to_dict())
+	return out
+
+
+func _literacy_list() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.literacy)
 	return out
 
 
@@ -1773,7 +1813,7 @@ func serialize_state() -> Dictionary:
 		"sieges": _sieges_to_list(),
 		"relations": _dict_to_pairs(relations),
 		"market": {"price": _prices_to_lists(), "dem": market_dem.duplicate(), "pop0": market_pop0},
-		"ships": _ships_list(),
+		"literacy": _literacy_list(),
 		"embargoes": embargoes.duplicate(),
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
@@ -1847,6 +1887,9 @@ func load_state(d: Dictionary) -> bool:
 		for g in gl:
 			market_dem[g] = int(mk["dem"].get(g, 0))
 		market_pop0 = maxi(1, int(mk.get("pop0", 1)))
+	var lit: Array = d.get("literacy", [])
+	for i in countries.size():
+		countries[i].literacy = int(lit[i]) if i < lit.size() else countries[i].literacy
 	for c in countries:
 		c.ships = 0
 	for id in fleets.keys():

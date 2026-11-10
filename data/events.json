@@ -1,74 +1,392 @@
 [
-  {
-    "id": "harvest", "title": "Colheita farta",
-    "text": "As chuvas favoreceram as lavouras e os celeiros estão cheios. Os conselheiros divergem sobre o que fazer com o excedente.",
-    "mtth_months": 48,
-    "options": [
-      {"label": "Vender o excedente", "effects": {"gold": 120}},
-      {"label": "Estocar para o inverno", "effects": {"pop_pct": 1}}
-    ]
-  },
-  {
-    "id": "epidemic", "title": "Surto de doença",
-    "text": "Uma doença se espalha pelas cidades portuárias e pelas vilas do interior.",
-    "mtth_months": 96, "min_provinces": 2,
-    "options": [
-      {"label": "Investir em quarentenas", "effects": {"gold": -80}},
-      {"label": "Ignorar o problema", "effects": {"pop_pct": -2}}
-    ]
-  },
-  {
-    "id": "army_reform", "title": "Debate sobre o exército",
-    "text": "Oficiais pedem reformas no recrutamento e no treinamento das tropas.",
-    "mtth_months": 72, "min_regiments": 3,
-    "options": [
-      {"label": "Financiar a reforma", "effects": {"gold": -100, "manpower": 2000}},
-      {"label": "Cortar gastos militares", "effects": {"gold": 60, "manpower": -1000}}
-    ]
-  },
-  {
-    "id": "gold_find", "title": "Veio de ouro descoberto",
-    "text": "Prospectores relatam um veio promissor numa região remota.",
-    "mtth_months": 150,
-    "options": [
-      {"label": "Explorar imediatamente", "effects": {"gold": 250}},
-      {"label": "Regular a exploração", "effects": {"gold": 100, "pop_pct": 1}}
-    ]
-  },
-  {
-    "id": "empty_treasury", "title": "Tesouro vazio",
-    "text": "Os cofres estão quase secos e os credores pressionam.",
-    "mtth_months": 12, "max_treasury": 150,
-    "options": [
-      {"label": "Tomar empréstimo de banqueiros", "effects": {"gold": 200, "manpower": -500}},
-      {"label": "Impor austeridade", "effects": {"gold": 60, "pop_pct": -1}}
-    ]
-  },
-  {
-    "id": "trade_fair", "title": "Grande feira comercial",
-    "text": "Mercadores de várias regiões propõem uma feira anual nas suas cidades.",
-    "mtth_months": 60, "min_provinces": 5,
-    "options": [
-      {"label": "Patrocinar a feira", "effects": {"gold": -40, "pop_pct": 1}},
-      {"label": "Cobrar taxas dos mercadores", "effects": {"gold": 90}}
-    ]
-  },
-  {
-    "id": "gbr_coronation", "title": "Coroação da rainha Vitória",
-    "text": "A jovem Vitória sobe ao trono. Londres espera grandes celebrações.",
-    "date": [1837, 6], "once": true, "tags": ["GBR"],
-    "options": [
-      {"label": "Celebrar com pompa", "effects": {"gold": -50, "manpower": 1000}},
-      {"label": "Cerimônia modesta", "effects": {"gold": 30}}
-    ]
-  },
-  {
-    "id": "fra_unrest_1848", "title": "Agitação em Paris",
-    "text": "Manifestações tomam as ruas da capital e a guarda hesita.",
-    "date": [1848, 2], "once": true, "tags": ["FRA"],
-    "options": [
-      {"label": "Reprimir os protestos", "effects": {"gold": -100, "manpower": -1000}},
-      {"label": "Conceder reformas", "effects": {"gold": -150, "pop_pct": 1}}
-    ]
-  }
+ {
+  "id": "harvest",
+  "title": "Colheita farta",
+  "text": "As chuvas favoreceram as lavouras e os celeiros estão cheios. Os conselheiros divergem sobre o que fazer com o excedente.",
+  "mtth_months": 48,
+  "options": [
+   {
+    "label": "Vender o excedente",
+    "effects": {
+     "gold": 120
+    }
+   },
+   {
+    "label": "Estocar para o inverno",
+    "effects": {
+     "pop_pct": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "epidemic",
+  "title": "Surto de doença",
+  "text": "Uma doença se espalha pelas cidades portuárias e pelas vilas do interior.",
+  "mtth_months": 96,
+  "min_provinces": 2,
+  "options": [
+   {
+    "label": "Investir em quarentenas",
+    "effects": {
+     "gold": -80
+    }
+   },
+   {
+    "label": "Ignorar o problema",
+    "effects": {
+     "pop_pct": -2
+    }
+   }
+  ]
+ },
+ {
+  "id": "army_reform",
+  "title": "Debate sobre o exército",
+  "text": "Oficiais pedem reformas no recrutamento e no treinamento das tropas.",
+  "mtth_months": 72,
+  "min_regiments": 3,
+  "options": [
+   {
+    "label": "Financiar a reforma",
+    "effects": {
+     "gold": -100,
+     "manpower": 2000
+    }
+   },
+   {
+    "label": "Cortar gastos militares",
+    "effects": {
+     "gold": 60,
+     "manpower": -1000
+    }
+   }
+  ]
+ },
+ {
+  "id": "gold_find",
+  "title": "Veio de ouro descoberto",
+  "text": "Prospectores relatam um veio promissor numa região remota.",
+  "mtth_months": 150,
+  "options": [
+   {
+    "label": "Explorar imediatamente",
+    "effects": {
+     "gold": 250
+    }
+   },
+   {
+    "label": "Regular a exploração",
+    "effects": {
+     "gold": 100,
+     "pop_pct": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "empty_treasury",
+  "title": "Tesouro vazio",
+  "text": "Os cofres estão quase secos e os credores pressionam.",
+  "mtth_months": 12,
+  "max_treasury": 150,
+  "options": [
+   {
+    "label": "Tomar empréstimo de banqueiros",
+    "effects": {
+     "gold": 200,
+     "manpower": -500
+    }
+   },
+   {
+    "label": "Impor austeridade",
+    "effects": {
+     "gold": 60,
+     "pop_pct": -1
+    }
+   }
+  ]
+ },
+ {
+  "id": "trade_fair",
+  "title": "Grande feira comercial",
+  "text": "Mercadores de várias regiões propõem uma feira anual nas suas cidades.",
+  "mtth_months": 60,
+  "min_provinces": 5,
+  "options": [
+   {
+    "label": "Patrocinar a feira",
+    "effects": {
+     "gold": -40,
+     "pop_pct": 1
+    }
+   },
+   {
+    "label": "Cobrar taxas dos mercadores",
+    "effects": {
+     "gold": 90
+    }
+   }
+  ]
+ },
+ {
+  "id": "gbr_coronation",
+  "title": "Coroação da rainha Vitória",
+  "text": "A jovem Vitória sobe ao trono. Londres espera grandes celebrações.",
+  "date": [
+   1837,
+   6
+  ],
+  "once": true,
+  "tags": [
+   "GBR"
+  ],
+  "options": [
+   {
+    "label": "Celebrar com pompa",
+    "effects": {
+     "gold": -50,
+     "manpower": 1000
+    }
+   },
+   {
+    "label": "Cerimônia modesta",
+    "effects": {
+     "gold": 30
+    }
+   }
+  ]
+ },
+ {
+  "id": "fra_unrest_1848",
+  "title": "Agitação em Paris",
+  "text": "Manifestações tomam as ruas da capital e a guarda hesita.",
+  "date": [
+   1848,
+   2
+  ],
+  "once": true,
+  "tags": [
+   "FRA"
+  ],
+  "options": [
+   {
+    "label": "Reprimir os protestos",
+    "effects": {
+     "gold": -100,
+     "manpower": -1000
+    }
+   },
+   {
+    "label": "Conceder reformas",
+    "effects": {
+     "gold": -150,
+     "pop_pct": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "liberal_press",
+  "title": "Imprensa liberal",
+  "text": "Jornais e panfletos circulam pela capital criticando o governo. Os conselheiros dividem-se entre a liberdade de imprensa e a censura.",
+  "mtth_months": 60,
+  "options": [
+   {
+    "label": "Conceder liberdade de imprensa",
+    "effects": {
+     "gold": -50,
+     "literacy": 15
+    }
+   },
+   {
+    "label": "Censurar os jornais",
+    "effects": {
+     "gold": 80,
+     "literacy": -5
+    }
+   }
+  ]
+ },
+ {
+  "id": "public_school",
+  "title": "Escolas públicas",
+  "text": "Reformadores propõem fundar escolas em todas as províncias, mas o tesouro hesita diante do custo.",
+  "mtth_months": 72,
+  "min_treasury": 300,
+  "options": [
+   {
+    "label": "Fundar escolas",
+    "effects": {
+     "gold": -150,
+     "literacy": 30
+    }
+   },
+   {
+    "label": "Deixar a educação com a Igreja",
+    "effects": {
+     "literacy": 5
+    }
+   }
+  ]
+ },
+ {
+  "id": "railway_boom",
+  "title": "Mania das ferrovias",
+  "text": "Investidores correm para financiar as primeiras linhas de trem e prometem lucros enormes.",
+  "mtth_months": 84,
+  "min_year": 1836,
+  "tags": [
+   "GBR",
+   "FRA",
+   "USA",
+   "PRU",
+   "BEL",
+   "AUT"
+  ],
+  "options": [
+   {
+    "label": "Apoiar os investidores",
+    "effects": {
+     "gold": 200
+    }
+   },
+   {
+    "label": "Regular o setor",
+    "effects": {
+     "gold": 60,
+     "pop_pct": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "peasant_revolt",
+  "title": "Revolta camponesa",
+  "text": "Camponeses pegam em armas contra impostos e cobradores. A ordem nas províncias está em jogo.",
+  "mtth_months": 96,
+  "min_provinces": 4,
+  "options": [
+   {
+    "label": "Reprimir com tropas",
+    "effects": {
+     "manpower": -2000
+    }
+   },
+   {
+    "label": "Conceder reformas",
+    "effects": {
+     "gold": -150,
+     "pop_pct": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "foreign_loan",
+  "title": "Empréstimo estrangeiro",
+  "text": "Banqueiros estrangeiros oferecem crédito ao governo em troca de juros altos e favores comerciais.",
+  "mtth_months": 48,
+  "max_treasury": 250,
+  "options": [
+   {
+    "label": "Aceitar o empréstimo",
+    "effects": {
+     "gold": 400
+    }
+   },
+   {
+    "label": "Recusar",
+    "effects": {}
+   }
+  ]
+ },
+ {
+  "id": "labor_strikes",
+  "title": "Greves operárias",
+  "text": "Trabalhadores das oficinas param exigindo salários melhores e jornadas menores.",
+  "mtth_months": 90,
+  "min_provinces": 8,
+  "options": [
+   {
+    "label": "Negociar com os operários",
+    "effects": {
+     "gold": -80,
+     "literacy": 5
+    }
+   },
+   {
+    "label": "Chamar a guarda",
+    "effects": {
+     "gold": 40,
+     "manpower": -1000
+    }
+   }
+  ]
+ },
+ {
+  "id": "abolition_debate",
+  "title": "Debate sobre a escravidão",
+  "text": "Cresce a pressão interna e externa pelo fim do tráfico e da escravidão. Fazendeiros ameaçam retirar o apoio ao governo.",
+  "mtth_months": 120,
+  "tags": [
+   "BRZ",
+   "USA",
+   "GBR",
+   "FRA",
+   "ESP",
+   "POR"
+  ],
+  "options": [
+   {
+    "label": "Adiar a decisão",
+    "effects": {
+     "gold": 60
+    }
+   },
+   {
+    "label": "Apoiar a abolição gradual",
+    "effects": {
+     "gold": -100,
+     "pop_pct": 1,
+     "literacy": 5
+    }
+   }
+  ]
+ },
+ {
+  "id": "royal_wedding",
+  "title": "Casamento real",
+  "text": "Uma aliança matrimonial com uma corte vizinha é cogitada, cheia de pompa e despesas.",
+  "mtth_months": 110,
+  "tags": [
+   "GBR",
+   "FRA",
+   "AUT",
+   "RUS",
+   "PRU",
+   "SWE",
+   "DEN",
+   "SAR",
+   "SIC",
+   "POR",
+   "ESP",
+   "BRZ"
+  ],
+  "options": [
+   {
+    "label": "Celebrar com grande festa",
+    "effects": {
+     "gold": -120,
+     "manpower": 1000
+    }
+   },
+   {
+    "label": "Cerimônia discreta",
+    "effects": {
+     "gold": 40
+    }
+   }
+  ]
+ }
 ]

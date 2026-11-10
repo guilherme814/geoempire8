@@ -13,6 +13,7 @@ var treasury: int = 0
 var tax_pct: int = 30
 var last_income: int = 0
 var last_expense: int = 0
+var literacy: int = 100       # alfabetização em décimos de % (100 = 10,0%)
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)
 
 # Derivados (recalculados por Game._refresh_country_geometry)

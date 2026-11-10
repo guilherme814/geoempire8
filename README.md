@@ -72,3 +72,10 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - [ ] Guerra, combate e conquista; diplomacia; IA dos países; marinha (travessia de oceanos)
 - [ ] Tecnologias e mais eventos históricos
 - [ ] Multiplayer: lobby, WebRTC com sinalização, reconexão
+
+
+## Painel de estatísticas e extras
+- Barra sob o topo: **população**, **alfabetização** (sobe aos poucos, dá até ~+19% de imposto; eventos podem mudá-la) e **padrão de vida** (produção per capita + alfabetização).
+- Atalhos (PC): `Espaço` pausa/continua, `+`/`-` mudam a velocidade.
+- Autosave anual em `user://autosave.json` (só no modo offline).
+- 16 eventos políticos, incluindo imprensa, escolas, ferrovias, revoltas, greves e abolição.

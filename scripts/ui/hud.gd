@@ -37,6 +37,7 @@ var _eco_label: Label
 var _market_panel: PanelContainer
 var _market_grid: GridContainer
 var _toast: Label
+var _stats_label: Label
 var _date_label: Label
 var _speed_buttons: Array[Button] = []
 
@@ -90,6 +91,7 @@ func _ready() -> void:
 	_build_info_panel()
 	_build_bottom_right()
 	_build_event_popup()
+	_build_stats_bar()
 	_build_economy_panel()
 	_build_market_panel()
 
@@ -212,6 +214,17 @@ func _build_top_bar() -> void:
 		b.pressed.connect(_on_speed_pressed.bind(i))
 		row.add_child(b)
 		_speed_buttons.append(b)
+
+
+func _build_stats_bar() -> void:
+	var bar := PanelContainer.new()
+	bar.offset_left = _inset.x + MARGIN
+	bar.offset_top = _inset.y + MARGIN + 78
+	_root.add_child(bar)
+	_blockers.append(bar)
+	_stats_label = Label.new()
+	_stats_label.add_theme_font_size_override("font_size", 19)
+	bar.add_child(_stats_label)
 
 
 func _build_economy_panel() -> void:
@@ -647,6 +660,10 @@ func _refresh_top() -> void:
 		c.treasury, net, int(e["regiments"]), _fmt_pop(Game.manpower_of(c.id)),
 		"" if Game.wars_of(c.id).is_empty() else "  |  GUERRAS: %d" % Game.wars_of(c.id).size(),
 	]
+	var lit: int = c.literacy
+	_stats_label.text = "População: %s   |   Alfabetização: %d,%d%%   |   Padrão de vida: %.1f" % [
+		_fmt_pop(Game.population_of(c)), lit / 10, lit % 10, float(Game.standard_of_living_x10(c, e)) / 10.0,
+	]
 	_date_label.text = Game.clock.format()
 	_refresh_economy()
 	_tax_label.text = "%d%%" % c.tax_pct
@@ -789,7 +806,21 @@ func _on_day_changed(_date: Dictionary) -> void:
 		_update_event_timer()   # só o contador: refazer os botões todo dia atrapalharia o toque
 
 
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var k: int = event.keycode
+	if k == KEY_SPACE:
+		Game.submit_command(Cmd.set_speed(0 if Game.speed > 0 else 1))
+	elif k == KEY_EQUAL or k == KEY_KP_ADD:
+		Game.submit_command(Cmd.set_speed(clampi(Game.speed + 1, 1, Game.MAX_SPEED)))
+	elif k == KEY_MINUS or k == KEY_KP_SUBTRACT:
+		Game.submit_command(Cmd.set_speed(clampi(Game.speed - 1, 1, Game.MAX_SPEED)))
+
+
 func _on_month_changed(_date: Dictionary) -> void:
+	if int(_date.get("month", 0)) == 1 and not Net.is_online():
+		Game.save_game("user://autosave.json")   # autosave anual (só local)
 	_refresh_market()
 	_refresh_top()
 	_refresh_info()

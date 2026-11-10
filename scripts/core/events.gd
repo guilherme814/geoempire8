@@ -30,3 +30,8 @@ signal war_changed
 
 ## Aviso curto para o jogador local (ex.: paz recusada).
 signal notice(text: String)
+
+## Frotas (navios no mapa).
+signal fleet_changed(fleet_id: int)
+signal fleet_removed(fleet_id: int)
+signal fleet_selected(fleet_id: int)          # -1 = nenhuma

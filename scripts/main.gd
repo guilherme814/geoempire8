@@ -51,9 +51,42 @@ func _on_zoom_changed(z: float) -> void:
 
 
 func _on_map_tapped(world_pos: Vector2) -> void:
+	# Frotas: tocar numa frota SUA seleciona; tocar nela de novo para e desmarca;
+	# com frota selecionada, tocar no mar ou num porto manda navegar.
+	var fid := overlay.fleet_at(world_pos)
+	var fsel: Fleet = Game.fleets.get(overlay.selected_fleet)
+	if fid >= 0:
+		var tapped: Fleet = Game.fleets[fid]
+		if fsel != null and fid == fsel.id:
+			if fsel.is_moving():
+				Game.submit_command(Cmd.stop_fleet(fsel.id))
+			Events.fleet_selected.emit(-1)
+			return
+		if tapped.owner_id == Game.player_country:
+			Events.army_selected.emit(-1)
+			Events.fleet_selected.emit(fid)
+			Events.notice.emit("Frota de %d navio(s). Toque no mar ou num porto para navegar; toque nela de novo para parar." % tapped.ships)
+			return
+	if fsel != null and fsel.owner_id == Game.player_country:
+		var target := -1
+		var tp := map_view.province_at(world_pos)
+		if tp >= 0:
+			target = Game.provinces[tp].port
+			if target < 0:
+				Events.notice.emit("Esta província não tem porto.")
+				return
+		else:
+			target = Game.cell_at(world_pos)
+		if not Game.is_sea_cell(target):
+			Events.notice.emit("Navios só navegam no mar.")
+			return
+		Game.submit_command(Cmd.move_fleet(fsel.id, target))
+		return
+
 	var aid := overlay.army_at(world_pos)
 	if aid >= 0:
 		var a: Army = Game.armies[aid]
+		Events.fleet_selected.emit(-1)
 		Events.army_selected.emit(aid)
 		Events.province_selected.emit(a.province_id)
 		return

@@ -725,8 +725,8 @@ func _refresh_info() -> void:
 	_btn_improve.visible = has_owner and not mine
 	_btn_ally.visible = has_owner and not mine
 	_btn_embargo.visible = has_owner and not mine
-	_btn_ship.visible = mine and p.coastal
-	if mine and p.coastal:
+	_btn_ship.visible = mine and p.port >= 0
+	if mine and p.port >= 0:
 		_btn_ship.disabled = not Game.can_build_ship(p.id, Game.player_country)
 	if has_owner and not mine:
 		var has_emb := Game.embargoes.has(Game.player_country * 1000 + p.owner_id)

@@ -9,6 +9,7 @@ const MARKER_H := 20.0
 
 var selected_province: int = -1
 var selected_army: int = -1
+var selected_fleet: int = -1
 var zoom_level: float = 1.0
 
 var _font: Font
@@ -18,6 +19,9 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	Events.province_selected.connect(set_selected_province)
 	Events.army_selected.connect(set_selected_army)
+	Events.fleet_selected.connect(set_selected_fleet)
+	Events.fleet_changed.connect(_on_army_event)
+	Events.fleet_removed.connect(_on_army_event)
 	Events.day_changed.connect(_on_day_changed)
 	Events.army_changed.connect(_on_army_event)
 	Events.army_removed.connect(_on_army_event)
@@ -34,13 +38,18 @@ func set_selected_army(aid: int) -> void:
 	queue_redraw()
 
 
+func set_selected_fleet(fid: int) -> void:
+	selected_fleet = fid
+	queue_redraw()
+
+
 func set_zoom_level(z: float) -> void:
 	zoom_level = z
 	queue_redraw()
 
 
 func _on_day_changed(_date: Dictionary) -> void:
-	if not Game.armies.is_empty():
+	if not Game.armies.is_empty() or not Game.fleets.is_empty():
 		queue_redraw()
 
 
@@ -56,6 +65,50 @@ func army_at(world_pos: Vector2) -> int:
 		if r.grow(2.0 / maxf(zoom_level, 0.05)).has_point(world_pos):
 			hit = int(m["id"])   # o último desenhado fica por cima
 	return hit
+
+
+## Retorna o id da frota cujo marcador está sob a posição do mundo, ou -1.
+func fleet_at(world_pos: Vector2) -> int:
+	var hit := -1
+	for m in _fleet_layout():
+		var r: Rect2 = m["rect"]
+		if r.grow(3.0 / maxf(zoom_level, 0.05)).has_point(world_pos):
+			hit = int(m["id"])
+	return hit
+
+
+func _fleet_layout() -> Array:
+	var z := maxf(zoom_level, 0.05)
+	var w := MARKER_W / z
+	var h := MARKER_H / z
+	var by_cell := {}
+	var ids: Array = Game.fleets.keys()
+	ids.sort()
+	for id in ids:
+		var f: Fleet = Game.fleets[id]
+		if not by_cell.has(f.cell):
+			by_cell[f.cell] = []
+		by_cell[f.cell].append(f.id)
+	var out: Array = []
+	for cell in by_cell.keys():
+		var list: Array = by_cell[cell]
+		var center := Game.cell_center(int(cell))
+		for i in list.size():
+			var off := (float(i) - float(list.size() - 1) * 0.5) * (w + 2.0 / z)
+			out.append({"id": int(list[i]), "rect": Rect2(center + Vector2(off - w * 0.5, -h * 0.5), Vector2(w, h))})
+	return out
+
+
+## Silhueta de navio (casco + duas velas) acima do marcador.
+func _draw_ship_icon(r: Rect2, col: Color, z: float) -> void:
+	var u := r.size.x / 34.0
+	var base := Vector2(r.position.x + r.size.x * 0.5, r.position.y)
+	var hull := PackedVector2Array([base + Vector2(-11, -2) * u, base + Vector2(11, -2) * u, base + Vector2(7, -7) * u, base + Vector2(-7, -7) * u])
+	draw_colored_polygon(hull, Color(0.16, 0.1, 0.06))
+	draw_line(base + Vector2(-3, -7) * u, base + Vector2(-3, -16) * u, Color(0.16, 0.1, 0.06), 1.2 / z)
+	draw_line(base + Vector2(3, -7) * u, base + Vector2(3, -14) * u, Color(0.16, 0.1, 0.06), 1.2 / z)
+	draw_colored_polygon(PackedVector2Array([base + Vector2(-3, -15) * u, base + Vector2(-10, -8) * u, base + Vector2(-3, -8) * u]), Color(0.96, 0.93, 0.82))
+	draw_colored_polygon(PackedVector2Array([base + Vector2(3, -13) * u, base + Vector2(9, -8) * u, base + Vector2(3, -8) * u]), col.lightened(0.35))
 
 
 ## Posições dos marcadores: exércitos na mesma província ficam lado a lado.
@@ -94,6 +147,21 @@ func _draw() -> void:
 		draw_polyline(outline, Color(1.0, 0.92, 0.35), 3.0 / z)
 
 	# Rota do exército selecionado: linha tracejada com seta e dias restantes
+	# Rota da frota selecionada
+	var fsel: Fleet = Game.fleets.get(selected_fleet)
+	if fsel != null and fsel.is_moving():
+		var fpts := PackedVector2Array()
+		fpts.append(Game.cell_center(fsel.cell))
+		for c in fsel.path:
+			fpts.append(Game.cell_center(c))
+		draw_polyline(fpts, Color(0.1, 0.25, 0.55, 0.55), 2.0 / z)
+		var ftip: Vector2 = fpts[fpts.size() - 1]
+		draw_circle(ftip, 5.0 / z, Color(0.1, 0.25, 0.55, 0.95))
+		var feta := "%d d" % Game.fleet_eta_days(fsel)
+		var fpos := ftip + Vector2(8.0 / z, -8.0 / z)
+		draw_string_outline(_font, fpos, feta, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(8, int(13.0 / z)), 3, Color(0, 0, 0, 0.8))
+		draw_string(_font, fpos, feta, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(8, int(13.0 / z)), Color(0.85, 0.95, 1))
+
 	var sel: Army = Game.armies.get(selected_army)
 	if sel != null and sel.is_moving():
 		var pts := PackedVector2Array()
@@ -129,3 +197,23 @@ func _draw() -> void:
 		var tp := Vector2(r.position.x, r.position.y + (r.size.y + ts.y * 0.7) * 0.5)
 		draw_string_outline(_font, tp, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, 4, Color(0, 0, 0, 0.9))
 		draw_string(_font, tp, text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, Color.WHITE)
+
+	# Frotas
+	for m in _fleet_layout():
+		var f: Fleet = Game.fleets[int(m["id"])]
+		var fr: Rect2 = m["rect"]
+		var fcol := Color(0.5, 0.5, 0.5)
+		var ftag := ""
+		if f.owner_id >= 0 and f.owner_id < Game.countries.size():
+			fcol = Game.countries[f.owner_id].color
+			ftag = Game.countries[f.owner_id].tag
+		_draw_ship_icon(fr, fcol, z)
+		draw_rect(fr.grow(1.5 / z), Color(0.96, 0.93, 0.82))
+		Flag.draw(self, fr, ftag, fcol)
+		var fsel_on := f.id == selected_fleet
+		draw_rect(fr, Color(0.3, 0.9, 1) if fsel_on else Color(0, 0, 0, 0.85), false, (2.5 if fsel_on else 1.2) / z)
+		var ftext := str(f.ships)
+		var fts := _font.get_string_size(ftext, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
+		var ftp := Vector2(fr.position.x, fr.position.y + (fr.size.y + fts.y * 0.7) * 0.5)
+		draw_string_outline(_font, ftp, ftext, HORIZONTAL_ALIGNMENT_CENTER, fr.size.x, fs, 4, Color(0, 0, 0, 0.9))
+		draw_string(_font, ftp, ftext, HORIZONTAL_ALIGNMENT_CENTER, fr.size.x, fs, Color.WHITE)

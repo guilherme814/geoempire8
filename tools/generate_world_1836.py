@@ -949,6 +949,70 @@ for pr in out_provs:
 log("rotas marítimas: %d ligações em %d províncias" % (sum(len(v) for v in sea.values()) // 2, len(sea)))
 
 # ---------------------------------------------------------------------------
+# 7b. Grade marítima (para os navios) e porto de cada província costeira
+# ---------------------------------------------------------------------------
+SEA_CELL = 12
+
+
+def build_sea_grid():
+    """Grade de água navegável: célula é água se tiver >= 2 pixels de água. Istmos de Suez e
+    Panamá são fechados (em 1836 não havia canais) e água que não liga ao oceano principal
+    (lagos, Cáspio) vira terra."""
+    gw, gh = (W + SEA_CELL - 1) // SEA_CELL, (H + SEA_CELL - 1) // SEA_CELL
+    water_px = ~land
+    pad = np.zeros((gh * SEA_CELL, gw * SEA_CELL), dtype=np.int32)
+    pad[:H, :W] = water_px
+    cnt = pad.reshape(gh, SEA_CELL, gw, SEA_CELL).sum(axis=(1, 3))
+    grid = cnt >= 2
+    # fecha Suez e Panamá
+    for (lon0, lat0, lon1, lat1) in ((32.0, 29.5, 33.2, 31.4), (-80.6, 8.4, -78.8, 9.8)):
+        xs, ys = project(np.array([lon0, lon1]), np.array([lat0, lat1]))
+        x0, x1 = int(min(xs)) // SEA_CELL, int(max(xs)) // SEA_CELL
+        y0, y1 = int(min(ys)) // SEA_CELL, int(max(ys)) // SEA_CELL
+        # só fecha células cuja maioria é terra
+        for cy in range(max(0, y0), min(gh, y1 + 1)):
+            for cx in range(max(0, x0), min(gw, x1 + 1)):
+                if cnt[cy, cx] < SEA_CELL * SEA_CELL * 0.5:
+                    grid[cy, cx] = False
+    lab, nl = ndi.label(grid, structure=np.ones((3, 3)))
+    if nl:
+        sizes = np.bincount(lab.ravel())
+        sizes[0] = 0
+        grid = lab == int(np.argmax(sizes))
+    return grid
+
+
+sea_grid = build_sea_grid()
+SGH, SGW = sea_grid.shape
+near_water = ndi.binary_dilation(sea_grid, structure=np.ones((3, 3)), iterations=1)
+nports = 0
+for pr in out_provs:
+    pr["port"] = -1
+    if not pr.get("coastal"):
+        continue
+    poly = np.asarray(pr["poly"], dtype=np.float64).reshape(-1, 2)
+    cx = np.clip((poly[:, 0] // SEA_CELL).astype(int), 0, SGW - 1)
+    cy = np.clip((poly[:, 1] // SEA_CELL).astype(int), 0, SGH - 1)
+    ok = near_water[cy, cx]
+    if not ok.any():
+        continue
+    ctr = np.asarray(pr["center"], dtype=np.float64)
+    cand = np.nonzero(ok)[0]
+    k = cand[np.argmin(((poly[cand] - ctr) ** 2).sum(axis=1))]
+    best = None
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            yy, xx = cy[k] + dy, cx[k] + dx
+            if 0 <= yy < SGH and 0 <= xx < SGW and sea_grid[yy, xx]:
+                d = (xx * SEA_CELL + SEA_CELL / 2 - poly[k, 0]) ** 2 + (yy * SEA_CELL + SEA_CELL / 2 - poly[k, 1]) ** 2
+                if best is None or d < best[0]:
+                    best = (d, yy * SGW + xx)
+    if best is not None:
+        pr["port"] = int(best[1])
+        nports += 1
+log("grade marítima %dx%d (%d células de água); portos: %d" % (SGW, SGH, int(sea_grid.sum()), nports))
+
+# ---------------------------------------------------------------------------
 # 8. Validação rápida: autointerseção de polígonos
 # ---------------------------------------------------------------------------
 def self_intersects(poly):
@@ -993,6 +1057,8 @@ world = {
     "start_date": [1836, 1, 1],
     "countries": countries,
     "provinces": out_provs,
+    "sea_grid": {"cell": SEA_CELL, "w": SGW, "h": SGH,
+                 "rows": ["".join("1" if v else "0" for v in row) for row in sea_grid]},
 }
 os.makedirs(os.path.dirname(os.path.abspath(opt.out)), exist_ok=True)
 with open(opt.out, "w") as f:

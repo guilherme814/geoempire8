@@ -42,6 +42,7 @@ const BATTLE_LOSS_PCT := 25      # % do exército inimigo (arredondado p/ cima) 
 const SHIP_COST := 80
 const SHIP_DAYS := 40
 const SHIP_UPKEEP := 3
+const SEA_SPEED := 3             # células da grade por dia
 const SHIP_CAP := 120            # unidades de comércio marítimo por navio por mês
 const PORT_CAP := 40             # capacidade básica por porto (província costeira)
 const PRICE_MIN := 70
@@ -65,6 +66,12 @@ var graph: ProvinceGraph
 var armies: Dictionary = {}      # id -> Army
 var training: Array = []         # [{province, owner, days}]
 var next_army_id: int = 1
+var fleets: Dictionary = {}        # id -> Fleet
+var next_fleet_id: int = 1
+var sea_cell: int = 12             # lado da célula da grade marítima (px do mapa)
+var sea_w: int = 0
+var sea_h: int = 0
+var sea_astar: AStarGrid2D = null
 var wars: Array = []             # [{a, b, days}] com a < b
 var sieges: Dictionary = {}      # província -> {by, days}
 # Mercado mundial: preço (% do base) por recurso, demanda-base e população de referência.
@@ -118,7 +125,158 @@ func _process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 # Carregamento do mundo
 # ---------------------------------------------------------------------------
-func load_world(path: String = WORLD_PATH) -> bool:
+func _load_sea_grid(dict: Dictionary) -> void:
+	sea_astar = null
+	sea_w = 0
+	sea_h = 0
+	if not dict.has("sea_grid"):
+		return
+	var g: Dictionary = dict["sea_grid"]
+	sea_cell = int(g["cell"])
+	sea_w = int(g["w"])
+	sea_h = int(g["h"])
+	var rows: Array = g["rows"]
+	sea_astar = AStarGrid2D.new()
+	sea_astar.region = Rect2i(0, 0, sea_w, sea_h)
+	sea_astar.cell_size = Vector2(1, 1)
+	sea_astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	sea_astar.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	sea_astar.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	sea_astar.update()
+	for y in sea_h:
+		var row: String = rows[y]
+		for x in sea_w:
+			if row[x] != "1":
+				sea_astar.set_point_solid(Vector2i(x, y), true)
+
+
+func is_sea_cell(cell: int) -> bool:
+	if sea_astar == null or cell < 0 or cell >= sea_w * sea_h:
+		return false
+	return not sea_astar.is_point_solid(Vector2i(cell % sea_w, cell / sea_w))
+
+
+func cell_at(world_pos: Vector2) -> int:
+	var x := int(world_pos.x) / sea_cell
+	var y := int(world_pos.y) / sea_cell
+	if x < 0 or y < 0 or x >= sea_w or y >= sea_h:
+		return -1
+	return y * sea_w + x
+
+
+func cell_center(cell: int) -> Vector2:
+	return Vector2(float(cell % sea_w) + 0.5, float(cell / sea_w) + 0.5) * float(sea_cell)
+
+
+## Rota marítima entre células (sem incluir a de partida); vazio se não houver caminho.
+func find_sea_path(from_cell: int, to_cell: int) -> Array[int]:
+	var out: Array[int] = []
+	if sea_astar == null or not is_sea_cell(from_cell) or not is_sea_cell(to_cell) or from_cell == to_cell:
+		return out
+	var pts: Array[Vector2i] = sea_astar.get_id_path(Vector2i(from_cell % sea_w, from_cell / sea_w), Vector2i(to_cell % sea_w, to_cell / sea_w))
+	for i in range(1, pts.size()):
+		out.append(pts[i].y * sea_w + pts[i].x)
+	return out
+
+
+func fleet_eta_days(f: Fleet) -> int:
+	return (f.path.size() + SEA_SPEED - 1) / SEA_SPEED
+
+
+## Navios novos entram na frota parada do dono naquele porto (ou criam uma).
+func _add_ships(pid: int, owner: int, count: int) -> void:
+	var cell: int = provinces[pid].port
+	if cell < 0:
+		return
+	countries[owner].ships += count
+	for id in fleets.keys():
+		var f: Fleet = fleets[id]
+		if f.owner_id == owner and f.cell == cell and not f.is_moving():
+			f.ships += count
+			Events.fleet_changed.emit(f.id)
+			return
+	var n := Fleet.new()
+	n.id = next_fleet_id
+	next_fleet_id += 1
+	n.owner_id = owner
+	n.ships = count
+	n.cell = cell
+	fleets[n.id] = n
+	Events.fleet_changed.emit(n.id)
+
+
+## Navegação, fusão de frotas paradas e batalhas navais (mesma célula, países em guerra).
+@warning_ignore("integer_division")
+func _advance_fleets() -> void:
+	if fleets.is_empty():
+		return
+	var ids: Array = fleets.keys()
+	ids.sort()
+	for id in ids:
+		var f: Fleet = fleets[id]
+		var steps := SEA_SPEED
+		while steps > 0 and not f.path.is_empty():
+			f.cell = f.path[0]
+			f.path.remove_at(0)
+			steps -= 1
+		Events.fleet_changed.emit(f.id)
+	# fusão e batalhas por célula
+	var by_cell := {}
+	for id in ids:
+		if not fleets.has(id):
+			continue
+		var f: Fleet = fleets[id]
+		if not by_cell.has(f.cell):
+			by_cell[f.cell] = []
+		by_cell[f.cell].append(f)
+	var cells: Array = by_cell.keys()
+	cells.sort()
+	for cell in cells:
+		var list: Array = by_cell[cell]
+		for i in list.size():
+			for j in range(i + 1, list.size()):
+				var x: Fleet = list[i]
+				var y: Fleet = list[j]
+				if x.ships <= 0 or y.ships <= 0:
+					continue
+				if x.owner_id == y.owner_id:
+					if not x.is_moving() and not y.is_moving():
+						x.ships += y.ships
+						y.ships = 0
+					continue
+				if not at_war(x.owner_id, y.owner_id):
+					continue
+				var loss_x := (y.ships * BATTLE_LOSS_PCT + 99) / 100
+				var loss_y := (x.ships * BATTLE_LOSS_PCT + 99) / 100
+				if x.ships == y.ships:
+					if rng.randi_range(0, 1) == 0:
+						loss_y = 0
+					else:
+						loss_x = 0
+				loss_x = mini(loss_x, x.ships)
+				loss_y = mini(loss_y, y.ships)
+				x.ships -= loss_x
+				y.ships -= loss_y
+				countries[x.owner_id].ships = maxi(0, countries[x.owner_id].ships - loss_x)
+				countries[y.owner_id].ships = maxi(0, countries[y.owner_id].ships - loss_y)
+	for id in ids:
+		var f: Fleet = fleets[id]
+		if f.ships <= 0:
+			fleets.erase(id)
+			Events.fleet_removed.emit(id)
+
+
+func fleets_of(cid: int) -> Array:
+	var out: Array = []
+	var ids: Array = fleets.keys()
+	ids.sort()
+	for id in ids:
+		if (fleets[id] as Fleet).owner_id == cid:
+			out.append(fleets[id])
+	return out
+
+
+func _advance_armies() -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_error("GeoEmpire: não foi possível abrir %s" % path)
@@ -135,6 +293,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	countries.clear()
 	provinces.clear()
 	armies.clear()
+	fleets.clear()
+	next_fleet_id = 1
 	training.clear()
 	wars.clear()
 	sieges.clear()
@@ -143,6 +303,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	truces.clear()
 	embargoes.clear()
 	next_army_id = 1
+	_load_sea_grid(dict)
 	pending_events.clear()
 	fired_events.clear()
 	next_event_uid = 1
@@ -285,6 +446,23 @@ func apply_command(cmd: Dictionary) -> void:
 		if not found:
 			return
 		Events.game_event_changed.emit()
+
+	elif t == Cmd.MOVE_FLEET:
+		var f: Fleet = fleets.get(int(cmd.get("fleet", -1)))
+		if f == null or f.owner_id != issuer:
+			return
+		var to_cell: int = int(cmd.get("cell", -1))
+		if not is_sea_cell(to_cell):
+			return
+		f.path = find_sea_path(f.cell, to_cell)
+		Events.fleet_changed.emit(f.id)
+
+	elif t == Cmd.STOP_FLEET:
+		var f2: Fleet = fleets.get(int(cmd.get("fleet", -1)))
+		if f2 == null or f2.owner_id != issuer:
+			return
+		f2.path.clear()
+		Events.fleet_changed.emit(f2.id)
 
 	elif t == Cmd.BUILD_SHIP:
 		var pid: int = int(cmd.get("province", -1))
@@ -433,7 +611,7 @@ func can_build_ship(pid: int, issuer: int) -> bool:
 	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
 		return false
 	var p := provinces[pid]
-	return p.owner_id == issuer and p.coastal and countries[issuer].treasury >= SHIP_COST
+	return p.owner_id == issuer and p.port >= 0 and countries[issuer].treasury >= SHIP_COST
 
 
 ## Capacidade de comércio marítimo: portos + navios; inimigos com mais navios bloqueiam.
@@ -712,6 +890,7 @@ func _simulate_day() -> void:
 	var month_rolled := clock.advance_day()
 	_advance_training()
 	_advance_armies()
+	_advance_fleets()
 	_advance_war()
 	_advance_ai()
 	_advance_events()
@@ -729,7 +908,7 @@ func _advance_training() -> void:
 		t["days"] = int(t["days"]) - 1
 		if int(t["days"]) <= 0:
 			if str(t.get("kind", "reg")) == "ship":
-				countries[int(t["owner"])].ships += 1
+				_add_ships(int(t["province"]), int(t["owner"]), 1)
 			else:
 				_add_regiments(int(t["province"]), int(t["owner"]), 1)
 			Events.province_updated.emit(int(t["province"]))
@@ -1447,6 +1626,16 @@ func state_hash() -> int:
 		h = _mix(h, a.regiments)
 		h = _mix(h, a.move_left)
 		h = _mix(h, a.path.size())
+	h = _mix(h, next_fleet_id)
+	var fids: Array = fleets.keys()
+	fids.sort()
+	for id in fids:
+		var fl: Fleet = fleets[id]
+		h = _mix(h, fl.id)
+		h = _mix(h, fl.owner_id)
+		h = _mix(h, fl.ships)
+		h = _mix(h, fl.cell)
+		h = _mix(h, fl.path.size())
 	for w in wars:
 		h = _mix(h, int(w["a"]) * 1000 + int(w["b"]))
 		h = _mix(h, int(w["days"]))
@@ -1498,6 +1687,15 @@ func _prices_to_lists() -> Array:
 		for g in goods_list():
 			row.append(int(tbl.get(g, 100)))
 		out.append(row)
+	return out
+
+
+func _fleets_to_list() -> Array:
+	var out: Array = []
+	var ids: Array = fleets.keys()
+	ids.sort()
+	for id in ids:
+		out.append((fleets[id] as Fleet).to_dict())
 	return out
 
 
@@ -1580,6 +1778,8 @@ func serialize_state() -> Dictionary:
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
 		"next_army_id": next_army_id,
+		"fleets": _fleets_to_list(),
+		"next_fleet_id": next_fleet_id,
 		"events": pending_events.duplicate(true),
 		"fired": fired_events.keys(),
 		"next_event_uid": next_event_uid,
@@ -1629,6 +1829,11 @@ func load_state(d: Dictionary) -> bool:
 	for t in raw_training:
 		training.append({"province": int(t["province"]), "owner": int(t["owner"]), "days": int(t["days"]), "kind": str(t.get("kind", "reg"))})
 	next_army_id = int(d.get("next_army_id", 1))
+	fleets.clear()
+	for fd in d.get("fleets", []):
+		var fl := Fleet.from_dict(fd)
+		fleets[fl.id] = fl
+	next_fleet_id = int(d.get("next_fleet_id", 1))
 	wars.clear()
 	for w in d.get("wars", []):
 		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
@@ -1642,9 +1847,12 @@ func load_state(d: Dictionary) -> bool:
 		for g in gl:
 			market_dem[g] = int(mk["dem"].get(g, 0))
 		market_pop0 = maxi(1, int(mk.get("pop0", 1)))
-	var sh: Array = d.get("ships", [])
-	for i in countries.size():
-		countries[i].ships = int(sh[i]) if i < sh.size() else 0
+	for c in countries:
+		c.ships = 0
+	for id in fleets.keys():
+		var fl2: Fleet = fleets[id]
+		if fl2.owner_id >= 0 and fl2.owner_id < countries.size():
+			countries[fl2.owner_id].ships += fl2.ships
 	embargoes.clear()
 	for k in d.get("embargoes", []):
 		embargoes.append(int(k))

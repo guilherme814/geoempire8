@@ -24,6 +24,8 @@ const CHOOSE_EVENT := "choose_event"
 const IMPROVE_RELATIONS := "improve_relations"
 const PROPOSE_ALLIANCE := "propose_alliance"
 const BREAK_ALLIANCE := "break_alliance"
+const MOVE_FLEET := "move_fleet"
+const STOP_FLEET := "stop_fleet"
 const BUILD_SHIP := "build_ship"
 const EMBARGO := "embargo"
 const LIFT_EMBARGO := "lift_embargo"
@@ -106,3 +108,12 @@ static func embargo(target: int) -> Dictionary:
 
 static func lift_embargo(target: int) -> Dictionary:
 	return {"type": LIFT_EMBARGO, "target": target}
+
+
+## Manda a frota navegar até uma célula do mar (índice y * sea_w + x).
+static func move_fleet(fleet: int, to_cell: int) -> Dictionary:
+	return {"type": MOVE_FLEET, "fleet": fleet, "cell": to_cell}
+
+
+static func stop_fleet(fleet: int) -> Dictionary:
+	return {"type": STOP_FLEET, "fleet": fleet}

@@ -37,6 +37,7 @@ const FACTORIES := {
 
 var id: int = 0
 var name: String = ""
+var port: int = -1                                 # célula marítima do porto (-1 = sem porto)
 var factory: String = ""                            # "" ou chave de FACTORIES
 var factory_level: int = 0
 var city: String = ""                               # cidade-sede (município principal)
@@ -90,6 +91,7 @@ static func from_dict(d: Dictionary) -> Province:
 	p.resource_type = str(d["resource"])
 	p.coastal = bool(d["coastal"])
 	p.population = int(d["pop"])
+	p.port = int(d.get("port", -1))
 	p.city = str(d.get("city", ""))
 	p.capital_city = bool(d.get("capital_city", false))
 	p.owner_id = int(d["owner"])

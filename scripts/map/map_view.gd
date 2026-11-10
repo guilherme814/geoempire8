@@ -257,19 +257,23 @@ func _draw() -> void:
 	if mode == Mode.POLITICAL:
 		_draw_graticule(z)
 		_draw_ocean_labels(z)
-	draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, 0.35), -1.0)          # 1 px fixo na tela
-	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.6 / z)
+	# Divisões internas só aparecem com zoom (fade entre 1,2x e 2,4x): mapa limpo de longe.
+	var prov_alpha := clampf((z - 1.2) / 1.2, 0.0, 1.0) * 0.35
+	if prov_alpha > 0.01:
+		draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, prov_alpha), -1.0)          # 1 px fixo na tela
+	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.2 / z)
 	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
 	if mode == Mode.POLITICAL:
-		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
+		if z >= 2.0:
+			draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
 		if z <= 3.0:
 			_draw_country_labels(z)
 
 
 const OCEAN_NAMES := [
-	["OCEANO ATLÂNTICO", 0.375, 0.34], ["OCEANO ATLÂNTICO", 0.43, 0.66],
-	["OCEANO PACÍFICO", 0.075, 0.60], ["OCEANO PACÍFICO", 0.93, 0.40],
-	["OCEANO ÍNDICO", 0.665, 0.66], ["OCEANO ÁRTICO", 0.5, 0.025],
+	["ATLÂNTICO", 0.41, 0.34], ["ATLÂNTICO", 0.47, 0.72],
+	["PACÍFICO", 0.115, 0.60], ["PACÍFICO", 0.955, 0.50],
+	["ÍNDICO", 0.69, 0.66], ["ÁRTICO", 0.5, 0.03],
 ]
 
 
@@ -295,24 +299,36 @@ static func _miller(lat_deg: float) -> float:
 func _draw_ocean_labels(z: float) -> void:
 	if z > 2.5:
 		return
-	var fs := clampi(int(34.0 / z), 14, 60)
+	var fs := clampi(int(22.0 / z), 12, 44)
 	for o in OCEAN_NAMES:
 		var text: String = o[0]
 		var pos := Vector2(float(o[1]) * Game.map_size.x, float(o[2]) * Game.map_size.y)
 		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.35, 0.45, 0.55))
+		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.35, 0.45, 0.5))
 
 
 func _draw_country_labels(z: float) -> void:
 	for c in Game.countries:
 		if not c.is_alive():
 			continue
-		# Mantém o texto com no máximo ~64 px na tela; some se ficar minúsculo.
-		var fs := mini(c.label_size, int(64.0 / z))
-		if float(fs) * z < 9.0:
-			continue
+		var fs := mini(c.label_size, int(40.0 / z))
 		var text := c.name.to_upper()
 		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		# Cabe dentro do país: reduz a fonte; se ficar ilegível, tenta a sigla; senão some.
+		var max_w := maxf(c.bounds.size.x * 0.85, 1.0)
+		if ts.x > max_w:
+			fs = int(float(fs) * max_w / ts.x)
+			if float(fs) * z < 11.0:
+				text = c.tag
+				fs = mini(c.label_size, int(40.0 / z))
+				ts = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+				if ts.x > max_w:
+					fs = int(float(fs) * max_w / ts.x)
+			else:
+				ts = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		if float(fs) * z < 9.0:
+			continue
+		ts = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 		var pos := c.label_pos - Vector2(ts.x * 0.5, -ts.y * 0.3)
 		draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.12)), Color(0, 0, 0, 0.65))
 		draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))

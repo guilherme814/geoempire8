@@ -86,6 +86,8 @@ func _fleet_layout() -> Array:
 	ids.sort()
 	for id in ids:
 		var f: Fleet = Game.fleets[id]
+		if not _show_owner(f.owner_id):
+			continue
 		if not by_cell.has(f.cell):
 			by_cell[f.cell] = []
 		by_cell[f.cell].append(f.id)
@@ -111,6 +113,13 @@ func _draw_ship_icon(r: Rect2, col: Color, z: float) -> void:
 	draw_colored_polygon(PackedVector2Array([base + Vector2(3, -13) * u, base + Vector2(9, -8) * u, base + Vector2(3, -8) * u]), col.lightened(0.35))
 
 
+## De longe, só mostra o que importa (seus exércitos/frotas e os de países em guerra com você).
+func _show_owner(owner: int) -> bool:
+	if zoom_level >= 2.0:
+		return true
+	return owner == Game.player_country or Game.at_war(Game.player_country, owner)
+
+
 ## Posições dos marcadores: exércitos na mesma província ficam lado a lado.
 func _layout() -> Array:
 	var z := maxf(zoom_level, 0.05)
@@ -119,6 +128,8 @@ func _layout() -> Array:
 	var by_prov := {}
 	for id in Game.armies.keys():
 		var a: Army = Game.armies[id]
+		if not _show_owner(a.owner_id):
+			continue
 		if not by_prov.has(a.province_id):
 			by_prov[a.province_id] = []
 		by_prov[a.province_id].append(a.id)

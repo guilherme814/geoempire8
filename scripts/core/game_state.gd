@@ -1584,7 +1584,7 @@ func _refresh_country_geometry(c: Country) -> void:
 			best = pid
 	c.bounds = rect
 	c.label_pos = provinces[best].center
-	c.label_size = clampi(int(rect.size.x * 0.14), 14, 64)
+	c.label_size = clampi(int(rect.size.x * 0.10), 12, 48)
 
 	if c.capital < 0 or c.capital >= provinces.size() or provinces[c.capital].owner_id != c.id:
 		c.capital = _most_populous(c)

@@ -122,8 +122,15 @@ static func from_dict(d: Dictionary) -> Province:
 	return p
 
 
-## Preço de mercado (% do preço-base) de cada recurso; preenchido pelo Game (mercado mundial).
-static var price_pct: Dictionary = {}
+## Preços locais (% do preço-base) de cada país, indexados pelo id do dono; preenchido pelo Game.
+static var country_prices: Array = []
+
+
+## Preço de mercado de um bem no país dono desta província.
+func price_of(good: String) -> int:
+	if owner_id >= 0 and owner_id < country_prices.size():
+		return int(country_prices[owner_id].get(good, 100))
+	return 100
 
 
 ## Unidades do recurso produzidas por mês: população x terreno, com bônus de oficina.
@@ -137,7 +144,7 @@ func units() -> int:
 @warning_ignore("integer_division")
 func production() -> int:
 	var price: int = RESOURCE_PRICE.get(resource_type, 10)
-	var pct: int = int(price_pct.get(resource_type, 100))
+	var pct: int = price_of(resource_type)
 	return units() * price * pct / 10000
 
 
@@ -157,10 +164,6 @@ static func base_price(good: String) -> int:
 	return int(RESOURCE_PRICE.get(good, PROCESSED.get(good, 10)))
 
 
-static func market_pct(good: String) -> int:
-	return int(price_pct.get(good, 100))
-
-
 ## Lucro mensal da fábrica: receita dos produtos - custo dos insumos (a preço de mercado).
 @warning_ignore("integer_division")
 func factory_profit() -> int:
@@ -168,11 +171,11 @@ func factory_profit() -> int:
 		return 0
 	var f: Dictionary = FACTORIES[factory]
 	var out: String = f["out"]
-	var revenue: int = int(f["amount"]) * factory_level * base_price(out) * market_pct(out) / 10000
+	var revenue: int = int(f["amount"]) * factory_level * base_price(out) * price_of(out) / 10000
 	var cost := 0
 	var ins: Dictionary = f["inputs"]
 	for g in ins.keys():
-		cost += int(ins[g]) * factory_level * base_price(g) * market_pct(g) / 10000
+		cost += int(ins[g]) * factory_level * base_price(g) * price_of(g) / 10000
 	return revenue - cost
 
 

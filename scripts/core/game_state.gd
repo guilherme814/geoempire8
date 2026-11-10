@@ -38,6 +38,16 @@ const WAR_MIN_DAYS := 30         # dias de guerra antes de poder pedir paz
 const SIEGE_DAYS := 10           # dias de ocupação até a província mudar de dono
 const BATTLE_LOSS_PCT := 25      # % do exército inimigo (arredondado p/ cima) perdido por dia de batalha
 
+# Marinha e comércio
+const SHIP_COST := 80
+const SHIP_DAYS := 40
+const SHIP_UPKEEP := 3
+const SHIP_CAP := 120            # unidades de comércio marítimo por navio por mês
+const PORT_CAP := 40             # capacidade básica por porto (província costeira)
+const PRICE_MIN := 70
+const PRICE_MAX := 140
+const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor importado
+
 # Diplomacia
 const IMPROVE_COST := 50
 const ALLIANCE_MIN_OPINION := 40
@@ -58,7 +68,11 @@ var next_army_id: int = 1
 var wars: Array = []             # [{a, b, days}] com a < b
 var sieges: Dictionary = {}      # província -> {by, days}
 # Mercado mundial: preço (% do base) por recurso, demanda-base e população de referência.
-var market_price: Dictionary = {}
+var local_price: Array = []        # por país: {bem -> % do preço-base}
+var embargoes: Array = []          # emissor*1000+alvo
+var trade_imp: Array = []          # por país: {bem -> unidades} (derivado, mostra o último mês)
+var trade_exp: Array = []
+var trade_bonus: Array = []
 var market_dem: Dictionary = {}
 var market_pop0: int = 1
 var relations: Dictionary = {}   # par -> opinião (-100..100)
@@ -127,6 +141,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	relations.clear()
 	alliances.clear()
 	truces.clear()
+	embargoes.clear()
 	next_army_id = 1
 	pending_events.clear()
 	fired_events.clear()
@@ -271,6 +286,32 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		Events.game_event_changed.emit()
 
+	elif t == Cmd.BUILD_SHIP:
+		var pid: int = int(cmd.get("province", -1))
+		if not can_build_ship(pid, issuer):
+			return
+		countries[issuer].treasury -= SHIP_COST
+		training.append({"province": pid, "owner": issuer, "days": SHIP_DAYS, "kind": "ship"})
+		Events.province_updated.emit(pid)
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.EMBARGO:
+		var target: int = int(cmd.get("target", -1))
+		if not can_embargo(issuer, target):
+			return
+		embargoes.append(issuer * 1000 + target)
+		relations[_pair(issuer, target)] = opinion(issuer, target) - 15
+		if target == player_country:
+			Events.notice.emit("%s decretou embargo contra você!" % countries[issuer].name)
+		Events.war_changed.emit()
+
+	elif t == Cmd.LIFT_EMBARGO:
+		var target: int = int(cmd.get("target", -1))
+		if not embargoes.has(issuer * 1000 + target):
+			return
+		embargoes.erase(issuer * 1000 + target)
+		Events.war_changed.emit()
+
 	elif t == Cmd.DECLARE_WAR:
 		var target: int = int(cmd.get("target", -1))
 		if not can_declare_war(issuer, target):
@@ -368,6 +409,48 @@ func allies_of(cid: int) -> Array:
 			out.append(lo)
 	out.sort()
 	return out
+
+
+func trade_blocked(a: int, b: int) -> bool:
+	return at_war(a, b) or embargoes.has(a * 1000 + b) or embargoes.has(b * 1000 + a)
+
+
+func can_embargo(issuer: int, target: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	return countries[target].is_alive() and not embargoes.has(issuer * 1000 + target)
+
+
+func ports_of(cid: int) -> int:
+	var n := 0
+	for pid in countries[cid].province_ids:
+		if provinces[pid].coastal:
+			n += 1
+	return n
+
+
+func can_build_ship(pid: int, issuer: int) -> bool:
+	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
+		return false
+	var p := provinces[pid]
+	return p.owner_id == issuer and p.coastal and countries[issuer].treasury >= SHIP_COST
+
+
+## Capacidade de comércio marítimo: portos + navios; inimigos com mais navios bloqueiam.
+func sea_capacity(cid: int) -> int:
+	var enemy_ships := 0
+	for o in wars_of(cid):
+		enemy_ships += countries[o].ships
+	var mine: int = countries[cid].ships
+	var base: int = 0 if enemy_ships > mine else ports_of(cid) * PORT_CAP
+	return base + maxi(0, mine - enemy_ships) * SHIP_CAP
+
+
+func is_blockaded(cid: int) -> bool:
+	var enemy_ships := 0
+	for o in wars_of(cid):
+		enemy_ships += countries[o].ships
+	return enemy_ships > countries[cid].ships
 
 
 func can_improve(issuer: int, target: int) -> bool:
@@ -476,7 +559,7 @@ func transfer_province(pid: int, to_country: int) -> void:
 func queued_in(pid: int) -> int:
 	var n := 0
 	for t in training:
-		if int(t["province"]) == pid:
+		if int(t["province"]) == pid and str(t.get("kind", "reg")) != "ship":
 			n += 1
 	return n
 
@@ -645,7 +728,10 @@ func _advance_training() -> void:
 	for t in training:
 		t["days"] = int(t["days"]) - 1
 		if int(t["days"]) <= 0:
-			_add_regiments(int(t["province"]), int(t["owner"]), 1)
+			if str(t.get("kind", "reg")) == "ship":
+				countries[int(t["owner"])].ships += 1
+			else:
+				_add_regiments(int(t["province"]), int(t["owner"]), 1)
 			Events.province_updated.emit(int(t["province"]))
 		else:
 			remaining.append(t)
@@ -691,6 +777,7 @@ func _advance_ai() -> void:
 			continue
 		if tick % 30 == 0:
 			_ai_recruit(c)
+			_ai_build_ship(c)
 			_ai_declare_war(c)
 		if not wars_of(c.id).is_empty():
 			_ai_war(c)
@@ -750,10 +837,26 @@ func _ai_declare_war(c: Country) -> void:
 	_start_war(c.id, best)
 
 
+func _ai_build_ship(c: Country) -> void:
+	var ports := ports_of(c.id)
+	var want: int = mini(ports / 6, 8)
+	var queued := 0
+	for t in training:
+		if int(t["owner"]) == c.id and str(t.get("kind", "reg")) == "ship":
+			queued += 1
+	if c.ships + queued >= want or c.treasury < SHIP_COST + 200:
+		return
+	for pid in c.province_ids:
+		if can_build_ship(pid, c.id):
+			countries[c.id].treasury -= SHIP_COST
+			training.append({"province": pid, "owner": c.id, "days": SHIP_DAYS, "kind": "ship"})
+			return
+
+
 func _queued_for(cid: int) -> int:
 	var n := 0
 	for t in training:
-		if int(t["owner"]) == cid:
+		if int(t["owner"]) == cid and str(t.get("kind", "reg")) != "ship":
 			n += 1
 	return n
 
@@ -899,7 +1002,8 @@ func _simulate_month() -> void:
 		var mx := p.manpower_max()
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
-	# Economia: impostos - manutenção (províncias e regimentos).
+	_run_trade()
+	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
 	for c in countries:
 		if not c.is_alive():
 			continue
@@ -912,7 +1016,6 @@ func _simulate_month() -> void:
 		if at_war(int(k) / 1000, int(k) % 1000):
 			continue
 		relations[k] = v - signi(v) * mini(absi(v), 2)
-	_update_market()
 	_roll_events()
 	Events.month_changed.emit(clock.to_dict())
 	for c in countries:
@@ -1047,9 +1150,12 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var up_army: int = regs * REGIMENT_UPKEEP
+	var up_navy: int = c.ships * SHIP_UPKEEP
+	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
 	return {
-		"income": tax + industry, "industry": industry, "expense": up_prov + up_army, "regiments": regs,
-		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army,
+		"income": tax + industry + trade, "industry": industry, "trade": trade,
+		"expense": up_prov + up_army + up_navy, "regiments": regs,
+		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
 
@@ -1092,18 +1198,6 @@ func market_supply() -> Dictionary:
 	return sup
 
 
-## Insumos que as fábricas do mundo querem comprar por mês (somam à demanda dos recursos).
-func factory_input_demand() -> Dictionary:
-	var dem := {}
-	for p in provinces:
-		if p.owner_id < 0 or p.factory == "" or p.factory_level <= 0:
-			continue
-		var ins: Dictionary = Province.FACTORIES[p.factory]["inputs"]
-		for g in ins.keys():
-			dem[g] = int(dem.get(g, 0)) + int(ins[g]) * p.factory_level
-	return dem
-
-
 func market_population() -> int:
 	var n := 0
 	for p in provinces:
@@ -1112,32 +1206,145 @@ func market_population() -> int:
 	return maxi(1, n)
 
 
-func market_demand(g: String, fin: Dictionary = {}) -> int:
-	var extra: Dictionary = fin if not fin.is_empty() else factory_input_demand()
-	return int(market_dem.get(g, 0)) * market_population() / market_pop0 + int(extra.get(g, 0))
-
-
 func _init_market() -> void:
-	market_price.clear()
 	market_dem.clear()
 	var sup := market_supply()
 	for g in goods_list():
-		market_price[g] = 100
 		# bens processados começam sem oferta: demanda-base fixa cria escassez e lucro
 		market_dem[g] = 3000 if Province.PROCESSED.has(g) else int(sup[g])
 	market_pop0 = market_population()
-	Province.price_pct = market_price
+	local_price.clear()
+	trade_imp.clear()
+	trade_exp.clear()
+	trade_bonus.clear()
+	for c in countries:
+		var tbl := {}
+		for g in goods_list():
+			tbl[g] = 100
+		local_price.append(tbl)
+		trade_imp.append({})
+		trade_exp.append({})
+		trade_bonus.append(0)
+	Province.country_prices = local_price
 
 
+## Oferta e demanda locais de cada país: [sup, dem, ports, pops] (listas por id de país).
 @warning_ignore("integer_division")
-func _update_market() -> void:
-	var sup := market_supply()
-	var fin := factory_input_demand()
-	for g in goods_list():
-		var s: int = int(sup[g])
-		var d: int = market_demand(g, fin)
-		var delta: int = (d - s) * 20 / maxi(1, maxi(s, d))
-		market_price[g] = clampi(int(market_price[g]) + delta, 40, 250)
+func market_tables() -> Array:
+	var n := countries.size()
+	var goods := goods_list()
+	var sup: Array = []
+	var dem: Array = []
+	var pops: Array = []
+	for i in n:
+		var sd := {}
+		var dd := {}
+		for g in goods:
+			sd[g] = 0
+			dd[g] = 0
+		sup.append(sd)
+		dem.append(dd)
+		pops.append(0)
+	for p in provinces:
+		var o := p.owner_id
+		if o < 0 or o >= n:
+			continue
+		pops[o] += p.population
+		if sup[o].has(p.resource_type):
+			sup[o][p.resource_type] += p.units()
+		if p.factory != "" and p.factory_level > 0:
+			var f: Dictionary = Province.FACTORIES[p.factory]
+			sup[o][f["out"]] += int(f["amount"]) * p.factory_level
+			var ins: Dictionary = f["inputs"]
+			for g in ins.keys():
+				dem[o][g] += int(ins[g]) * p.factory_level
+	for i in n:
+		for g in goods:
+			dem[i][g] += int(market_dem[g]) * int(pops[i]) / market_pop0
+	return [sup, dem, pops]
+
+
+## Comércio mensal: cada país com déficit de um bem compra de quem tem sobra. Vizinhos por
+## terra comerciam livre; por mar gasta capacidade (portos + navios) dos DOIS lados. Guerra e
+## embargo bloqueiam. Depois, o preço local se ajusta ao saldo e o comércio rende ouro:
+## exportador vende ao preço do comprador; importador ganha tarifas.
+@warning_ignore("integer_division")
+func _run_trade() -> void:
+	var n := countries.size()
+	var goods := goods_list()
+	var tb := market_tables()
+	var sup: Array = tb[0]
+	var dem: Array = tb[1]
+
+	var adj := {}
+	for p in provinces:
+		var a := p.owner_id
+		if a < 0:
+			continue
+		for nb in p.neighbors:
+			var b := provinces[int(nb)].owner_id
+			if b >= 0 and b != a:
+				adj[a * 1000 + b] = true
+	var cap: Array = []
+	for i in n:
+		cap.append(sea_capacity(i) if countries[i].is_alive() else 0)
+
+	trade_imp.clear()
+	trade_exp.clear()
+	trade_bonus.clear()
+	for i in n:
+		trade_imp.append({})
+		trade_exp.append({})
+		trade_bonus.append(0)
+
+	for g in goods:
+		var avail: Array = []
+		var exporters: Array = []
+		for e in n:
+			var surplus: int = int(sup[e][g]) - int(dem[e][g])
+			avail.append(maxi(0, surplus))
+			if surplus > 0:
+				exporters.append(e)
+		if exporters.is_empty():
+			continue
+		var base := Province.base_price(g)
+		for i in n:
+			var need: int = int(dem[i][g]) - int(sup[i][g])
+			if need <= 0:
+				continue
+			for by_sea in [false, true]:
+				if need <= 0:
+					break
+				for e in exporters:
+					if need <= 0:
+						break
+					if e == i or int(avail[e]) <= 0 or trade_blocked(i, e):
+						continue
+					var land: bool = adj.has(i * 1000 + e) or adj.has(e * 1000 + i)
+					if land == by_sea:
+						continue
+					var q: int = mini(need, int(avail[e]))
+					if not land:
+						q = mini(q, mini(int(cap[i]), int(cap[e])))
+						if q <= 0:
+							continue
+						cap[i] = int(cap[i]) - q
+						cap[e] = int(cap[e]) - q
+					need -= q
+					avail[e] = int(avail[e]) - q
+					trade_imp[i][g] = int(trade_imp[i].get(g, 0)) + q
+					trade_exp[e][g] = int(trade_exp[e].get(g, 0)) + q
+					var pi: int = int(local_price[i][g])
+					var pe: int = int(local_price[e][g])
+					trade_bonus[e] = int(trade_bonus[e]) + q * base * (pi - pe) / 10000
+					trade_bonus[i] = int(trade_bonus[i]) + q * base * pi / 10000 * TRADE_TARIFF_PCT / 100
+
+	for i in n:
+		for g in goods:
+			var s: int = int(sup[i][g]) - int(trade_exp[i].get(g, 0)) + int(trade_imp[i].get(g, 0))
+			var d: int = int(dem[i][g])
+			var delta: int = (d - s) * 8 / maxi(1, maxi(s, d))
+			local_price[i][g] = clampi(int(local_price[i][g]) + delta, PRICE_MIN, PRICE_MAX)
 
 
 func _rebuild_all_countries() -> void:
@@ -1248,8 +1455,9 @@ func state_hash() -> int:
 	for pid in sk:
 		h = _mix(h, int(pid))
 		h = _mix(h, int(sieges[pid]["by"]) * 100 + int(sieges[pid]["days"]))
-	for g in goods_list():
-		h = _mix(h, int(market_price.get(g, 100)))
+	for tbl in local_price:
+		for g in goods_list():
+			h = _mix(h, int(tbl.get(g, 100)))
 	var rk: Array = relations.keys()
 	rk.sort()
 	for k in rk:
@@ -1266,6 +1474,11 @@ func state_hash() -> int:
 		h = _mix(h, int(t["province"]))
 		h = _mix(h, int(t["owner"]))
 		h = _mix(h, int(t["days"]))
+		h = _mix(h, 1 if str(t.get("kind", "reg")) == "ship" else 0)
+	for c in countries:
+		h = _mix(h, c.ships)
+	for k in embargoes:
+		h = _mix(h, int(k))
 	for e in pending_events:
 		h = _mix(h, int(e["uid"]))
 		h = _mix(h, int(e["days"]))
@@ -1276,6 +1489,23 @@ func state_hash() -> int:
 
 func _mix(h: int, v: int) -> int:
 	return ((h ^ (v & 0xFFFFFFFF)) * 16777619) & 0xFFFFFFFF
+
+
+func _prices_to_lists() -> Array:
+	var out: Array = []
+	for tbl in local_price:
+		var row: Array = []
+		for g in goods_list():
+			row.append(int(tbl.get(g, 100)))
+		out.append(row)
+	return out
+
+
+func _ships_list() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.ships)
+	return out
 
 
 func _dict_to_pairs(d: Dictionary) -> Array:
@@ -1344,7 +1574,9 @@ func serialize_state() -> Dictionary:
 		"wars": wars.duplicate(true),
 		"sieges": _sieges_to_list(),
 		"relations": _dict_to_pairs(relations),
-		"market": {"price": market_price.duplicate(), "dem": market_dem.duplicate(), "pop0": market_pop0},
+		"market": {"price": _prices_to_lists(), "dem": market_dem.duplicate(), "pop0": market_pop0},
+		"ships": _ships_list(),
+		"embargoes": embargoes.duplicate(),
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
 		"next_army_id": next_army_id,
@@ -1395,17 +1627,27 @@ func load_state(d: Dictionary) -> bool:
 	training.clear()
 	var raw_training: Array = d.get("training", [])
 	for t in raw_training:
-		training.append({"province": int(t["province"]), "owner": int(t["owner"]), "days": int(t["days"])})
+		training.append({"province": int(t["province"]), "owner": int(t["owner"]), "days": int(t["days"]), "kind": str(t.get("kind", "reg"))})
 	next_army_id = int(d.get("next_army_id", 1))
 	wars.clear()
 	for w in d.get("wars", []):
 		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
 	if d.has("market"):
 		var mk: Dictionary = d["market"]
-		for g in goods_list():
-			market_price[g] = int(mk["price"].get(g, 100))
+		var gl := goods_list()
+		var rows: Array = mk.get("price", [])
+		for i in mini(rows.size(), local_price.size()):
+			for j in gl.size():
+				local_price[i][gl[j]] = int(rows[i][j]) if j < rows[i].size() else 100
+		for g in gl:
 			market_dem[g] = int(mk["dem"].get(g, 0))
 		market_pop0 = maxi(1, int(mk.get("pop0", 1)))
+	var sh: Array = d.get("ships", [])
+	for i in countries.size():
+		countries[i].ships = int(sh[i]) if i < sh.size() else 0
+	embargoes.clear()
+	for k in d.get("embargoes", []):
+		embargoes.append(int(k))
 	relations.clear()
 	for r in d.get("relations", []):
 		relations[int(r[0])] = int(r[1])

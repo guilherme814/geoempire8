@@ -24,6 +24,9 @@ const CHOOSE_EVENT := "choose_event"
 const IMPROVE_RELATIONS := "improve_relations"
 const PROPOSE_ALLIANCE := "propose_alliance"
 const BREAK_ALLIANCE := "break_alliance"
+const BUILD_SHIP := "build_ship"
+const EMBARGO := "embargo"
+const LIFT_EMBARGO := "lift_embargo"
 const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
@@ -89,3 +92,17 @@ static func propose_alliance(target: int) -> Dictionary:
 
 static func break_alliance(target: int) -> Dictionary:
 	return {"type": BREAK_ALLIANCE, "target": target}
+
+
+## Constrói 1 navio em um porto (província costeira própria).
+static func build_ship(province: int) -> Dictionary:
+	return {"type": BUILD_SHIP, "province": province}
+
+
+## Embargo: proíbe todo comércio entre o emissor e o alvo (nos dois sentidos).
+static func embargo(target: int) -> Dictionary:
+	return {"type": EMBARGO, "target": target}
+
+
+static func lift_embargo(target: int) -> Dictionary:
+	return {"type": LIFT_EMBARGO, "target": target}

@@ -53,6 +53,8 @@ var _btn_annex: Button
 var _btn_war: Button
 var _btn_improve: Button
 var _btn_ally: Button
+var _btn_embargo: Button
+var _btn_ship: Button
 
 var _army_box: VBoxContainer
 var _army_label: Label
@@ -245,9 +247,22 @@ func _refresh_economy() -> void:
 	lines.append("Taxa de imposto: %d%%   Províncias: %d" % [c.tax_pct, c.province_ids.size()])
 	lines.append("")
 	lines.append("Produção bruta: %d/mês" % int(e["production"]))
-	lines.append("Receita: %+d  (impostos %d%% + base %d, indústria %+d)" % [int(e["income"]), c.tax_pct, int(e["flat"]), int(e["industry"])])
+	lines.append("Receita: %+d  (impostos %d%% + base %d, indústria %+d, comércio %+d)" % [int(e["income"]), c.tax_pct, int(e["flat"]), int(e["industry"]), int(e["trade"])])
 	lines.append("Manutenção de províncias: -%d" % int(e["upkeep_prov"]))
 	lines.append("Manutenção de exércitos: -%d  (%d reg.)" % [int(e["upkeep_army"]), int(e["regiments"])])
+	lines.append("Manutenção da frota: -%d  (%d navios)" % [int(e["upkeep_navy"]), c.ships])
+	var cap := Game.sea_capacity(c.id)
+	lines.append("Capacidade de comércio marítimo: %d/mês%s" % [cap, "  (BLOQUEADO)" if Game.is_blockaded(c.id) else ""])
+	var emb := PackedStringArray()
+	for k in Game.embargoes:
+		var a: int = int(k) / 1000
+		var t: int = int(k) % 1000
+		if a == c.id:
+			emb.append("você -> %s" % Game.countries[t].name)
+		elif t == c.id:
+			emb.append("%s -> você" % Game.countries[a].name)
+	if not emb.is_empty():
+		lines.append("Embargos: " + ", ".join(emb))
 	lines.append("SALDO: %+d/mês" % net)
 	if net < 0 and c.treasury > 0:
 		lines.append("Tesouro acaba em ~%d meses" % (c.treasury / -net))
@@ -274,10 +289,10 @@ func _build_market_panel() -> void:
 	col.custom_minimum_size = Vector2(520, 0)
 	_market_panel.add_child(col)
 	var title := Label.new()
-	title.text = "MERCADO MUNDIAL  (preço = % do valor base; + falta, - sobra)"
+	title.text = "MERCADO DO SEU PAÍS  (preço = % do base; + falta, - sobra)"
 	col.add_child(title)
 	_market_grid = GridContainer.new()
-	_market_grid.columns = 5
+	_market_grid.columns = 6
 	_market_grid.add_theme_constant_override("h_separation", 14)
 	_market_grid.add_theme_constant_override("v_separation", 1)
 	col.add_child(_market_grid)
@@ -289,27 +304,24 @@ func _build_market_panel() -> void:
 func _refresh_market() -> void:
 	if _market_panel == null or not _market_panel.visible:
 		return
-	var sup := Game.market_supply()
-	var me := Game.countries[Game.player_country]
-	var mine := {}
-	for pid in me.province_ids:
-		var p := Game.provinces[pid]
-		mine[p.resource_type] = int(mine.get(p.resource_type, 0)) + p.units()
-		if p.factory != "":
-			var fo: String = Province.FACTORIES[p.factory]["out"]
-			mine[fo] = int(mine.get(fo, 0)) + int(Province.FACTORIES[p.factory]["amount"]) * p.factory_level
+	var pc := Game.player_country
+	var tb := Game.market_tables()
+	var sup: Dictionary = tb[0][pc]
+	var dem: Dictionary = tb[1][pc]
 	for c in _market_grid.get_children():
 		c.queue_free()
-	_market_row(["Bem", "Oferta", "Demanda", "Preço", "Seu"], true)
+	_market_row(["Bem", "Oferta", "Demanda", "Preço", "Importa", "Exporta"], true)
 	for g in Game.goods_list():
-		var d := Game.market_demand(g)
 		var s: int = int(sup[g])
+		var d: int = int(dem[g])
 		var arrow := " "
 		if d > s * 102 / 100:
 			arrow = " +"      # falta: preço sobe
 		elif d * 102 / 100 < s:
 			arrow = " -"      # sobra: preço cai
-		_market_row([RESOURCE_PT.get(g, g), str(s), str(d), "%d%%%s" % [int(Game.market_price[g]), arrow], str(int(mine.get(g, 0)))], false)
+		var im: int = int(Game.trade_imp[pc].get(g, 0)) if pc < Game.trade_imp.size() else 0
+		var ex: int = int(Game.trade_exp[pc].get(g, 0)) if pc < Game.trade_exp.size() else 0
+		_market_row([RESOURCE_PT.get(g, g), str(s), str(d), "%d%%%s" % [int(Game.local_price[pc][g]), arrow], str(im), str(ex)], false)
 
 
 func _market_row(cells: Array, header: bool) -> void:
@@ -321,7 +333,7 @@ func _market_row(cells: Array, header: bool) -> void:
 			l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
 		if i > 0:
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		l.custom_minimum_size = Vector2(110 if i == 0 else 70, 0)
+		l.custom_minimum_size = Vector2(100 if i == 0 else 66, 0)
 		_market_grid.add_child(l)
 
 
@@ -417,6 +429,14 @@ func _build_info_panel() -> void:
 	_btn_improve = _make_button("Melhorar relações (%d)" % Game.IMPROVE_COST, bsize)
 	_btn_improve.pressed.connect(_on_improve_pressed)
 	grid.add_child(_btn_improve)
+
+	_btn_embargo = _make_button("Embargar", bsize)
+	_btn_embargo.pressed.connect(_on_embargo_pressed)
+	grid.add_child(_btn_embargo)
+
+	_btn_ship = _make_button("Navio (%d)" % Game.SHIP_COST, bsize)
+	_btn_ship.pressed.connect(_on_ship_pressed)
+	grid.add_child(_btn_ship)
 
 	_btn_ally = _make_button("Propor aliança", bsize)
 	_btn_ally.pressed.connect(_on_ally_pressed)
@@ -660,7 +680,7 @@ func _refresh_info() -> void:
 	lines.append("País: %s" % owner_name)
 	lines.append("%s  ·  %s" % [TERRAIN_PT.get(p.terrain, p.terrain), RESOURCE_PT.get(p.resource_type, p.resource_type)])
 	lines.append("População: %s" % _fmt_pop(p.population))
-	lines.append("Preço do recurso: %d%%" % int(Province.price_pct.get(p.resource_type, 100)))
+	lines.append("Preço do recurso: %d%%" % p.price_of(p.resource_type))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
 	lines.append("Oficina nív. %d   Quartel nív. %d" % [p.workshop, p.barracks])
@@ -704,6 +724,14 @@ func _refresh_info() -> void:
 	_btn_war.visible = has_owner and not mine
 	_btn_improve.visible = has_owner and not mine
 	_btn_ally.visible = has_owner and not mine
+	_btn_embargo.visible = has_owner and not mine
+	_btn_ship.visible = mine and p.coastal
+	if mine and p.coastal:
+		_btn_ship.disabled = not Game.can_build_ship(p.id, Game.player_country)
+	if has_owner and not mine:
+		var has_emb := Game.embargoes.has(Game.player_country * 1000 + p.owner_id)
+		_btn_embargo.text = "Suspender embargo" if has_emb else "Embargar"
+		_btn_embargo.disabled = not has_emb and not Game.can_embargo(Game.player_country, p.owner_id)
 	if has_owner and not mine:
 		var me3 := Game.player_country
 		_btn_improve.disabled = not Game.can_improve(me3, p.owner_id)
@@ -859,6 +887,21 @@ func _on_war_pressed() -> void:
 		Game.submit_command(Cmd.make_peace(target))
 	else:
 		Game.submit_command(Cmd.declare_war(target))
+
+
+func _on_embargo_pressed() -> void:
+	if _selected < 0:
+		return
+	var target := Game.provinces[_selected].owner_id
+	if Game.embargoes.has(Game.player_country * 1000 + target):
+		Game.submit_command(Cmd.lift_embargo(target))
+	else:
+		Game.submit_command(Cmd.embargo(target))
+
+
+func _on_ship_pressed() -> void:
+	if _selected >= 0:
+		Game.submit_command(Cmd.build_ship(_selected))
 
 
 func _on_improve_pressed() -> void:

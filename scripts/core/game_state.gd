@@ -276,7 +276,7 @@ func fleets_of(cid: int) -> Array:
 	return out
 
 
-func _advance_armies() -> void:
+func load_world(path: String = WORLD_PATH) -> bool:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_error("GeoEmpire: não foi possível abrir %s" % path)

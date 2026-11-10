@@ -62,9 +62,13 @@ jobs:
       run: godot --headless --path . --import || true
 
     - name: Smoke test (roda a cena principal por 60 frames)
-      # Informativo: erros de script aparecem no log, mas não bloqueiam o APK.
-      continue-on-error: true
-      run: timeout 120 godot --headless --path . --quit-after 60
+      # Falha o build se algum script não compilar (tela azul vazia no celular).
+      run: |
+        timeout 120 godot --headless --path . --quit-after 60 2>&1 | tee smoke.log || true
+        if grep -E "Parse Error|Failed to load script|Failed to create an autoload" smoke.log; then
+          echo "::error::Erro de script no Godot (veja o log acima)"
+          exit 1
+        fi
 
     - name: Export APK
       run: |

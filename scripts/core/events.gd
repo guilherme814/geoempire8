@@ -31,6 +31,9 @@ signal war_changed
 ## Aviso curto para o jogador local (ex.: paz recusada).
 signal notice(text: String)
 
+## Pede à câmera para enquadrar uma província (ex.: clique na lista de exércitos).
+signal focus_province(province_id: int)
+
 ## Frotas (navios no mapa).
 signal fleet_changed(fleet_id: int)
 signal fleet_removed(fleet_id: int)

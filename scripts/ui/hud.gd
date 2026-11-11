@@ -1,14 +1,23 @@
 class_name HUD
 extends CanvasLayer
 ## Interface do jogo, montada 100% por código (sem .tscn para manter o diff limpo).
-## Barra superior: país, tesouro, tropas, data e velocidade.
-## Canto inferior esquerdo: província selecionada (recrutar, construir).
-## Canto inferior direito: exército selecionado, modo do mapa e impostos.
+##
+## Layout (inspirado em Victoria 3 e Age of History 3):
+##  - barra superior: bandeira, país, indicadores (tesouro, população, alfabetização, padrão
+##    de vida, tecnologia, estabilidade, exército), data e velocidade;
+##  - barra lateral esquerda: Política, Economia, Mercado, modo do mapa e menu;
+##  - dock inferior: construções (Governo, Recursos, Indústria);
+##  - canto inferior esquerdo: província selecionada; direito: exército selecionado;
+##  - lista de exércitos e guerras no canto superior direito;
+##  - janelas centrais para Economia, Mercado, Política e Menu.
 ##
 ## A HUD nunca muda o estado: ela chama Game.submit_command().
 
+signal country_select_requested
+
 const DEBUG_TOOLS := true
 const MARGIN := 10.0
+const SIDE_W := 92.0
 
 const TERRAIN_PT := {
 	"plains": "Planície", "hills": "Colinas", "mountains": "Montanhas", "forest": "Floresta",
@@ -21,36 +30,62 @@ const RESOURCE_PT := {
 	"tea": "Chá", "silk": "Seda", "spices": "Especiarias", "opium": "Ópio", "gold": "Ouro",
 	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis", "steel": "Aço",
 }
+const CLASS_PT := ["Camponeses", "Operários", "Aristocratas", "Burguesia", "Funcionários", "Soldados"]
+const CLASS_WHY := [
+	"Camponeses: comida cara ou impostos altos",
+	"Operários: custo de vida, baixo padrão de vida ou impostos",
+	"Aristocratas: impostos altos e avanço da educação",
+	"Burguesia: pouco comércio e indústria, embargos ou bloqueio",
+	"Funcionários: tesouro vazio ou pouca instrução",
+	"Soldados: soldos atrasados (tesouro negativo)",
+]
+const IDEO_PT := ["Conservadorismo", "Liberalismo", "Socialismo", "Nacionalismo", "Reacionarismo"]
+const IDEO_COLORS := [
+	Color(0.38, 0.58, 0.88), Color(0.96, 0.80, 0.30), Color(0.90, 0.30, 0.30),
+	Color(0.35, 0.76, 0.46), Color(0.68, 0.46, 0.82),
+]
+const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria"}
+const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory"}
+const TAB_ORDER := ["gov", "res", "ind"]
 
 var map_view: MapView
 
 var _root: Control
+var _ui: Control              # área segura (recortes e barras do sistema)
+var _body: Control            # abaixo da barra superior
 var _theme: Theme
 var _blockers: Array[Control] = []
 var _inset: Vector4 = Vector4.ZERO   # esquerda, topo, direita, base (área segura)
 
+# Barra superior
+var _bar: PanelContainer
 var _flag: FlagRect
 var _country_label: Label
-var _treasury_label: Label
-var _eco_panel: PanelContainer
-var _eco_label: Label
-var _market_panel: PanelContainer
-var _market_grid: GridContainer
-var _toast: Label
-var _stats_label: Label
+var _country_sub: Label
+var _chips: Dictionary = {}
 var _date_label: Label
 var _speed_buttons: Array[Button] = []
 
+# Barra lateral e janelas
+var _side_btns: Dictionary = {}
+var _windows: Dictionary = {}
+var _win_bodies: Dictionary = {}
+
+# Lista de exércitos / guerras
+var _side_panel: PanelContainer
+var _side_armies: VBoxContainer
+var _side_wars: VBoxContainer
+var _side_head: Label
+var _army_rows: Dictionary = {}
+var _wars_sig: String = ""
+
+# Província
 var _info_panel: PanelContainer
+var _info_flag: FlagRect
 var _info_title: Label
+var _info_sub: Label
 var _info_body: Label
 var _btn_recruit: Button
-var _build_tab: String = ""
-var _build_panel: PanelContainer
-var _build_head: Label
-var _build_rows: VBoxContainer
-var _build_tab_btns: Dictionary = {}
-
 var _btn_take: Button
 var _btn_annex: Button
 var _btn_war: Button
@@ -59,14 +94,23 @@ var _btn_ally: Button
 var _btn_embargo: Button
 var _btn_ship: Button
 
-var _army_box: VBoxContainer
+# Construções
+var _build_tab: String = ""
+var _build_panel: PanelContainer
+var _build_head: Label
+var _build_rows: VBoxContainer
+var _build_tab_btns: Dictionary = {}
+
+# Exército selecionado
+var _army_panel: PanelContainer
 var _army_label: Label
 var _btn_army_stop: Button
 var _btn_army_disband: Button
 
-var _mode_button: Button
-var _tax_label: Label
-
+# Aviso e evento
+var _toast_panel: PanelContainer
+var _toast: Label
+var _toast_seq: int = 0
 var _event_panel: PanelContainer
 var _event_title: Label
 var _event_text: Label
@@ -81,22 +125,38 @@ var _selected_army: int = -1
 func _ready() -> void:
 	layer = 10
 	_compute_safe_area()
-	_build_theme()
+	_theme = UIKit.make_theme()
 
 	_root = Control.new()
 	_root.theme = _theme
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_root)
 
+	_ui = Control.new()
+	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.offset_left = _inset.x
+	_ui.offset_top = _inset.y
+	_ui.offset_right = -_inset.z
+	_ui.offset_bottom = -_inset.w
+	_root.add_child(_ui)
+
+	_body = Control.new()
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_body.offset_top = 84
+	_ui.add_child(_body)
+
 	_build_top_bar()
+	_build_sidebar()
+	_build_side_list()
 	_build_info_panel()
-	_build_bottom_right()
+	_build_army_panel()
+	_build_dock()
+	_build_toast()
+	_build_windows()
 	_build_event_popup()
-	_build_stats_bar()
-	_build_construction_bar()
-	_build_economy_panel()
-	_build_market_panel()
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
@@ -121,10 +181,17 @@ func _ready() -> void:
 
 ## Usado pela câmera para não tratar toques sobre a UI como toques no mapa.
 func is_over_ui(pos: Vector2) -> bool:
+	if _root == null or not _root.visible:
+		return false
 	for c in _blockers:
-		if c.visible and c.get_global_rect().has_point(pos):
+		if c.is_visible_in_tree() and c.get_global_rect().has_point(pos):
 			return true
 	return false
+
+
+func set_ui_visible(v: bool) -> void:
+	if _root != null:
+		_root.visible = v
 
 
 # ---------------------------------------------------------------------------
@@ -148,105 +215,206 @@ func _compute_safe_area() -> void:
 	)
 
 
-func _build_theme() -> void:
-	_theme = Theme.new()
-	_theme.default_font_size = 20
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.09, 0.13, 0.88)
-	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(10)
-	_theme.set_stylebox("panel", "PanelContainer", sb)
-
-
-func _make_button(text: String, min_size: Vector2 = Vector2(64, 48)) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = min_size
-	return b
+func _make_button(text: String, min_size: Vector2 = Vector2(64, 46)) -> Button:
+	return UIKit.button(text, min_size)
 
 
 func _build_top_bar() -> void:
-	var bar := PanelContainer.new()
-	bar.anchor_right = 1.0
-	bar.offset_left = _inset.x + MARGIN
-	bar.offset_right = -(_inset.z + MARGIN)
-	bar.offset_top = _inset.y + MARGIN
-	_root.add_child(bar)
-	_blockers.append(bar)
+	_bar = PanelContainer.new()
+	_bar.theme_type_variation = "BarPanel"
+	_bar.anchor_right = 1.0
+	_ui.add_child(_bar)
+	_blockers.append(_bar)
+	_bar.resized.connect(_on_bar_resized)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	bar.add_child(row)
+	row.add_theme_constant_override("separation", 10)
+	_bar.add_child(row)
 
+	var frame := PanelContainer.new()
+	frame.theme_type_variation = "FlagFrame"
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(frame)
 	_flag = FlagRect.new()
-	_flag.custom_minimum_size = Vector2(60, 40)
-	_flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_flag)
+	_flag.custom_minimum_size = Vector2(66, 44)
+	frame.add_child(_flag)
 
-	_country_label = Label.new()
-	_country_label.add_theme_font_size_override("font_size", 24)
-	row.add_child(_country_label)
+	var names := VBoxContainer.new()
+	names.alignment = BoxContainer.ALIGNMENT_CENTER
+	names.add_theme_constant_override("separation", -1)
+	row.add_child(names)
+	_country_label = UIKit.serif_label("", 23, UIKit.GOLD_BRIGHT)
+	_country_label.custom_minimum_size = Vector2(150, 0)
+	_country_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	names.add_child(_country_label)
+	_country_sub = UIKit.label("", 14, UIKit.TEXT_DIM)
+	names.add_child(_country_sub)
+
+	var sep := VSeparator.new()
+	row.add_child(sep)
+
+	_add_chip(row, "gold", "coin", "Tesouro e saldo mensal")
+	_add_chip(row, "pop", "people", "População total")
+	_add_chip(row, "lit", "book", "Alfabetização: aumenta a arrecadação e a pesquisa")
+	_add_chip(row, "sol", "star", "Padrão de vida: produção por habitante e instrução")
+	_add_chip(row, "tech", "bulb", "Tecnologia: libera indústrias avançadas")
+	_add_chip(row, "stab", "shield", "Estabilidade interna: abaixo de 40% a arrecadação cai")
+	_add_chip(row, "army", "sword", "Regimentos e mão de obra disponível")
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 
-	_treasury_label = Label.new()
-	row.add_child(_treasury_label)
-
-	var eco_btn := _make_button("Economia", Vector2(110, 46))
-	eco_btn.pressed.connect(_on_economy_pressed)
-	row.add_child(eco_btn)
-
-	var mkt_btn := _make_button("Mercado", Vector2(100, 46))
-	mkt_btn.pressed.connect(_on_market_pressed)
-	row.add_child(mkt_btn)
-
-	_date_label = Label.new()
-	_date_label.custom_minimum_size = Vector2(130, 0)
+	var dcol := VBoxContainer.new()
+	dcol.alignment = BoxContainer.ALIGNMENT_CENTER
+	dcol.add_theme_constant_override("separation", 2)
+	row.add_child(dcol)
+	_date_label = UIKit.serif_label("", 20, UIKit.TEXT)
+	_date_label.custom_minimum_size = Vector2(200, 0)
 	_date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_date_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_date_label)
-
+	dcol.add_child(_date_label)
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 3)
+	dcol.add_child(srow)
 	var group := ButtonGroup.new()
 	var labels: Array[String] = ["II", ">", ">>", ">>>", ">>>>"]
 	for i in labels.size():
-		var b := _make_button(labels[i], Vector2(54, 46))
+		var b := UIKit.button(labels[i], Vector2(38, 30), "SpeedButton")
+		b.add_theme_font_size_override("font_size", 14)
 		b.toggle_mode = true
 		b.button_group = group
 		b.pressed.connect(_on_speed_pressed.bind(i))
-		row.add_child(b)
+		srow.add_child(b)
 		_speed_buttons.append(b)
 
 
-func _build_stats_bar() -> void:
-	var bar := PanelContainer.new()
-	bar.offset_left = _inset.x + MARGIN
-	bar.offset_top = _inset.y + MARGIN + 78
-	_root.add_child(bar)
-	_blockers.append(bar)
-	_stats_label = Label.new()
-	_stats_label.add_theme_font_size_override("font_size", 19)
-	bar.add_child(_stats_label)
+func _on_bar_resized() -> void:
+	_body.offset_top = _bar.size.y
 
 
-const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria"}
-const TAB_ORDER := ["gov", "res", "ind"]
+func _add_chip(row: HBoxContainer, key: String, icon_kind: String, tip: String) -> void:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	box.tooltip_text = tip
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(box)
+	box.add_child(UiIcon.make(icon_kind, 26))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", -3)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(col)
+	var v := UIKit.label("", 19, UIKit.TEXT)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(v)
+	var s := UIKit.label("", 13, UIKit.TEXT_DIM)
+	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(s)
+	_chips[key] = {"value": v, "sub": s}
 
 
-func _build_construction_bar() -> void:
+func _set_chip(key: String, value: String, sub: String, sub_color: Color = UIKit.TEXT_DIM, value_color: Color = UIKit.TEXT) -> void:
+	var ch: Dictionary = _chips[key]
+	var v: Label = ch["value"]
+	var s: Label = ch["sub"]
+	v.text = value
+	v.add_theme_color_override("font_color", value_color)
+	s.text = sub
+	s.add_theme_color_override("font_color", sub_color)
+
+
+func _build_sidebar() -> void:
+	var panel := PanelContainer.new()
+	panel.offset_left = MARGIN
+	panel.offset_top = MARGIN
+	_body.add_child(panel)
+	_blockers.append(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	panel.add_child(col)
+	var defs: Array = [
+		["politics", "scales", "Política: classes sociais e ideologias"],
+		["eco", "coin", "Economia: orçamento e impostos"],
+		["market", "bars", "Mercado: oferta, demanda e preços"],
+		["map", "globe", "Modo do mapa"],
+		["menu", "menu", "Menu: salvar, carregar e trocar de país"],
+	]
+	for d in defs:
+		var key: String = d[0]
+		var b := UIKit.icon_button(str(d[1]), "", Vector2(58, 58), "DockButton")
+		b.tooltip_text = str(d[2])
+		b.toggle_mode = key != "map"
+		b.pressed.connect(_on_side_pressed.bind(key))
+		col.add_child(b)
+		_side_btns[key] = b
+
+
+func _build_side_list() -> void:
+	_side_panel = PanelContainer.new()
+	_side_panel.theme_type_variation = "CardPanel"
+	_side_panel.anchor_left = 1.0
+	_side_panel.anchor_right = 1.0
+	_side_panel.offset_left = -(MARGIN + 290)
+	_side_panel.offset_right = -MARGIN
+	_side_panel.offset_top = MARGIN
+	_side_panel.visible = false
+	_body.add_child(_side_panel)
+	_blockers.append(_side_panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	_side_panel.add_child(col)
+	_side_head = UIKit.serif_label("Exércitos", 19, UIKit.GOLD)
+	col.add_child(_side_head)
+	_side_armies = VBoxContainer.new()
+	_side_armies.add_theme_constant_override("separation", 2)
+	col.add_child(_side_armies)
+	_side_wars = VBoxContainer.new()
+	_side_wars.add_theme_constant_override("separation", 2)
+	col.add_child(_side_wars)
+
+
+func _build_toast() -> void:
+	_toast_panel = PanelContainer.new()
+	_toast_panel.theme_type_variation = "BannerPanel"
+	_toast_panel.anchor_left = 0.5
+	_toast_panel.anchor_right = 0.5
+	_toast_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast_panel.offset_top = MARGIN
+	_toast_panel.visible = false
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_child(_toast_panel)
+	_toast = UIKit.label("", 19, UIKit.TEXT)
+	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toast.custom_minimum_size = Vector2(420, 0)
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_panel.add_child(_toast)
+
+
+func _show_toast(msg: String) -> void:
+	_toast.text = msg
+	_toast_panel.visible = true
+	_toast_seq += 1
+	var mine := _toast_seq
+	await get_tree().create_timer(4.0).timeout
+	if mine == _toast_seq and is_instance_valid(_toast_panel):
+		_toast_panel.visible = false
+
+
+# ---------------------------------------------------------------------------
+# Dock de construções
+# ---------------------------------------------------------------------------
+func _build_dock() -> void:
 	var box := VBoxContainer.new()
 	box.anchor_left = 0.5
 	box.anchor_right = 0.5
 	box.anchor_top = 1.0
 	box.anchor_bottom = 1.0
-	box.offset_left = -220
-	box.offset_right = 220
-	box.offset_top = -(_inset.w + MARGIN)
-	box.offset_bottom = -(_inset.w + MARGIN)
+	box.offset_left = -175
+	box.offset_right = 175
+	box.offset_top = -MARGIN
+	box.offset_bottom = -MARGIN
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	box.add_theme_constant_override("separation", 6)
-	_root.add_child(box)
+	_body.add_child(box)
 	_blockers.append(box)
 
 	_build_panel = PanelContainer.new()
@@ -255,9 +423,10 @@ func _build_construction_bar() -> void:
 	var pcol := VBoxContainer.new()
 	pcol.add_theme_constant_override("separation", 6)
 	_build_panel.add_child(pcol)
-	_build_head = Label.new()
+	_build_head = UIKit.label("", 17, UIKit.TEXT_DIM)
 	_build_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pcol.add_child(_build_head)
+	pcol.add_child(HSeparator.new())
 	_build_rows = VBoxContainer.new()
 	_build_rows.add_theme_constant_override("separation", 6)
 	pcol.add_child(_build_rows)
@@ -266,7 +435,7 @@ func _build_construction_bar() -> void:
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 	for tab in TAB_ORDER:
-		var b := _make_button(TAB_PT[tab], Vector2(140, 48))
+		var b := UIKit.icon_button(str(TAB_ICON[tab]), str(TAB_PT[tab]), Vector2(110, 60), "DockButton")
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(_on_build_tab_pressed.bind(tab))
@@ -294,9 +463,7 @@ func _refresh_build_panel() -> void:
 	_build_panel.visible = _build_tab != ""
 	if _build_tab == "":
 		return
-	for ch in _build_rows.get_children():
-		_build_rows.remove_child(ch)
-		ch.queue_free()
+	UIKit.clear(_build_rows)
 	var me := Game.player_country
 	var tech: int = Game.countries[me].tech_level()
 	var p: Province = null
@@ -315,13 +482,13 @@ func _refresh_build_panel() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		_build_rows.add_child(row)
-		var lab := Label.new()
+		var lab := UIKit.label("%s  nív. %d/%d\n%s" % [b["name"], lv, Province.MAX_BUILDING, b["desc"]], 16, UIKit.TEXT)
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.custom_minimum_size = Vector2(230, 0)
-		lab.text = "%s  nív. %d/%d\n%s" % [b["name"], lv, Province.MAX_BUILDING, b["desc"]]
+		lab.custom_minimum_size = Vector2(170, 0)
 		row.add_child(lab)
-		var btn := _make_button("", Vector2(160, 48))
+		var btn := _make_button("", Vector2(140, 48))
+		btn.add_theme_font_size_override("font_size", 16)
 		row.add_child(btn)
 		if lv >= Province.MAX_BUILDING:
 			btn.text = "Máximo"
@@ -338,46 +505,177 @@ func _refresh_build_panel() -> void:
 			btn.pressed.connect(_on_build_pressed.bind(k))
 
 
-func _build_economy_panel() -> void:
-	_eco_panel = PanelContainer.new()
-	_eco_panel.anchor_left = 1.0
-	_eco_panel.anchor_right = 1.0
-	_eco_panel.offset_left = -(_inset.z + MARGIN)
-	_eco_panel.offset_right = -(_inset.z + MARGIN)
-	_eco_panel.offset_top = _inset.y + MARGIN + 80
-	_eco_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_eco_panel.visible = false
-	_root.add_child(_eco_panel)
-	_blockers.append(_eco_panel)
+# ---------------------------------------------------------------------------
+# Janelas (Economia, Mercado, Política, Menu)
+# ---------------------------------------------------------------------------
+func _make_window(key: String, title: String, win_size: Vector2, icon_kind: String) -> VBoxContainer:
+	var w := PanelContainer.new()
+	w.anchor_left = 0.5
+	w.anchor_right = 0.5
+	w.anchor_top = 0.5
+	w.anchor_bottom = 0.5
+	w.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	w.grow_vertical = Control.GROW_DIRECTION_BOTH
+	w.custom_minimum_size = win_size
+	w.visible = false
+	_body.add_child(w)
+	_blockers.append(w)
+	_windows[key] = w
+
 	var col := VBoxContainer.new()
-	col.custom_minimum_size = Vector2(380, 0)
-	_eco_panel.add_child(col)
-	_eco_label = Label.new()
-	_eco_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(_eco_label)
-	var close := _make_button("Fechar", Vector2(100, 44))
-	close.pressed.connect(_on_economy_pressed)
-	col.add_child(close)
+	col.add_theme_constant_override("separation", 8)
+	w.add_child(col)
+
+	var head := PanelContainer.new()
+	head.theme_type_variation = "BannerPanel"
+	col.add_child(head)
+	var hrow := HBoxContainer.new()
+	hrow.add_theme_constant_override("separation", 10)
+	head.add_child(hrow)
+	hrow.add_child(UiIcon.make(icon_kind, 30, UIKit.GOLD_BRIGHT))
+	var t := UIKit.serif_label(title, 25, UIKit.GOLD_BRIGHT)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hrow.add_child(t)
+	var x := UIKit.icon_button("close", "", Vector2(46, 40))
+	x.pressed.connect(_toggle_window.bind(key))
+	hrow.add_child(x)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 10)
+	scroll.add_child(body)
+	_win_bodies[key] = body
+	return body
+
+
+func _build_windows() -> void:
+	_make_window("politics", "Política interna", Vector2(900, 540), "scales")
+	_make_window("eco", "Economia", Vector2(860, 520), "coin")
+	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
+	var menu := _make_window("menu", "Menu", Vector2(420, 340), "menu")
+	var b_save := _make_button("Salvar jogo", Vector2(0, 52))
+	b_save.pressed.connect(_on_save_pressed)
+	menu.add_child(b_save)
+	var b_load := _make_button("Carregar jogo salvo", Vector2(0, 52))
+	b_load.pressed.connect(_on_load_pressed)
+	menu.add_child(b_load)
+	var b_swap := _make_button("Trocar de país", Vector2(0, 52))
+	b_swap.pressed.connect(_on_swap_pressed)
+	menu.add_child(b_swap)
+	menu.add_child(UIKit.label("Atalhos: Espaço pausa, + e - mudam a velocidade.", 15, UIKit.TEXT_DIM))
+
+
+func _toggle_window(key: String) -> void:
+	for k in _windows.keys():
+		var w: PanelContainer = _windows[k]
+		w.visible = (not w.visible) if k == key else false
+	for k in _windows.keys():
+		var sb: Button = _side_btns.get(k)
+		if sb != null:
+			sb.set_pressed_no_signal(_windows[k].visible)
+	_refresh_windows()
+
+
+func _refresh_windows() -> void:
+	if _windows.is_empty():
+		return
+	if _windows["eco"].visible:
+		_refresh_economy()
+	if _windows["market"].visible:
+		_refresh_market()
+	if _windows["politics"].visible:
+		_refresh_politics()
+
+
+func _on_side_pressed(key: String) -> void:
+	if key == "map":
+		if map_view != null:
+			map_view.cycle_mode()
+			_show_toast("Mapa: %s" % MapView.MODE_NAMES[map_view.mode])
+		return
+	_toggle_window(key)
+
+
+func _card(parent: Control, title: String, icon_kind: String = "") -> VBoxContainer:
+	var pc := PanelContainer.new()
+	pc.theme_type_variation = "CardPanel"
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(pc)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	pc.add_child(col)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	col.add_child(head)
+	if icon_kind != "":
+		head.add_child(UiIcon.make(icon_kind, 24))
+	head.add_child(UIKit.serif_label(title, 20, UIKit.GOLD))
+	col.add_child(HSeparator.new())
+	return col
+
+
+func _signed_color(v: int) -> Color:
+	return UIKit.POS if v > 0 else (UIKit.NEG if v < 0 else UIKit.TEXT)
 
 
 func _refresh_economy() -> void:
-	if _eco_panel == null or not _eco_panel.visible:
-		return
+	var body: VBoxContainer = _win_bodies["eco"]
+	UIKit.clear(body)
 	var c := Game.countries[Game.player_country]
 	var e := Game.estimate_monthly(c)
-	var net: int = int(e["income"]) - int(e["expense"])
-	var lines: Array[String] = []
-	lines.append("ECONOMIA - %s" % c.name)
-	lines.append("Taxa de imposto: %d%%   Províncias: %d" % [c.tax_pct, c.province_ids.size()])
-	lines.append("")
-	lines.append("Produção bruta: %d/mês" % int(e["production"]))
-	lines.append("Receita: %+d  (impostos %d%% + base %d, indústria %+d, comércio %+d)" % [int(e["income"]), c.tax_pct, int(e["flat"]), int(e["industry"]), int(e["trade"])])
-	lines.append("Manutenção de províncias: -%d" % int(e["upkeep_prov"]))
-	lines.append("Manutenção de exércitos: -%d  (%d reg.)" % [int(e["upkeep_army"]), int(e["regiments"])])
-	lines.append("Manutenção da frota: -%d  (%d navios)" % [int(e["upkeep_navy"]), c.ships])
-	lines.append("Manutenção de escolas e universidades: -%d" % int(e["upkeep_edu"]))
+	var income: int = int(e["income"])
+	var expense: int = int(e["expense"])
+	var net: int = income - expense
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	body.add_child(top)
+	_big_number(top, "Receita mensal", "%+d" % income, UIKit.POS)
+	_big_number(top, "Despesa mensal", "-%d" % expense, UIKit.NEG)
+	_big_number(top, "Saldo mensal", "%+d" % net, _signed_color(net))
+	_big_number(top, "Tesouro", str(c.treasury), UIKit.NEG if c.treasury < 0 else UIKit.GOLD_BRIGHT)
+
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 12)
+	body.add_child(cols)
+
+	var left := _card(cols, "Orçamento", "coin")
+	left.add_child(UIKit.kv_row("Impostos (%d%%) + base %d" % [c.tax_pct, int(e["flat"])], "%+d" % (income - int(e["industry"]) - int(e["trade"])), UIKit.POS))
+	left.add_child(UIKit.kv_row("Indústria", "%+d" % int(e["industry"]), _signed_color(int(e["industry"]))))
+	left.add_child(UIKit.kv_row("Comércio exterior", "%+d" % int(e["trade"]), _signed_color(int(e["trade"]))))
+	left.add_child(HSeparator.new())
+	left.add_child(UIKit.kv_row("Manutenção das províncias", "-%d" % int(e["upkeep_prov"]), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Exércitos (%d reg.)" % int(e["regiments"]), "-%d" % int(e["upkeep_army"]), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Frota (%d navios)" % c.ships, "-%d" % int(e["upkeep_navy"]), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Escolas e universidades", "-%d" % int(e["upkeep_edu"]), UIKit.NEG))
+	if net < 0 and c.treasury > 0:
+		left.add_child(UIKit.label("Tesouro acaba em ~%d meses." % (c.treasury / -net), 16, UIKit.WARN))
+
+	var right := _card(cols, "Impostos e comércio", "bars")
+	var trow := HBoxContainer.new()
+	trow.add_theme_constant_override("separation", 8)
+	right.add_child(trow)
+	var tl := UIKit.label("Taxa de imposto", 18, UIKit.TEXT_DIM)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trow.add_child(tl)
+	var minus := _make_button("-", Vector2(52, 44))
+	minus.pressed.connect(_on_tax_pressed.bind(-5))
+	trow.add_child(minus)
+	var tv := UIKit.label("%d%%" % c.tax_pct, 22, UIKit.GOLD_BRIGHT)
+	tv.custom_minimum_size = Vector2(64, 0)
+	tv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	trow.add_child(tv)
+	var plus := _make_button("+", Vector2(52, 44))
+	plus.pressed.connect(_on_tax_pressed.bind(5))
+	trow.add_child(plus)
+	right.add_child(UIKit.kv_row("Produção bruta", "%d/mês" % int(e["production"])))
 	var cap := Game.sea_capacity(c.id)
-	lines.append("Capacidade de comércio marítimo: %d/mês%s" % [cap, "  (BLOQUEADO)" if Game.is_blockaded(c.id) else ""])
+	var blocked := Game.is_blockaded(c.id)
+	right.add_child(UIKit.kv_row("Comércio marítimo", "%d/mês%s" % [cap, "  BLOQUEADO" if blocked else ""], UIKit.NEG if blocked else UIKit.TEXT))
 	var emb := PackedStringArray()
 	for k in Game.embargoes:
 		var a: int = int(k) / 1000
@@ -387,92 +685,180 @@ func _refresh_economy() -> void:
 		elif t == c.id:
 			emb.append("%s -> você" % Game.countries[a].name)
 	if not emb.is_empty():
-		lines.append("Embargos: " + ", ".join(emb))
-	lines.append("SALDO: %+d/mês" % net)
-	if net < 0 and c.treasury > 0:
-		lines.append("Tesouro acaba em ~%d meses" % (c.treasury / -net))
-	lines.append("")
-	lines.append("Províncias que mais rendem:")
+		var el := UIKit.label("Embargos: " + ", ".join(emb), 15, UIKit.WARN)
+		el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		right.add_child(el)
+	right.add_child(HSeparator.new())
+	right.add_child(UIKit.label("Províncias que mais rendem", 17, UIKit.GOLD))
 	for r in Game.top_provinces(c, 5):
 		var p := Game.provinces[int(r["id"])]
-		lines.append("  %s%s: +%d" % [p.name, "" if p.city == "" else " (%s)" % p.city, int(r["tax"])])
-	_eco_label.text = "\n".join(lines)
+		right.add_child(UIKit.kv_row("%s%s" % [p.name, "" if p.city == "" else " (%s)" % p.city], "+%d" % int(r["tax"]), UIKit.POS, 16))
 
 
-func _build_market_panel() -> void:
-	_market_panel = PanelContainer.new()
-	_market_panel.anchor_left = 1.0
-	_market_panel.anchor_right = 1.0
-	_market_panel.offset_left = -(_inset.z + MARGIN)
-	_market_panel.offset_right = -(_inset.z + MARGIN)
-	_market_panel.offset_top = _inset.y + MARGIN + 80
-	_market_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_market_panel.visible = false
-	_root.add_child(_market_panel)
-	_blockers.append(_market_panel)
+func _big_number(parent: Control, title: String, value: String, color: Color) -> void:
+	var pc := PanelContainer.new()
+	pc.theme_type_variation = "CardPanel"
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(pc)
 	var col := VBoxContainer.new()
-	col.custom_minimum_size = Vector2(520, 0)
-	_market_panel.add_child(col)
-	var title := Label.new()
-	title.text = "MERCADO DO SEU PAÍS  (preço = % do base; + falta, - sobra)"
-	col.add_child(title)
-	_market_grid = GridContainer.new()
-	_market_grid.columns = 6
-	_market_grid.add_theme_constant_override("h_separation", 14)
-	_market_grid.add_theme_constant_override("v_separation", 1)
-	col.add_child(_market_grid)
-	var close := _make_button("Fechar", Vector2(100, 40))
-	close.pressed.connect(_on_market_pressed)
-	col.add_child(close)
+	col.add_theme_constant_override("separation", 0)
+	pc.add_child(col)
+	var t := UIKit.label(title, 15, UIKit.TEXT_DIM)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(t)
+	var v := UIKit.serif_label(value, 28, color)
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(v)
 
 
 func _refresh_market() -> void:
-	if _market_panel == null or not _market_panel.visible:
-		return
+	var body: VBoxContainer = _win_bodies["market"]
+	UIKit.clear(body)
 	var pc := Game.player_country
 	var tb := Game.market_tables()
 	var sup: Dictionary = tb[0][pc]
 	var dem: Dictionary = tb[1][pc]
-	for c in _market_grid.get_children():
-		c.queue_free()
-	_market_row(["Bem", "Oferta", "Demanda", "Preço", "Importa", "Exporta"], true)
+	var card := _card(body, "Preço = % do valor base  ·  + falta (sobe)  ·  - sobra (cai)", "bars")
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 3)
+	card.add_child(grid)
+	_market_row(grid, ["Bem", "Oferta", "Demanda", "Preço", "Importa", "Exporta"], true, UIKit.TEXT)
 	for g in Game.goods_list():
 		var s: int = int(sup[g])
 		var d: int = int(dem[g])
 		var arrow := " "
+		var col := UIKit.TEXT
 		if d > s * 102 / 100:
-			arrow = " +"      # falta: preço sobe
+			arrow = " +"
+			col = UIKit.NEG
 		elif d * 102 / 100 < s:
-			arrow = " -"      # sobra: preço cai
+			arrow = " -"
+			col = UIKit.POS
 		var im: int = int(Game.trade_imp[pc].get(g, 0)) if pc < Game.trade_imp.size() else 0
 		var ex: int = int(Game.trade_exp[pc].get(g, 0)) if pc < Game.trade_exp.size() else 0
-		_market_row([RESOURCE_PT.get(g, g), str(s), str(d), "%d%%%s" % [int(Game.local_price[pc][g]), arrow], str(im), str(ex)], false)
+		_market_row(grid, [RESOURCE_PT.get(g, g), str(s), str(d), "%d%%%s" % [int(Game.local_price[pc][g]), arrow], str(im), str(ex)], false, col)
 
 
-func _market_row(cells: Array, header: bool) -> void:
+func _market_row(grid: GridContainer, cells: Array, header: bool, price_color: Color) -> void:
 	for i in cells.size():
-		var l := Label.new()
-		l.text = str(cells[i])
-		l.add_theme_font_size_override("font_size", 16)
-		if header:
-			l.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+		var l := UIKit.label(str(cells[i]), 17, UIKit.GOLD if header else UIKit.TEXT)
+		if i == 3 and not header:
+			l.add_theme_color_override("font_color", price_color)
 		if i > 0:
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		l.custom_minimum_size = Vector2(100 if i == 0 else 66, 0)
-		_market_grid.add_child(l)
+		l.custom_minimum_size = Vector2(130 if i == 0 else 90, 0)
+		grid.add_child(l)
 
 
-func _on_market_pressed() -> void:
-	_market_panel.visible = not _market_panel.visible
-	_refresh_market()
+func _sat_color(v: int) -> Color:
+	if v >= 60:
+		return UIKit.POS
+	if v >= 40:
+		return UIKit.WARN
+	return UIKit.NEG
 
 
-func _show_toast(msg: String) -> void:
-	_toast.text = msg
-	_toast.visible = true
-	await get_tree().create_timer(4.0).timeout
-	if is_instance_valid(_toast):
-		_toast.visible = false
+func _stability_text(v: int) -> String:
+	if v >= 70:
+		return "Estável"
+	if v >= 50:
+		return "Tranquilo"
+	if v >= 40:
+		return "Inquieto"
+	if v >= Game.REVOLT_STABILITY:
+		return "Instável: a arrecadação cai"
+	return "Revolta iminente"
+
+
+func _refresh_politics() -> void:
+	var body: VBoxContainer = _win_bodies["politics"]
+	UIKit.clear(body)
+	var c := Game.countries[Game.player_country]
+	var pol := Game.politics_of(c)
+	var sh: Array = pol["share"]
+	var pw: Array = pol["power"]
+	var ideo: Array = pol["ideo"]
+	var tot: int = maxi(1, int(pol["power_total"]))
+
+	var scard := _card(body, "Estabilidade", "shield")
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 12)
+	scard.add_child(srow)
+	srow.add_child(UIKit.serif_label("%d%%" % c.stability, 30, _sat_color(c.stability)))
+	srow.add_child(UIKit.bar(float(c.stability), 100.0, _sat_color(c.stability), 18.0))
+	var st := UIKit.label(_stability_text(c.stability), 18, _sat_color(c.stability))
+	st.custom_minimum_size = Vector2(230, 0)
+	srow.add_child(st)
+
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 12)
+	body.add_child(cols)
+
+	var ccard := _card(cols, "Classes sociais", "people")
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 6)
+	ccard.add_child(grid)
+	for h in ["Classe", "População", "Satisfação", "Influência"]:
+		var hl := UIKit.label(h, 15, UIKit.GOLD)
+		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if h == "Classe" else HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(hl)
+	for i in 6:
+		var name_l := UIKit.label(CLASS_PT[i], 17, UIKit.TEXT)
+		name_l.custom_minimum_size = Vector2(112, 0)
+		grid.add_child(name_l)
+		var pop_l := UIKit.label("%.1f%%" % (float(sh[i]) / 10.0), 17, UIKit.TEXT)
+		pop_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(pop_l)
+		var sat: int = int(c.sat[i])
+		var cell := HBoxContainer.new()
+		cell.add_theme_constant_override("separation", 6)
+		cell.add_child(UIKit.bar(float(sat), 100.0, _sat_color(sat), 12.0, 70.0))
+		var sv := UIKit.label(str(sat), 16, _sat_color(sat))
+		sv.custom_minimum_size = Vector2(30, 0)
+		sv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cell.add_child(sv)
+		grid.add_child(cell)
+		var inf_l := UIKit.label("%d%%" % (int(pw[i]) * 100 / tot), 17, UIKit.TEXT)
+		inf_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(inf_l)
+
+	var icard := _card(cols, "Correntes políticas", "flag")
+	var best := 0
+	for j in 5:
+		if int(ideo[j]) > int(ideo[best]):
+			best = j
+	for j in 5:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		icard.add_child(row)
+		var nl := UIKit.label(IDEO_PT[j], 17, UIKit.GOLD_BRIGHT if j == best else UIKit.TEXT)
+		nl.custom_minimum_size = Vector2(150, 0)
+		row.add_child(nl)
+		row.add_child(UIKit.bar(float(ideo[j]), 1000.0, IDEO_COLORS[j], 14.0))
+		var pl := UIKit.label("%.1f%%" % (float(ideo[j]) / 10.0), 17, UIKit.TEXT)
+		pl.custom_minimum_size = Vector2(62, 0)
+		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(pl)
+	var dom := UIKit.label("Corrente dominante: %s" % IDEO_PT[best], 16, UIKit.GOLD)
+	icard.add_child(dom)
+
+	var gcard := _card(body, "Queixas da população", "book")
+	var any := false
+	for i in 6:
+		if int(c.sat[i]) < 45:
+			any = true
+			var gl := UIKit.label("• " + str(CLASS_WHY[i]), 16, UIKit.NEG)
+			gl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			gcard.add_child(gl)
+	if not any:
+		gcard.add_child(UIKit.label("Nenhuma queixa relevante no momento.", 16, UIKit.POS))
+	var hint := UIKit.label("Preços de comida, impostos, indústria e instrução mudam a satisfação. Abaixo de %d%% de estabilidade há risco de revoltas." % Game.REVOLT_STABILITY, 15, UIKit.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	gcard.add_child(hint)
 
 
 func _on_save_pressed() -> void:
@@ -486,35 +872,60 @@ func _on_load_pressed() -> void:
 	_show_toast("Jogo carregado." if Game.load_game() else "Nenhum save encontrado.")
 
 
-func _on_economy_pressed() -> void:
-	_eco_panel.visible = not _eco_panel.visible
-	_refresh_economy()
+func _on_swap_pressed() -> void:
+	if Net.is_online():
+		_show_toast("Indisponível online.")
+		return
+	_toggle_window("menu")
+	country_select_requested.emit()
 
 
+# ---------------------------------------------------------------------------
+# Painel da província
+# ---------------------------------------------------------------------------
 func _build_info_panel() -> void:
-	var width := 400.0
+	var width := 360.0
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = Vector2(width, 0)
 	_info_panel.anchor_top = 1.0
 	_info_panel.anchor_bottom = 1.0
-	_info_panel.offset_left = _inset.x + MARGIN
-	_info_panel.offset_right = _inset.x + MARGIN + width
-	_info_panel.offset_top = -(_inset.w + MARGIN)
-	_info_panel.offset_bottom = -(_inset.w + MARGIN)
+	_info_panel.offset_left = SIDE_W + MARGIN
+	_info_panel.offset_right = SIDE_W + MARGIN + width
+	_info_panel.offset_top = -MARGIN
+	_info_panel.offset_bottom = -MARGIN
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_info_panel.visible = false
-	_root.add_child(_info_panel)
+	_body.add_child(_info_panel)
 	_blockers.append(_info_panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	_info_panel.add_child(col)
 
-	_info_title = Label.new()
-	_info_title.add_theme_font_size_override("font_size", 28)
-	col.add_child(_info_title)
+	var head := PanelContainer.new()
+	head.theme_type_variation = "BannerPanel"
+	col.add_child(head)
+	var hrow := HBoxContainer.new()
+	hrow.add_theme_constant_override("separation", 10)
+	head.add_child(hrow)
+	var fframe := PanelContainer.new()
+	fframe.theme_type_variation = "FlagFrame"
+	fframe.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hrow.add_child(fframe)
+	_info_flag = FlagRect.new()
+	_info_flag.custom_minimum_size = Vector2(52, 34)
+	fframe.add_child(_info_flag)
+	var tcol := VBoxContainer.new()
+	tcol.add_theme_constant_override("separation", -2)
+	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hrow.add_child(tcol)
+	_info_title = UIKit.serif_label("", 22, UIKit.GOLD_BRIGHT)
+	_info_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tcol.add_child(_info_title)
+	_info_sub = UIKit.label("", 15, UIKit.TEXT)
+	tcol.add_child(_info_sub)
 
-	_info_body = Label.new()
+	_info_body = UIKit.label("", 17, UIKit.TEXT)
 	_info_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_info_body)
 
@@ -524,130 +935,77 @@ func _build_info_panel() -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	col.add_child(grid)
 
-	var bsize := Vector2(190, 46)
-	_btn_recruit = _make_button("Recrutar", bsize)
-	_btn_recruit.pressed.connect(_on_recruit_pressed)
-	grid.add_child(_btn_recruit)
-
-	_btn_take = _make_button("Assumir país", bsize)
-	_btn_take.pressed.connect(_on_take_pressed)
-	grid.add_child(_btn_take)
-
-	_btn_war = _make_button("Declarar guerra", bsize)
-	_btn_war.pressed.connect(_on_war_pressed)
-	grid.add_child(_btn_war)
-
-	_btn_improve = _make_button("Melhorar relações (%d)" % Game.IMPROVE_COST, bsize)
-	_btn_improve.pressed.connect(_on_improve_pressed)
-	grid.add_child(_btn_improve)
-
-	_btn_embargo = _make_button("Embargar", bsize)
-	_btn_embargo.pressed.connect(_on_embargo_pressed)
-	grid.add_child(_btn_embargo)
-
-	_btn_ship = _make_button("Navio (%d)" % Game.SHIP_COST, bsize)
-	_btn_ship.pressed.connect(_on_ship_pressed)
-	grid.add_child(_btn_ship)
-
-	_btn_ally = _make_button("Propor aliança", bsize)
-	_btn_ally.pressed.connect(_on_ally_pressed)
-	grid.add_child(_btn_ally)
-
-	_btn_annex = _make_button("Anexar (debug)", bsize)
-	_btn_annex.pressed.connect(_on_annex_pressed)
-	grid.add_child(_btn_annex)
+	var bsize := Vector2(164, 44)
+	_btn_recruit = _info_button("Recrutar", bsize, _on_recruit_pressed, grid)
+	_btn_take = _info_button("Assumir país", bsize, _on_take_pressed, grid)
+	_btn_war = _info_button("Declarar guerra", bsize, _on_war_pressed, grid)
+	_btn_improve = _info_button("Melhorar rel. (%d)" % Game.IMPROVE_COST, bsize, _on_improve_pressed, grid)
+	_btn_embargo = _info_button("Embargar", bsize, _on_embargo_pressed, grid)
+	_btn_ship = _info_button("Navio (%d)" % Game.SHIP_COST, bsize, _on_ship_pressed, grid)
+	_btn_ally = _info_button("Propor aliança", bsize, _on_ally_pressed, grid)
+	_btn_annex = _info_button("Anexar (debug)", bsize, _on_annex_pressed, grid)
 
 
-func _build_bottom_right() -> void:
-	var panel := PanelContainer.new()
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = -(_inset.z + MARGIN)
-	panel.offset_right = -(_inset.z + MARGIN)
-	panel.offset_top = -(_inset.w + MARGIN)
-	panel.offset_bottom = -(_inset.w + MARGIN)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_root.add_child(panel)
-	_blockers.append(panel)
+func _info_button(text: String, size: Vector2, cb: Callable, parent: Control) -> Button:
+	var b := _make_button(text, size)
+	b.add_theme_font_size_override("font_size", 16)
+	b.pressed.connect(cb)
+	parent.add_child(b)
+	return b
+
+
+func _build_army_panel() -> void:
+	_army_panel = PanelContainer.new()
+	_army_panel.anchor_left = 1.0
+	_army_panel.anchor_right = 1.0
+	_army_panel.anchor_top = 1.0
+	_army_panel.anchor_bottom = 1.0
+	_army_panel.offset_left = -MARGIN
+	_army_panel.offset_right = -MARGIN
+	_army_panel.offset_top = -MARGIN
+	_army_panel.offset_bottom = -MARGIN
+	_army_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_army_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_army_panel.visible = false
+	_body.add_child(_army_panel)
+	_blockers.append(_army_panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	col.custom_minimum_size = Vector2(300, 0)
-	panel.add_child(col)
+	_army_panel.add_child(col)
 
-	# Exército selecionado (some quando não há seleção)
-	_army_box = VBoxContainer.new()
-	_army_box.add_theme_constant_override("separation", 6)
-	_army_box.visible = false
-	col.add_child(_army_box)
+	var head := PanelContainer.new()
+	head.theme_type_variation = "BannerPanel"
+	col.add_child(head)
+	var hrow := HBoxContainer.new()
+	hrow.add_theme_constant_override("separation", 8)
+	head.add_child(hrow)
+	hrow.add_child(UiIcon.make("sword", 24, UIKit.GOLD_BRIGHT))
+	hrow.add_child(UIKit.serif_label("Exército", 20, UIKit.GOLD_BRIGHT))
 
-	_army_label = Label.new()
+	_army_label = UIKit.label("", 17, UIKit.TEXT)
 	_army_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_army_label.custom_minimum_size = Vector2(300, 0)
-	_army_box.add_child(_army_label)
+	col.add_child(_army_label)
 
 	var army_row := HBoxContainer.new()
 	army_row.add_theme_constant_override("separation", 6)
-	_army_box.add_child(army_row)
-
+	col.add_child(army_row)
 	_btn_army_stop = _make_button("Parar", Vector2(90, 44))
 	_btn_army_stop.pressed.connect(_on_army_stop_pressed)
 	army_row.add_child(_btn_army_stop)
-
 	_btn_army_disband = _make_button("Dissolver", Vector2(110, 44))
 	_btn_army_disband.pressed.connect(_on_army_disband_pressed)
 	army_row.add_child(_btn_army_disband)
-
 	var close := _make_button("Fechar", Vector2(90, 44))
 	close.pressed.connect(_on_army_close_pressed)
 	army_row.add_child(close)
 
-	# Modo do mapa e impostos
-	_mode_button = _make_button("Mapa: Político", Vector2(300, 48))
-	_mode_button.pressed.connect(_on_mode_pressed)
-	col.add_child(_mode_button)
 
-	var tax_row := HBoxContainer.new()
-	tax_row.add_theme_constant_override("separation", 8)
-	col.add_child(tax_row)
-
-	var tax_title := Label.new()
-	tax_title.text = "Impostos"
-	tax_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tax_row.add_child(tax_title)
-
-	var minus := _make_button("-", Vector2(52, 48))
-	minus.pressed.connect(_on_tax_pressed.bind(-5))
-	tax_row.add_child(minus)
-
-	_tax_label = Label.new()
-	_tax_label.custom_minimum_size = Vector2(60, 0)
-	_tax_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tax_row.add_child(_tax_label)
-
-	var plus := _make_button("+", Vector2(52, 48))
-	plus.pressed.connect(_on_tax_pressed.bind(5))
-	tax_row.add_child(plus)
-
-	var save_row := HBoxContainer.new()
-	save_row.add_theme_constant_override("separation", 6)
-	col.add_child(save_row)
-	var b_save := _make_button("Salvar", Vector2(140, 44))
-	b_save.pressed.connect(_on_save_pressed)
-	save_row.add_child(b_save)
-	var b_load := _make_button("Carregar", Vector2(140, 44))
-	b_load.pressed.connect(_on_load_pressed)
-	save_row.add_child(b_load)
-	_toast = Label.new()
-	_toast.custom_minimum_size = Vector2(300, 0)
-	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast.visible = false
-	col.add_child(_toast)
-
-
+# ---------------------------------------------------------------------------
+# Evento político
+# ---------------------------------------------------------------------------
 func _build_event_popup() -> void:
 	_event_panel = PanelContainer.new()
 	_event_panel.anchor_left = 0.5
@@ -656,21 +1014,24 @@ func _build_event_popup() -> void:
 	_event_panel.anchor_bottom = 0.5
 	_event_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_event_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_event_panel.custom_minimum_size = Vector2(560, 0)
+	_event_panel.custom_minimum_size = Vector2(580, 0)
 	_event_panel.visible = false
-	_root.add_child(_event_panel)
+	_ui.add_child(_event_panel)
 	_blockers.append(_event_panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	_event_panel.add_child(col)
 
-	_event_title = Label.new()
-	_event_title.add_theme_font_size_override("font_size", 30)
-	_event_title.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
-	col.add_child(_event_title)
+	var head := PanelContainer.new()
+	head.theme_type_variation = "BannerPanel"
+	col.add_child(head)
+	_event_title = UIKit.serif_label("", 28, UIKit.GOLD_BRIGHT)
+	_event_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_event_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_child(_event_title)
 
-	_event_text = Label.new()
+	_event_text = UIKit.label("", 19, UIKit.TEXT)
 	_event_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_event_text.custom_minimum_size = Vector2(540, 0)
 	col.add_child(_event_text)
@@ -679,9 +1040,7 @@ func _build_event_popup() -> void:
 	_event_options.add_theme_constant_override("separation", 8)
 	col.add_child(_event_options)
 
-	_event_timer = Label.new()
-	_event_timer.add_theme_font_size_override("font_size", 16)
-	_event_timer.modulate = Color(1, 1, 1, 0.65)
+	_event_timer = UIKit.label("", 15, UIKit.TEXT_DIM)
 	col.add_child(_event_timer)
 
 
@@ -699,12 +1058,11 @@ func _refresh_event() -> void:
 	_event_uid = int(e["uid"])
 	_event_title.text = str(d["title"])
 	_event_text.text = str(d["text"])
-	for child in _event_options.get_children():
-		child.queue_free()
+	UIKit.clear(_event_options)
 	var options: Array = d["options"]
 	for i in options.size():
 		var opt: Dictionary = options[i]
-		var b := _make_button("%s  %s" % [str(opt["label"]), _effects_text(opt.get("effects", {}))], Vector2(520, 50))
+		var b := UIKit.button("%s  %s" % [str(opt["label"]), _effects_text(opt.get("effects", {}))], Vector2(540, 52), "PrimaryButton" if i == 0 else "")
 		b.pressed.connect(_on_event_option_pressed.bind(i))
 		_event_options.add_child(b)
 	_update_event_timer()
@@ -726,6 +1084,14 @@ static func _effects_text(fx: Dictionary) -> String:
 		parts.append("%+d mão de obra" % int(fx["manpower"]))
 	if fx.has("pop_pct"):
 		parts.append("%+d%% população" % int(fx["pop_pct"]))
+	if fx.has("literacy"):
+		parts.append("%+.1f%% alfabetização" % (float(fx["literacy"]) / 10.0))
+	if fx.has("sat"):
+		var sd: Dictionary = fx["sat"]
+		for k in sd.keys():
+			var ci: int = Game.CLASSES.find(str(k))
+			if ci >= 0:
+				parts.append("%s %+d" % [CLASS_PT[ci], int(sd[k])])
 	if parts.is_empty():
 		return ""
 	return "(" + ", ".join(parts) + ")"
@@ -752,21 +1118,82 @@ func _refresh_top() -> void:
 	var c := Game.countries[Game.player_country]
 	_flag.set_country(c.tag, c.color)
 	_country_label.text = c.name
+	var wars: int = Game.wars_of(c.id).size()
+	_country_sub.text = "%d províncias" % c.province_ids.size() if wars == 0 else "EM GUERRA (%d)" % wars
+	_country_sub.add_theme_color_override("font_color", UIKit.TEXT_DIM if wars == 0 else UIKit.NEG)
 	var e := Game.estimate_monthly(c)
 	var net: int = int(e["income"]) - int(e["expense"])
-	_treasury_label.text = "Tesouro: %d  (%+d/mês)\nTropas: %d reg.  |  Mão de obra: %s%s" % [
-		c.treasury, net, int(e["regiments"]), _fmt_pop(Game.manpower_of(c.id)),
-		"" if Game.wars_of(c.id).is_empty() else "  |  GUERRAS: %d" % Game.wars_of(c.id).size(),
-	]
-	var lit: int = c.literacy
-	_stats_label.text = "População: %s   |   Alfabetização: %d,%d%%   |   Padrão de vida: %.1f   |   Tecnologia: %d" % [
-		_fmt_pop(Game.population_of(c)), lit / 10, lit % 10, float(Game.standard_of_living_x10(c, e)) / 10.0, c.tech_level(),
-	]
+	_set_chip("gold", str(c.treasury), "%+d/mês" % net, UIKit.POS if net >= 0 else UIKit.NEG, UIKit.NEG if c.treasury < 0 else UIKit.TEXT)
+	_set_chip("pop", _fmt_pop(Game.population_of(c)), "habitantes")
+	_set_chip("lit", "%d,%d%%" % [c.literacy / 10, c.literacy % 10], "alfabetização")
+	_set_chip("sol", "%.1f" % (float(Game.standard_of_living_x10(c, e)) / 10.0), "padrão de vida")
+	_set_chip("tech", "Nível %d" % c.tech_level(), "%d%% p/ o próximo" % ((c.tech_pts % Country.TECH_STEP) * 100 / Country.TECH_STEP))
+	var sc: Color = _sat_color(c.stability)
+	_set_chip("stab", "%d%%" % c.stability, "estabilidade", UIKit.TEXT_DIM, sc)
+	_set_chip("army", "%d reg." % int(e["regiments"]), "MO %s" % _fmt_pop(Game.manpower_of(c.id)))
 	_date_label.text = Game.clock.format()
-	_refresh_economy()
-	_tax_label.text = "%d%%" % c.tax_pct
 	var s := clampi(Game.speed, 0, _speed_buttons.size() - 1)
 	_speed_buttons[s].set_pressed_no_signal(true)
+	_refresh_windows()
+	_refresh_side()
+
+
+func _refresh_side() -> void:
+	var me := Game.player_country
+	var ids: Array = []
+	for a in Game.armies.values():
+		var army: Army = a
+		if army.owner_id == me:
+			ids.append(army.id)
+	ids.sort()
+	var shown: Array = ids.slice(0, 6)
+	for aid in _army_rows.keys():
+		if not shown.has(aid):
+			(_army_rows[aid] as Button).queue_free()
+			_army_rows.erase(aid)
+	for aid in shown:
+		var army: Army = Game.armies[aid]
+		var b: Button = _army_rows.get(aid)
+		if b == null:
+			b = UIKit.button("", Vector2(0, 36), "FlatButton")
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.clip_text = true
+			b.add_theme_font_size_override("font_size", 16)
+			b.pressed.connect(_on_army_row_pressed.bind(aid))
+			_side_armies.add_child(b)
+			_army_rows[aid] = b
+		b.text = "#%d · %d reg. · %s%s" % [army.id, army.regiments, Game.provinces[army.province_id].name, "  >>" if army.is_moving() else ""]
+	_side_head.text = "Exércitos (%d)" % ids.size()
+	_side_head.visible = not ids.is_empty()
+
+	var war_ids: Array = Game.wars_of(me)
+	var sig := ",".join(PackedStringArray(war_ids.map(func(x): return str(x))))
+	if sig != _wars_sig:
+		_wars_sig = sig
+		UIKit.clear(_side_wars)
+		if not war_ids.is_empty():
+			_side_wars.add_child(UIKit.serif_label("Guerras", 19, UIKit.NEG))
+		for wid in war_ids:
+			var oc: Country = Game.countries[int(wid)]
+			var r := HBoxContainer.new()
+			r.add_theme_constant_override("separation", 8)
+			var fl := FlagRect.new()
+			fl.custom_minimum_size = Vector2(34, 22)
+			fl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			fl.set_country(oc.tag, oc.color)
+			r.add_child(fl)
+			r.add_child(UIKit.label(oc.name, 16, UIKit.TEXT))
+			_side_wars.add_child(r)
+	_side_panel.visible = not ids.is_empty() or not war_ids.is_empty()
+
+
+func _on_army_row_pressed(aid: int) -> void:
+	var a: Army = Game.armies.get(aid)
+	if a == null:
+		return
+	Events.army_selected.emit(aid)
+	Events.province_selected.emit(a.province_id)
+	Events.focus_province.emit(a.province_id)
 
 
 func _refresh_info() -> void:
@@ -779,18 +1206,18 @@ func _refresh_info() -> void:
 	var mine := has_owner and p.owner_id == Game.player_country
 	_info_panel.visible = true
 	_info_title.text = p.name
-	if p.city != "":
-		_info_title.text += "\n%s%s" % ["★ " if p.capital_city else "", p.city]
+	var sub := "%s%s" % ["★ " if p.capital_city else "", p.city] if p.city != "" else ""
 
 	var owner_name := "Sem dono"
-	var tint := Color(0.85, 0.85, 0.85)
 	var tax := 0
 	if has_owner:
 		var oc := Game.countries[p.owner_id]
 		owner_name = oc.name
-		tint = oc.color.lightened(0.4)
 		tax = oc.tax_pct
-	_info_title.add_theme_color_override("font_color", tint)
+		_info_flag.set_country(oc.tag, oc.color)
+	else:
+		_info_flag.set_country("", Color(0.4, 0.4, 0.4))
+	_info_sub.text = sub if sub != "" else owner_name
 
 	var lines: Array[String] = []
 	lines.append("País: %s" % owner_name)
@@ -842,42 +1269,30 @@ func _refresh_info() -> void:
 		var has_emb := Game.embargoes.has(Game.player_country * 1000 + p.owner_id)
 		_btn_embargo.text = "Suspender embargo" if has_emb else "Embargar"
 		_btn_embargo.disabled = not has_emb and not Game.can_embargo(Game.player_country, p.owner_id)
-	if has_owner and not mine:
 		var me3 := Game.player_country
 		_btn_improve.disabled = not Game.can_improve(me3, p.owner_id)
 		var is_ally := Game.allied(me3, p.owner_id)
 		_btn_ally.text = "Romper aliança" if is_ally else "Propor aliança"
 		_btn_ally.disabled = not is_ally and not Game.can_ally(me3, p.owner_id)
-	if has_owner and not mine:
-		var me2 := Game.player_country
-		if Game.at_war(me2, p.owner_id):
-			var left := Game.WAR_MIN_DAYS - Game.war_days(me2, p.owner_id)
+		if Game.at_war(me3, p.owner_id):
+			var left := Game.WAR_MIN_DAYS - Game.war_days(me3, p.owner_id)
 			_btn_war.text = "Propor paz" if left <= 0 else "Paz em %d dias" % left
 			_btn_war.disabled = left > 0
 		else:
 			_btn_war.text = "Declarar guerra"
-			_btn_war.disabled = not Game.can_declare_war(me2, p.owner_id)
-
-
-func _set_build_button(btn: Button, label: String, p: Province, kind: String, me: int) -> void:
-	if p.building_level(kind) >= Province.MAX_BUILDING:
-		btn.text = "%s (máx.)" % label
-		btn.disabled = true
-	else:
-		btn.text = "%s (%d)" % [label, Game.build_cost(p, kind)]
-		btn.disabled = not Game.can_build(p.id, me, kind)
+			_btn_war.disabled = not Game.can_declare_war(me3, p.owner_id)
 
 
 func _refresh_army() -> void:
 	var a: Army = Game.armies.get(_selected_army)
 	if a == null:
-		_army_box.visible = false
+		_army_panel.visible = false
 		return
-	_army_box.visible = true
+	_army_panel.visible = true
 	var mine := a.owner_id == Game.player_country
 	var oc := Game.countries[a.owner_id]
-	var txt := "Exército #%d - %s\n%d regimento(s)  (%d homens)\nEm: %s" % [
-		a.id, oc.name, a.regiments, a.men(), Game.provinces[a.province_id].name,
+	var txt := "%s\n%d regimento(s)  (%d homens)\nEm: %s" % [
+		oc.name, a.regiments, a.men(), Game.provinces[a.province_id].name,
 	]
 	if a.is_moving():
 		txt += "\nDestino: %s (%d dias)" % [Game.provinces[a.path.back()].name, Game.eta_days(a)]
@@ -900,6 +1315,8 @@ func _on_day_changed(_date: Dictionary) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _root == null or not _root.visible:
+		return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var k: int = event.keycode
@@ -912,9 +1329,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_month_changed(_date: Dictionary) -> void:
-	if int(_date.get("month", 0)) == 1 and not Net.is_online():
+	if int(_date.get("month", 0)) == 1 and not Net.is_online() and _root.visible:
 		Game.save_game("user://autosave.json")   # autosave anual (só local)
-	_refresh_market()
 	_refresh_top()
 	_refresh_info()
 
@@ -947,7 +1363,9 @@ func _on_player_changed(_cid: int) -> void:
 
 
 func _on_map_mode_changed(mode: int) -> void:
-	_mode_button.text = "Mapa: %s" % MapView.MODE_NAMES[mode]
+	var b: Button = _side_btns.get("map")
+	if b != null:
+		b.tooltip_text = "Modo do mapa: %s (toque para alternar)" % MapView.MODE_NAMES[mode]
 
 
 func _on_army_selected(aid: int) -> void:
@@ -981,11 +1399,6 @@ func _on_speed_pressed(index: int) -> void:
 func _on_tax_pressed(delta: int) -> void:
 	var c := Game.countries[Game.player_country]
 	Game.submit_command(Cmd.set_tax(c.id, clampi(c.tax_pct + delta, 0, 100)))
-
-
-func _on_mode_pressed() -> void:
-	if map_view != null:
-		map_view.cycle_mode()
 
 
 func _on_recruit_pressed() -> void:

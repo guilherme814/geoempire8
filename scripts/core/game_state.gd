@@ -29,6 +29,16 @@ const TECH_START := {
 	"GBR": 4, "FRA": 3, "PRU": 3, "BEL": 3, "USA": 2, "NED": 2, "SUI": 2, "AUT": 2,
 	"SWE": 2, "DEN": 2, "SAX": 2, "BAV": 2, "HAN": 2, "WUR": 2, "JAP": 1, "RUS": 1, "ESP": 1, "SAR": 1,
 }
+# Política interna: classes sociais e correntes ideológicas
+const CLASSES := ["peasants", "workers", "aristocrats", "bourgeoisie", "officials", "soldiers"]
+const IDEOLOGIES := ["conservatism", "liberalism", "socialism", "nationalism", "reactionism"]
+const CLASS_PART := [2, 3, 40, 25, 15, 10]       # participação política por pessoa (relativa)
+# afinidade base de cada classe (%) por corrente: [conserv., liberal., social., nacional., reacion.]
+const CLASS_AFF := [[40, 10, 5, 15, 30], [10, 25, 45, 20, 0], [30, 0, 0, 10, 60],
+	[25, 55, 5, 15, 0], [45, 25, 0, 25, 5], [30, 5, 0, 50, 15]]
+const CLASS_RADICAL := [2, 2, 4, 1, 1, 3]        # corrente que cresce quando a classe fica insatisfeita
+const REVOLT_STABILITY := 25                     # abaixo disso há risco de revolta
+const UNREST_TAX_STABILITY := 40                 # abaixo disso a arrecadação cai
 const SCHOOL_UPKEEP := 2         # por nível de escola / mês
 const UNIVERSITY_UPKEEP := 5     # por nível de universidade / mês
 
@@ -365,6 +375,12 @@ func load_world(path: String = WORLD_PATH) -> bool:
 			var regs := clampi(int(c.pop_total * 0.6), 1, 40)
 			_add_regiments(c.capital, c.id, regs)
 
+	for c in countries:
+		if c.is_alive():
+			var pol := politics_of(c)
+			for i in 6:
+				c.sat[i] = clampi(int(pol["target"][i]), 0, 100)
+			c.stability = int(politics_of(c)["stability"])
 	player_country = 0
 	for c in countries:
 		if c.tag == DEFAULT_PLAYER_TAG:
@@ -1213,6 +1229,9 @@ func _simulate_month() -> void:
 			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 			c.lit_acc = c.lit_acc % 100
 			c.tech_pts += 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y
+	for c in countries:
+		if c.is_alive():
+			_update_politics(c)
 	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
 	for c in countries:
 		if not c.is_alive():
@@ -1277,6 +1296,24 @@ func _event_ok(d: Dictionary, c: Country) -> bool:
 		return false
 	if c.treasury > int(d.get("max_treasury", 1000000000)) or c.treasury < int(d.get("min_treasury", -1000000000)):
 		return false
+	if d.has("min_ideo"):
+		var need: Dictionary = d["min_ideo"]
+		var pol := politics_of(c)
+		for k in need.keys():
+			var idx := IDEOLOGIES.find(str(k))
+			if idx < 0 or int(pol["ideo"][idx]) < int(need[k]):
+				return false
+	if d.has("max_sat"):
+		var lim: Dictionary = d["max_sat"]
+		for k in lim.keys():
+			var ci := CLASSES.find(str(k))
+			if ci < 0 or int(c.sat[ci]) > int(lim[k]):
+				return false
+	if d.has("min_price"):
+		var mp: Dictionary = d["min_price"]
+		for k in mp.keys():
+			if c.id >= local_price.size() or int(local_price[c.id].get(str(k), 100)) < int(mp[k]):
+				return false
 	var need_regs: int = int(d.get("min_regiments", 0))
 	if need_regs > 0 and regiments_of(c.id) < need_regs:
 		return false
@@ -1341,6 +1378,13 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 		Events.province_updated.emit(cap.id)
 	if fx.has("literacy"):
 		c.literacy = clampi(c.literacy + int(fx["literacy"]), 0, LITERACY_MAX)
+	if fx.has("sat"):
+		var sd: Dictionary = fx["sat"]
+		for k in sd.keys():
+			var ci := CLASSES.find(str(k))
+			if ci >= 0:
+				c.sat[ci] = clampi(int(c.sat[ci]) + int(sd[k]), 0, 100)
+		c.stability = int(politics_of(c)["stability"])
 	if fx.has("pop_pct"):
 		var pct: int = int(fx["pop_pct"])
 		for pid in c.province_ids:
@@ -1348,6 +1392,95 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 
 
 ## Previsão mensal de um país (usada pela simulação e pela UI).
+## Classes do país: participação (permil), satisfação-alvo, influência, correntes (permil) e
+## estabilidade. Tudo derivado da economia; só `Country.sat` e `stability` são estado.
+@warning_ignore("integer_division")
+func politics_of(c: Country) -> Dictionary:
+	var pop := maxi(1, population_of(c))
+	var fl := 0
+	var ml := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		fl += p.factory_level
+		ml += int(p.bld.get("mine", 0))
+	var edu := edu_levels(c)
+	var regs := regiments_of(c.id)
+	var sh := [0, 0, 0, 0, 0, 0]
+	sh[5] = clampi(regs * REGIMENT_SIZE * 1000 / pop, 5, 60)
+	sh[1] = mini(400, 30 + (fl * 4000 + ml * 2000) * 1000 / pop)
+	sh[3] = mini(120, 10 + c.literacy / 25 + fl * 1500 * 1000 / pop)
+	sh[4] = mini(50, 5 + c.literacy / 50 + (edu.x + 2 * edu.y) * 500 * 1000 / pop)
+	sh[2] = maxi(8, 25 - c.literacy / 50)
+	sh[0] = 1000 - sh[1] - sh[2] - sh[3] - sh[4] - sh[5]
+
+	var lp: Dictionary = local_price[c.id] if c.id < local_price.size() else {}
+	var grain: int = int(lp.get("grain", 100))
+	var fabric: int = int(lp.get("fabric", 100))
+	var wars_n := wars_of(c.id).size()
+	var emb_n := 0
+	for k in embargoes:
+		if int(k) % 1000 == c.id:
+			emb_n += 1
+	var e := estimate_monthly(c)
+	var sol := standard_of_living_x10(c, e)
+	var tax := c.tax_pct
+	var broke := c.treasury < 0
+	var tg := [0, 0, 0, 0, 0, 0]
+	tg[0] = 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4
+	tg[1] = 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4
+	tg[2] = 75 - (tax - 30) / 2 - c.literacy / 25
+	tg[3] = 45 + clampi(int(e["trade"]) / 10, 0, 25) + clampi(int(e["industry"]) / 10, 0, 15) - emb_n * 5 - (15 if is_blockaded(c.id) else 0) - (tax - 30)
+	tg[4] = 50 + (-30 if broke else 15) + c.literacy / 30
+	tg[5] = 55 + (-25 if broke else 10) + wars_n * 5
+	for i in 6:
+		tg[i] = clampi(tg[i], 0, 100)
+
+	var pw := [0, 0, 0, 0, 0, 0]
+	var tot_pw := 0
+	for i in 6:
+		pw[i] = sh[i] * CLASS_PART[i] * (1000 + (c.literacy if i < 2 else 0)) / 1000
+		tot_pw += pw[i]
+	tot_pw = maxi(1, tot_pw)
+	var acc := [0, 0, 0, 0, 0]
+	var wsum := 0
+	var ssum := 0
+	for i in 6:
+		var sat: int = int(c.sat[i])
+		var shift := clampi(50 - sat, 0, 50)
+		for j in 5:
+			var v: int = int(CLASS_AFF[i][j]) * (100 - shift)
+			if j == int(CLASS_RADICAL[i]):
+				v += shift * 100
+			acc[j] += v * pw[i]
+		var w: int = sh[i] + pw[i] / 50
+		wsum += w
+		ssum += sat * w
+	var ideo := [0, 0, 0, 0, 0]
+	for j in 5:
+		ideo[j] = acc[j] / (10 * tot_pw)
+	return {"share": sh, "target": tg, "power": pw, "power_total": tot_pw, "ideo": ideo,
+		"stability": ssum / maxi(1, wsum)}
+
+
+## Atualização mensal: a satisfação anda até 2 pontos rumo ao alvo; instabilidade gera revoltas.
+@warning_ignore("integer_division")
+func _update_politics(c: Country) -> void:
+	var pol := politics_of(c)
+	for i in 6:
+		c.sat[i] = int(c.sat[i]) + clampi(int(pol["target"][i]) - int(c.sat[i]), -2, 2)
+	c.stability = int(politics_of(c)["stability"])
+	if c.stability < REVOLT_STABILITY and not c.province_ids.is_empty():
+		if rng.randi_range(0, 99) < (REVOLT_STABILITY - c.stability) * 2:
+			var pid: int = c.province_ids[rng.randi_range(0, c.province_ids.size() - 1)]
+			var p := provinces[pid]
+			p.population -= p.population * 3 / 100
+			p.manpower /= 2
+			c.treasury -= 40
+			Events.province_updated.emit(pid)
+			if c.id == player_country:
+				Events.notice.emit("Revolta em %s! O país está instável." % p.name)
+
+
 ## Soma dos níveis de escolas (x) e universidades (y) do país.
 func edu_levels(c: Country) -> Vector2i:
 	var sc := 0
@@ -1370,6 +1503,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 		flat += Province.FLAT_TAX
 		prod += p.production()
 	tax = tax * (1000 + c.literacy / 5) / 1000      # alfabetização: até ~+19% de imposto
+	if c.stability < UNREST_TAX_STABILITY:
+		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var up_army: int = regs * REGIMENT_UPKEEP
@@ -1736,6 +1871,9 @@ func state_hash() -> int:
 		h = _mix(h, c.literacy)
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.lit_acc)
+		h = _mix(h, c.stability)
+		for v in c.sat:
+			h = _mix(h, int(v))
 	for k in embargoes:
 		h = _mix(h, int(k))
 	for e in pending_events:
@@ -1782,6 +1920,13 @@ func _country_ints(field: String) -> Array:
 	var out: Array = []
 	for c in countries:
 		out.append(int(c.get(field)))
+	return out
+
+
+func _sat_list() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.sat.duplicate())
 	return out
 
 
@@ -1859,6 +2004,8 @@ func serialize_state() -> Dictionary:
 		"bld": blds,
 		"tech": _country_ints("tech_pts"),
 		"lit_acc": _country_ints("lit_acc"),
+		"stab": _country_ints("stability"),
+		"sat": _sat_list(),
 		"barracks": barracks,
 		"factory": fkinds,
 		"factory_lvl": flevels,
@@ -1957,6 +2104,14 @@ func load_state(d: Dictionary) -> bool:
 	for i in countries.size():
 		countries[i].tech_pts = int(tp[i]) if i < tp.size() else countries[i].tech_pts
 		countries[i].lit_acc = int(la[i]) if i < la.size() else 0
+	var stb: Array = d.get("stab", [])
+	var sts: Array = d.get("sat", [])
+	for i in countries.size():
+		countries[i].stability = int(stb[i]) if i < stb.size() else 50
+		countries[i].sat = [50, 50, 50, 50, 50, 50]
+		if i < sts.size():
+			for j in 6:
+				countries[i].sat[j] = int(sts[i][j])
 	var lit: Array = d.get("literacy", [])
 	for i in countries.size():
 		countries[i].literacy = int(lit[i]) if i < lit.size() else countries[i].literacy

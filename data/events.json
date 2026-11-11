@@ -388,5 +388,194 @@
     }
    }
   ]
+ },
+ {
+  "id": "socialist_agitation",
+  "title": "Agitação socialista",
+  "text": "Panfletos e sociedades secretas de operários exigem jornadas menores e voz política. O movimento socialista ganha força nas cidades.",
+  "mtth_months": 30,
+  "min_ideo": {
+   "socialism": 250
+  },
+  "options": [
+   {
+    "label": "Conceder direitos trabalhistas",
+    "effects": {
+     "gold": -120,
+     "sat": {
+      "workers": 15,
+      "aristocrats": -5,
+      "bourgeoisie": -5
+     }
+    }
+   },
+   {
+    "label": "Reprimir os agitadores",
+    "effects": {
+     "manpower": -500,
+     "sat": {
+      "workers": -12,
+      "soldiers": 5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "liberal_constitution",
+  "title": "Exigência constitucional",
+  "text": "A burguesia e os intelectuais exigem uma constituição, parlamento e liberdade de comércio. O liberalismo domina os cafés e a imprensa.",
+  "mtth_months": 36,
+  "min_ideo": {
+   "liberalism": 300
+  },
+  "options": [
+   {
+    "label": "Aceitar reformas liberais",
+    "effects": {
+     "literacy": 10,
+     "sat": {
+      "bourgeoisie": 15,
+      "officials": 5,
+      "aristocrats": -10
+     }
+    }
+   },
+   {
+    "label": "Recusar",
+    "effects": {
+     "sat": {
+      "bourgeoisie": -12,
+      "officials": -5,
+      "aristocrats": 5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "nationalist_fervor",
+  "title": "Febre nacionalista",
+  "text": "Sociedades patrióticas pedem a união do povo e a retomada de terras 'irmãs'. Oficiais e soldados ouvem com entusiasmo.",
+  "mtth_months": 36,
+  "min_ideo": {
+   "nationalism": 250
+  },
+  "options": [
+   {
+    "label": "Exaltar a nação",
+    "effects": {
+     "gold": -60,
+     "manpower": 1000,
+     "sat": {
+      "soldiers": 10,
+      "officials": 5,
+      "bourgeoisie": -3
+     }
+    }
+   },
+   {
+    "label": "Moderar os ânimos",
+    "effects": {
+     "sat": {
+      "soldiers": -8,
+      "officials": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "reactionary_plot",
+  "title": "Conspiração reacionária",
+  "text": "Nobres e clérigos conspiram para restaurar os velhos privilégios e frear qualquer reforma.",
+  "mtth_months": 40,
+  "min_ideo": {
+   "reactionism": 200
+  },
+  "options": [
+   {
+    "label": "Reprimir os conspiradores",
+    "effects": {
+     "gold": -80,
+     "sat": {
+      "aristocrats": -12,
+      "officials": 3
+     }
+    }
+   },
+   {
+    "label": "Ceder aos nobres",
+    "effects": {
+     "sat": {
+      "aristocrats": 15,
+      "peasants": -10,
+      "workers": -5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "bread_riots",
+  "title": "Motins do pão",
+  "text": "O preço dos alimentos disparou. Camponeses e trabalhadores urbanos saem às ruas pedindo pão.",
+  "mtth_months": 18,
+  "min_price": {
+   "grain": 125
+  },
+  "options": [
+   {
+    "label": "Abrir os celeiros",
+    "effects": {
+     "gold": -150,
+     "sat": {
+      "peasants": 20,
+      "workers": 10
+     }
+    }
+   },
+   {
+    "label": "Usar a força",
+    "effects": {
+     "manpower": -500,
+     "sat": {
+      "peasants": -10,
+      "workers": -10,
+      "soldiers": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "land_reform",
+  "title": "Questão agrária",
+  "text": "Camponeses insatisfeitos pedem a divisão das terras da nobreza. Os aristocratas ameaçam resistir.",
+  "mtth_months": 30,
+  "max_sat": {
+   "peasants": 35
+  },
+  "options": [
+   {
+    "label": "Fazer a reforma agrária",
+    "effects": {
+     "pop_pct": 1,
+     "sat": {
+      "peasants": 25,
+      "aristocrats": -25
+     }
+    }
+   },
+   {
+    "label": "Manter o sistema",
+    "effects": {
+     "sat": {
+      "peasants": -5,
+      "aristocrats": 10
+     }
+    }
+   }
+  ]
  }
 ]

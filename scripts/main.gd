@@ -11,6 +11,7 @@ var map_view: MapView
 var overlay: MapOverlay
 var camera: MapCamera
 var hud: HUD
+var select: CountrySelect
 
 
 func _ready() -> void:
@@ -36,13 +37,44 @@ func _ready() -> void:
 	hud.map_view = map_view
 	add_child(hud)
 
-	camera.ui_blocker = hud.is_over_ui
+	camera.ui_blocker = _is_over_ui
 	camera.tapped.connect(_on_map_tapped)
 	camera.zoom_changed.connect(_on_zoom_changed)
 	Events.player_country_changed.connect(_on_player_changed)
+	Events.focus_province.connect(_on_focus_province)
+	hud.country_select_requested.connect(_open_country_select)
 
-	# Começa enquadrando a capital do país do jogador.
-	_on_player_changed(Game.player_country)
+	if Net.is_online():
+		# Online o país vem do lobby: enquadra a capital direto.
+		_on_player_changed(Game.player_country)
+	else:
+		_open_country_select()
+
+
+func _is_over_ui(pos: Vector2) -> bool:
+	if hud.is_over_ui(pos):
+		return true
+	return select != null and is_instance_valid(select) and select.is_over_ui(pos)
+
+
+func _open_country_select() -> void:
+	if select != null and is_instance_valid(select):
+		return
+	select = CountrySelect.new()
+	select.hud = hud
+	select.finished.connect(_on_select_finished)
+	add_child(select)
+	camera.focus_rect(Rect2(Vector2.ZERO, Game.map_size), 1.0)
+
+
+func _on_select_finished() -> void:
+	select = null
+
+
+func _on_focus_province(pid: int) -> void:
+	if pid < 0 or pid >= Game.provinces.size():
+		return
+	camera.focus_rect(Game.provinces[pid].bounds.grow(80.0), 1.0)
 
 
 func _on_zoom_changed(z: float) -> void:
@@ -51,6 +83,10 @@ func _on_zoom_changed(z: float) -> void:
 
 
 func _on_map_tapped(world_pos: Vector2) -> void:
+	# Na tela de escolha de nação, tocar no mapa escolhe o país dono da província.
+	if select != null and is_instance_valid(select) and select.active:
+		select.pick_province(map_view.province_at(world_pos))
+		return
 	# Frotas: tocar numa frota SUA seleciona; tocar nela de novo para e desmarca;
 	# com frota selecionada, tocar no mar ou num porto manda navegar.
 	var fid := overlay.fleet_at(world_pos)

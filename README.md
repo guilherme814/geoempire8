@@ -90,7 +90,12 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Interface (fase de layout)
 - **Escolha de nação** ao iniciar: lista com busca e ordenação, ficha do país (população, capital, tecnologia, exército, tesouro) e botão Jogar. Tocar num país no mapa também o escolhe. "Trocar de país" fica no menu lateral.
 - **Barra superior**: bandeira e país, tesouro (+saldo), população, alfabetização, padrão de vida, tecnologia, estabilidade, exército, data e velocidade.
-- **Barra lateral**: Política, Economia, Mercado, modo do mapa e menu (salvar, carregar, trocar de país).
+- **Barra lateral**: Política, Leis, Economia, Mercado, modo do mapa e menu (salvar, carregar, trocar de país).
 - **Dock inferior**: construções (Governo, Recursos, Indústria).
 - **Política interna**: seis classes sociais (camponeses, operários, aristocratas, burguesia, funcionários, soldados) com satisfação e influência, e cinco correntes (conservadorismo, liberalismo, socialismo, nacionalismo, reacionarismo) que nascem da economia. Estabilidade baixa reduz a arrecadação e causa revoltas; novos eventos reagem às correntes.
 - Ícones e tema desenhados em código (`scripts/ui/ui_icon.gd`, `scripts/ui/ui_kit.gd`).
+
+## Leis
+- 10 grupos de leis (governo, imprensa, serviço militar, política econômica, comercial, tributária, trabalho compulsório, educação, trabalhista, associação), cada um com 3 opções, em `scripts/core/laws.gd`.
+- Janela **Leis** na barra lateral, em três colunas: Estrutura de poder / Economia / Direitos e sociedade. Aprovar custa ouro, exige tecnologia e alfabetização, abala a satisfação das classes e bloqueia o grupo por 24 meses.
+- Efeitos: arrecadação, comércio, custo do exército, crescimento da alfabetização, tecnologia, estabilidade e satisfação por classe. Comando `enact_law` (online-safe); estado em `Country.laws` / `law_cd`, salvo e no hash.

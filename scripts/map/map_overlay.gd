@@ -165,9 +165,9 @@ func _draw() -> void:
 		fpts.append(Game.cell_center(fsel.cell))
 		for c in fsel.path:
 			fpts.append(Game.cell_center(c))
-		draw_polyline(fpts, Color(0.1, 0.25, 0.55, 0.55), 2.0 / z)
+		draw_polyline(fpts, Color(0.45, 0.85, 1.0, 0.75), 2.0 / z)
 		var ftip: Vector2 = fpts[fpts.size() - 1]
-		draw_circle(ftip, 5.0 / z, Color(0.1, 0.25, 0.55, 0.95))
+		draw_circle(ftip, 5.0 / z, Color(0.45, 0.85, 1.0, 0.95))
 		var feta := "%d d" % Game.fleet_eta_days(fsel)
 		var fpos := ftip + Vector2(8.0 / z, -8.0 / z)
 		draw_string_outline(_font, fpos, feta, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(8, int(13.0 / z)), 3, Color(0, 0, 0, 0.8))

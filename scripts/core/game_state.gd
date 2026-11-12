@@ -122,6 +122,7 @@ var speed: int = 1
 var player_country: int = 0
 var lockstep: bool = false   # true quando o Net controla o avanço do tempo
 var world_seed: int = 1836
+var history: Dictionary = {}       # dados históricos de 1836 por tag (data/history_1836.json)
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _acc: float = 0.0
@@ -359,6 +360,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	frame = 0
 	speed = 1
 
+	_load_history()
 	_rebuild_all_countries()
 	_init_market()
 	graph = ProvinceGraph.new()
@@ -368,6 +370,10 @@ func load_world(path: String = WORLD_PATH) -> bool:
 		c.literacy = int(LITERACY_START.get(c.tag, 10)) * 10
 		c.tech_pts = int(TECH_START.get(c.tag, 0)) * Country.TECH_STEP
 		c.lit_acc = 0
+		_init_laws(c)
+		# O desenvolvimento industrial histórico adianta a tecnologia inicial.
+		var hh: Dictionary = history.get(c.tag, {})
+		c.tech_pts = maxi(c.tech_pts, (int(hh.get("ind", 0)) * 3 / 5) * Country.TECH_STEP)
 	for c in countries:
 		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * 8)
 		if c.is_alive():
@@ -393,6 +399,73 @@ func load_world(path: String = WORLD_PATH) -> bool:
 # ---------------------------------------------------------------------------
 # Comandos
 # ---------------------------------------------------------------------------
+const HISTORY_PATH := "res://data/history_1836.json"
+
+
+func _load_history() -> void:
+	history = {}
+	if not FileAccess.file_exists(HISTORY_PATH):
+		return
+	var f := FileAccess.open(HISTORY_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	if parsed is Dictionary:
+		history = parsed
+
+
+func _init_laws(c: Country) -> void:
+	var h: Dictionary = history.get(c.tag, {})
+	c.laws = Laws.defaults_for(h)
+	c.law_cd = []
+	for i in Laws.group_count():
+		c.law_cd.append(0)
+
+
+## Modificadores somados das leis em vigor (ver Laws.modifiers).
+func law_mods(c: Country) -> Dictionary:
+	return Laws.modifiers(c.laws)
+
+
+## Por que a lei não pode ser aprovada agora ("" = pode).
+func law_block_reason(c: Country, gi: int, oi: int) -> String:
+	if gi < 0 or gi >= Laws.group_count() or c.laws.size() != Laws.group_count():
+		return "Lei inválida"
+	var opts: Array = Laws.group(gi)["opts"]
+	if oi < 0 or oi >= opts.size():
+		return "Lei inválida"
+	if int(c.laws[gi]) == oi:
+		return "Já está em vigor"
+	var o: Dictionary = opts[oi]
+	if int(c.law_cd[gi]) > 0:
+		return "Aguarde %d meses" % int(c.law_cd[gi])
+	if c.tech_level() < int(o["tech"]):
+		return "Requer tecnologia nível %d" % int(o["tech"])
+	if c.literacy < int(o["lit"]):
+		return "Requer alfabetização %.1f%%" % (float(int(o["lit"])) / 10.0)
+	if c.treasury < int(o["cost"]):
+		return "Ouro insuficiente"
+	return ""
+
+
+func _enact_law(c: Country, gi: int, oi: int) -> void:
+	var old: Dictionary = Laws.option(gi, int(c.laws[gi]))
+	var nw: Dictionary = Laws.option(gi, oi)
+	c.treasury -= int(nw["cost"])
+	c.laws[gi] = oi
+	c.law_cd[gi] = Laws.COOLDOWN_MONTHS
+	# Choque imediato: metade da diferença de efeito sobre cada classe.
+	var osd: Dictionary = old["fx"].get("sat", {})
+	var nsd: Dictionary = nw["fx"].get("sat", {})
+	for i in 6:
+		var dv: int = int(nsd.get(i, 0)) - int(osd.get(i, 0))
+		c.sat[i] = clampi(int(c.sat[i]) + dv / Laws.SAT_SHOCK_DIV, 0, 100)
+	c.stability = int(politics_of(c)["stability"])
+	Events.treasury_changed.emit(c.id)
+	if c.id == player_country:
+		Events.notice.emit("Lei aprovada: %s." % str(nw["name"]))
+
+
 ## Ponto de entrada de TODA ação do jogador. Online, o comando vai para o Net,
 ## que o distribui para todos os pares e o executa no mesmo frame em todos.
 func submit_command(cmd: Dictionary) -> void:
@@ -419,6 +492,16 @@ func apply_command(cmd: Dictionary) -> void:
 		countries[cid].tax_pct = clampi(int(cmd.get("pct", 30)), 0, 100)
 		Events.treasury_changed.emit(cid)
 
+	elif t == Cmd.ENACT_LAW:
+		if issuer < 0 or issuer >= countries.size():
+			return
+		var lc := countries[issuer]
+		var lg: int = int(cmd.get("group", -1))
+		var lo: int = int(cmd.get("option", -1))
+		if law_block_reason(lc, lg, lo) != "":
+			return
+		_enact_law(lc, lg, lo)
+
 	elif t == Cmd.RECRUIT:
 		var pid: int = int(cmd.get("province", -1))
 		if not can_recruit(pid, issuer):
@@ -431,7 +514,7 @@ func apply_command(cmd: Dictionary) -> void:
 		if not can_build(pid, issuer, kind):
 			return
 		var p := provinces[pid]
-		countries[issuer].treasury -= build_cost(p, kind)
+		countries[issuer].treasury -= build_total_cost(p, kind)
 		p.set_building_level(kind, p.building_level(kind) + 1)
 		Events.province_updated.emit(pid)
 		Events.treasury_changed.emit(issuer)
@@ -801,6 +884,16 @@ func build_cost(p: Province, kind: String) -> int:
 	return int(b.get("cost", 0)) * (p.building_level(kind) + 1)
 
 
+## Materiais de obra (em ouro, ao preço de mercado) do próximo nível.
+func build_material_cost(p: Province, kind: String) -> int:
+	return p.material_cost(kind, p.building_level(kind) + 1)
+
+
+## O que o tesouro paga ao construir: custo base + materiais.
+func build_total_cost(p: Province, kind: String) -> int:
+	return build_cost(p, kind) + build_material_cost(p, kind)
+
+
 func can_build(pid: int, issuer: int, kind: String) -> bool:
 	if not Province.BUILDINGS.has(kind):
 		return false
@@ -815,7 +908,7 @@ func can_build(pid: int, issuer: int, kind: String) -> bool:
 		return false
 	if Province.FACTORIES.has(kind) and p.factory != "" and p.factory != kind:
 		return false   # uma fábrica por província
-	return countries[issuer].treasury >= build_cost(p, kind)
+	return countries[issuer].treasury >= build_total_cost(p, kind)
 
 
 # ---------------------------------------------------------------------------
@@ -1225,10 +1318,15 @@ func _simulate_month() -> void:
 	for c in countries:
 		if c.is_alive():
 			var edu := edu_levels(c)
-			c.lit_acc += 100 + (edu.x + 2 * edu.y) * 400 / maxi(1, c.province_ids.size())
+			var lmod := law_mods(c)
+			var lit_base: int = 100 + (edu.x + 2 * edu.y) * 400 / maxi(1, c.province_ids.size())
+			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"])) / 100)
 			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 			c.lit_acc = c.lit_acc % 100
-			c.tech_pts += 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y
+			c.tech_pts += maxi(0, 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"]))
+			for gi in c.law_cd.size():
+				if int(c.law_cd[gi]) > 0:
+					c.law_cd[gi] = int(c.law_cd[gi]) - 1
 	for c in countries:
 		if c.is_alive():
 			_update_politics(c)
@@ -1432,8 +1530,10 @@ func politics_of(c: Country) -> Dictionary:
 	tg[3] = 45 + clampi(int(e["trade"]) / 10, 0, 25) + clampi(int(e["industry"]) / 10, 0, 15) - emb_n * 5 - (15 if is_blockaded(c.id) else 0) - (tax - 30)
 	tg[4] = 50 + (-30 if broke else 15) + c.literacy / 30
 	tg[5] = 55 + (-25 if broke else 10) + wars_n * 5
+	var lmp := law_mods(c)
+	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
 	for i in 6:
-		tg[i] = clampi(tg[i], 0, 100)
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(lmp["sat"][i]) + hist_bias, 0, 100)
 
 	var pw := [0, 0, 0, 0, 0, 0]
 	var tot_pw := 0
@@ -1495,26 +1595,45 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var tax := 0
 	var flat := 0
 	var prod := 0
-	var industry := 0
+	var industry := 0          # lucro bruto das fábricas (receita - insumos): padrão de vida e política
+	var industry_state := 0    # o que o tesouro recebe das fábricas (imposto, ou lucro se estatais)
+	var f_rev := 0
+	var f_inputs := 0
+	var f_wages := 0
+	var f_tax := 0
+	var up_barracks := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
 		tax += p.monthly_tax(c.tax_pct)
 		industry += p.factory_profit()
+		up_barracks += p.barracks * int(Province.GOV_UPKEEP["barracks"])
+		if p.factory != "" and p.factory_level > 0:
+			var rp := p.building_report(p.factory, p.factory_level, c.tax_pct)
+			industry_state += int(rp["state_income"])
+			f_rev += int(rp["revenue"])
+			f_inputs += int(rp["inputs_cost"])
+			f_wages += int(rp["wages"])
+			f_tax += int(rp["tax"])
 		flat += Province.FLAT_TAX
 		prod += p.production()
+	var lm := law_mods(c)
 	tax = tax * (1000 + c.literacy / 5) / 1000      # alfabetização: até ~+19% de imposto
+	tax = tax * (100 + int(lm["tax"])) / 100
 	if c.stability < UNREST_TAX_STABILITY:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
-	var up_army: int = regs * REGIMENT_UPKEEP
+	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100
 	var up_navy: int = c.ships * SHIP_UPKEEP
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
+	trade = trade * (100 + int(lm["trade"])) / 100
 	return {
-		"income": tax + industry + trade, "industry": industry, "trade": trade,
-		"expense": up_prov + up_army + up_navy + up_edu, "upkeep_edu": up_edu, "regiments": regs,
+		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
+		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
+		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -1874,6 +1993,10 @@ func state_hash() -> int:
 		h = _mix(h, c.stability)
 		for v in c.sat:
 			h = _mix(h, int(v))
+		for v in c.laws:
+			h = _mix(h, int(v))
+		for v in c.law_cd:
+			h = _mix(h, int(v))
 	for k in embargoes:
 		h = _mix(h, int(k))
 	for e in pending_events:
@@ -1920,6 +2043,13 @@ func _country_ints(field: String) -> Array:
 	var out: Array = []
 	for c in countries:
 		out.append(int(c.get(field)))
+	return out
+
+
+func _law_lists(field: String) -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append((c.get(field) as Array).duplicate())
 	return out
 
 
@@ -2006,6 +2136,8 @@ func serialize_state() -> Dictionary:
 		"lit_acc": _country_ints("lit_acc"),
 		"stab": _country_ints("stability"),
 		"sat": _sat_list(),
+		"laws": _law_lists("laws"),
+		"law_cd": _law_lists("law_cd"),
 		"barracks": barracks,
 		"factory": fkinds,
 		"factory_lvl": flevels,
@@ -2112,6 +2244,14 @@ func load_state(d: Dictionary) -> bool:
 		if i < sts.size():
 			for j in 6:
 				countries[i].sat[j] = int(sts[i][j])
+	var lw: Array = d.get("laws", [])
+	var lcd: Array = d.get("law_cd", [])
+	for i in countries.size():
+		_init_laws(countries[i])
+		if i < lw.size() and lw[i] is Array and (lw[i] as Array).size() == Laws.group_count():
+			for j in Laws.group_count():
+				countries[i].laws[j] = int(lw[i][j])
+				countries[i].law_cd[j] = int(lcd[i][j]) if i < lcd.size() and lcd[i] is Array and j < (lcd[i] as Array).size() else 0
 	var lit: Array = d.get("literacy", [])
 	for i in countries.size():
 		countries[i].literacy = int(lit[i]) if i < lit.size() else countries[i].literacy

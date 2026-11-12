@@ -18,6 +18,8 @@ var tech_pts: int = 0         # pontos de tecnologia (nível = pontos / TECH_STE
 var lit_acc: int = 0          # resto fracionário do crescimento da alfabetização
 var sat: Array = [50, 50, 50, 50, 50, 50]   # satisfação (0-100) de cada classe social
 var stability: int = 50       # estabilidade interna (0-100), média ponderada da satisfação
+var laws: Array = []         # opção em vigor de cada grupo de leis (ver Laws.GROUPS)
+var law_cd: Array = []        # meses de espera até poder mudar cada grupo
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)
 
 # Derivados (recalculados por Game._refresh_country_geometry)

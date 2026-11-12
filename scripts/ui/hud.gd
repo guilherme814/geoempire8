@@ -333,6 +333,7 @@ func _build_sidebar() -> void:
 	panel.add_child(col)
 	var defs: Array = [
 		["politics", "scales", "Política: classes sociais e ideologias"],
+		["laws", "scroll", "Leis: estrutura de poder, economia e direitos"],
 		["eco", "coin", "Economia: orçamento e impostos"],
 		["market", "bars", "Mercado: oferta, demanda e preços"],
 		["map", "globe", "Modo do mapa"],
@@ -457,6 +458,31 @@ func _buildings_summary(p: Province) -> String:
 	return "Construções: " + ", ".join(parts) if not parts.is_empty() else ""
 
 
+## Linhas de detalhe de um edifício: obra, produção, consumo e finanças mensais.
+func _building_detail(p: Province, kind: String, lv: int, me: int) -> String:
+	var tax: int = Game.countries[me].tax_pct
+	var nxt := mini(Province.MAX_BUILDING, lv + 1)
+	var rep := p.building_report(kind, nxt, tax)
+	var parts: Array[String] = []
+	if lv < Province.MAX_BUILDING:
+		var mats: Array[String] = []
+		for m in p.material_list(kind, nxt):
+			mats.append("%d %s" % [int(m["amount"]), str(RESOURCE_PT.get(m["good"], m["good"])).to_lower()])
+		parts.append("Obra: %d ouro + materiais %d (%s)" % [Game.build_cost(p, kind), Game.build_material_cost(p, kind), ", ".join(mats)])
+	var lbl := "Nível %d" % nxt
+	if Province.FACTORIES.has(kind) or Province.WAGE_PCT.has(kind):
+		parts.append("%s: produz %d %s/mês · receita %d" % [lbl, int(rep["units"]), str(RESOURCE_PT.get(rep["product"], rep["product"])).to_lower(), int(rep["revenue"])])
+		if Province.FACTORIES.has(kind):
+			var ins: Array[String] = []
+			for i in rep["inputs"]:
+				ins.append("%d %s" % [int(i["amount"]), str(RESOURCE_PT.get(i["good"], i["good"])).to_lower()])
+			parts.append("Consome %s (custo %d)" % [", ".join(ins), int(rep["inputs_cost"])])
+		parts.append("Salários -%d · impostos -%d · líquido %+d/mês · %d empregos" % [int(rep["wages"]), int(rep["tax"]), int(rep["net"]), int(rep["jobs"])])
+	else:
+		parts.append("%s: custo mensal -%d (salários) · %d empregos" % [lbl, int(rep["wages"]), int(rep["jobs"])])
+	return "\n".join(parts)
+
+
 func _refresh_build_panel() -> void:
 	for t in _build_tab_btns.keys():
 		_build_tab_btns[t].set_pressed_no_signal(t == _build_tab)
@@ -479,9 +505,12 @@ func _refresh_build_panel() -> void:
 		if b["tab"] != _build_tab or not p.can_host(k):
 			continue
 		var lv := p.building_level(k)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 2)
+		_build_rows.add_child(box)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		_build_rows.add_child(row)
+		box.add_child(row)
 		var lab := UIKit.label("%s  nív. %d/%d\n%s" % [b["name"], lv, Province.MAX_BUILDING, b["desc"]], 16, UIKit.TEXT)
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -500,9 +529,12 @@ func _refresh_build_panel() -> void:
 			btn.text = "Outra fábrica"
 			btn.disabled = true
 		else:
-			btn.text = "Construir (%d)" % Game.build_cost(p, k)
+			btn.text = "Construir (%d)" % Game.build_total_cost(p, k)
 			btn.disabled = not Game.can_build(p.id, me, k)
 			btn.pressed.connect(_on_build_pressed.bind(k))
+		var detail := UIKit.label(_building_detail(p, k, lv, me), 14, UIKit.TEXT_DIM)
+		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(detail)
 
 
 # ---------------------------------------------------------------------------
@@ -554,6 +586,7 @@ func _make_window(key: String, title: String, win_size: Vector2, icon_kind: Stri
 
 func _build_windows() -> void:
 	_make_window("politics", "Política interna", Vector2(900, 540), "scales")
+	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
 	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
 	var menu := _make_window("menu", "Menu", Vector2(420, 340), "menu")
@@ -589,6 +622,8 @@ func _refresh_windows() -> void:
 		_refresh_market()
 	if _windows["politics"].visible:
 		_refresh_politics()
+	if _windows["laws"].visible:
+		_refresh_laws()
 
 
 func _on_side_pressed(key: String) -> void:
@@ -644,14 +679,18 @@ func _refresh_economy() -> void:
 	body.add_child(cols)
 
 	var left := _card(cols, "Orçamento", "coin")
-	left.add_child(UIKit.kv_row("Impostos (%d%%) + base %d" % [c.tax_pct, int(e["flat"])], "%+d" % (income - int(e["industry"]) - int(e["trade"])), UIKit.POS))
-	left.add_child(UIKit.kv_row("Indústria", "%+d" % int(e["industry"]), _signed_color(int(e["industry"]))))
+	left.add_child(UIKit.kv_row("Impostos (%d%%) + base %d" % [c.tax_pct, int(e["flat"])], "%+d" % (income - int(e["industry_state"]) - int(e["trade"])), UIKit.POS))
+	left.add_child(UIKit.kv_row("Impostos das fábricas" if Province.FACTORIES_PRIVATE else "Lucro das fábricas", "%+d" % int(e["industry_state"]), _signed_color(int(e["industry_state"]))))
+	if int(e["factory_revenue"]) > 0:
+		left.add_child(UIKit.kv_row("   vendas %+d, insumos -%d, salários -%d%s" % [int(e["factory_revenue"]), int(e["factory_inputs"]), int(e["factory_wages"]), (", impostos -%d" % int(e["factory_tax"])) if int(e["factory_tax"]) > 0 else ""], "pagos pelas fábricas", UIKit.TEXT_DIM, 14))
 	left.add_child(UIKit.kv_row("Comércio exterior", "%+d" % int(e["trade"]), _signed_color(int(e["trade"]))))
 	left.add_child(HSeparator.new())
 	left.add_child(UIKit.kv_row("Manutenção das províncias", "-%d" % int(e["upkeep_prov"]), UIKit.NEG))
 	left.add_child(UIKit.kv_row("Exércitos (%d reg.)" % int(e["regiments"]), "-%d" % int(e["upkeep_army"]), UIKit.NEG))
 	left.add_child(UIKit.kv_row("Frota (%d navios)" % c.ships, "-%d" % int(e["upkeep_navy"]), UIKit.NEG))
-	left.add_child(UIKit.kv_row("Escolas e universidades", "-%d" % int(e["upkeep_edu"]), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Escolas e universidades (salários)", "-%d" % int(e["upkeep_edu"]), UIKit.NEG))
+	if int(e["upkeep_barracks"]) > 0:
+		left.add_child(UIKit.kv_row("Quartéis (instrutores)", "-%d" % int(e["upkeep_barracks"]), UIKit.NEG))
 	if net < 0 and c.treasury > 0:
 		left.add_child(UIKit.label("Tesouro acaba em ~%d meses." % (c.treasury / -net), 16, UIKit.WARN))
 
@@ -770,6 +809,90 @@ func _stability_text(v: int) -> String:
 	if v >= Game.REVOLT_STABILITY:
 		return "Instável: a arrecadação cai"
 	return "Revolta iminente"
+
+
+func _refresh_laws() -> void:
+	var body: VBoxContainer = _win_bodies["laws"]
+	UIKit.clear(body)
+	var c := Game.countries[Game.player_country]
+	if c.laws.size() != Laws.group_count():
+		return
+	var lm := Game.law_mods(c)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	body.add_child(head)
+	var info := UIKit.label("Cada lei só muda a cada %d meses e abala a satisfação das classes. Tesouro: %d" % [Laws.COOLDOWN_MONTHS, c.treasury], 16, UIKit.TEXT_DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(info)
+	head.add_child(UIKit.label("Estabilidade %d%%" % c.stability, 18, _sat_color(c.stability)))
+
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 10)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(cols)
+	var colv: Array = []
+	for ci in 3:
+		var v := VBoxContainer.new()
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		v.add_theme_constant_override("separation", 10)
+		cols.add_child(v)
+		var t := UIKit.serif_label(str(Laws.COLUMN_NAMES[ci]), 21, UIKit.GOLD_BRIGHT)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(t)
+		colv.append(v)
+	for gi in Laws.group_count():
+		var g: Dictionary = Laws.group(gi)
+		var card := _card(colv[int(g["col"])], str(g["name"]))
+		var opts: Array = g["opts"]
+		for oi in opts.size():
+			card.add_child(_law_option_row(c, gi, oi, opts[oi], int(c.laws[gi]) == oi))
+		if int(c.law_cd[gi]) > 0:
+			card.add_child(UIKit.label("Mudança bloqueada por %d meses" % int(c.law_cd[gi]), 15, UIKit.WARN))
+	if int(lm["tax"]) != 0 or int(lm["trade"]) != 0 or int(lm["army"]) != 0:
+		body.add_child(UIKit.label("Efeito acumulado das leis: arrecadação %+d%%, comércio %+d%%, custo do exército %+d%%." % [int(lm["tax"]), int(lm["trade"]), int(lm["army"])], 16, UIKit.TEXT_DIM))
+
+
+func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) -> Control:
+	var pc := PanelContainer.new()
+	var sb := UIKit.box(Color(0.79, 0.66, 0.36, 0.16) if active else Color(0, 0, 0, 0.18),
+		UIKit.GOLD if active else Color(0.24, 0.30, 0.33), 4, 2 if active else 1, 8)
+	pc.add_theme_stylebox_override("panel", sb)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	pc.add_child(col)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	col.add_child(row)
+	var nm := UIKit.label(str(o["name"]), 18, UIKit.GOLD_BRIGHT if active else UIKit.TEXT)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(nm)
+	var d := UIKit.label(str(o["desc"]), 14, UIKit.TEXT_DIM)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(d)
+	var fl := HFlowContainer.new()
+	fl.add_theme_constant_override("h_separation", 10)
+	col.add_child(fl)
+	for ln in Laws.effect_lines(o["fx"]):
+		fl.add_child(UIKit.label(str(ln["text"]), 14, UIKit.POS if bool(ln["good"]) else UIKit.NEG))
+	if active:
+		row.add_child(UIKit.label("EM VIGOR", 14, UIKit.GOLD))
+		return pc
+	var why := Game.law_block_reason(c, gi, oi)
+	var b := UIKit.button("Aprovar (%d)" % int(o["cost"]), Vector2(0, 38))
+	b.disabled = why != ""
+	b.pressed.connect(_on_law_pressed.bind(gi, oi))
+	row.add_child(b)
+	if why != "":
+		col.add_child(UIKit.label(why, 14, UIKit.WARN))
+	return pc
+
+
+func _on_law_pressed(gi: int, oi: int) -> void:
+	Game.submit_command(Cmd.enact_law(gi, oi))
+	_refresh_windows()
 
 
 func _refresh_politics() -> void:
@@ -1244,7 +1367,8 @@ func _refresh_info() -> void:
 				rel += "  (trégua: %d dias)" % tl
 			lines.append(rel)
 	if p.factory != "":
-		lines.append("Indústria: %s nív. %d  (lucro %+d/mês)" % [Province.BUILDINGS[p.factory]["name"], p.factory_level, p.factory_profit()])
+		var fr := p.building_report(p.factory, p.factory_level, tax)
+		lines.append("Indústria: %s nív. %d  (líquido %+d/mês, imposto %d)" % [Province.BUILDINGS[p.factory]["name"], p.factory_level, int(fr["net"]), int(fr["tax"])])
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
@@ -1384,6 +1508,7 @@ func _on_army_removed(aid: int) -> void:
 
 
 func _on_command_applied(_cmd: Dictionary) -> void:
+	_refresh_windows()
 	_refresh_top()
 	_refresh_info()
 	_refresh_army()

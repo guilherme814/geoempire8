@@ -146,6 +146,13 @@ func _draw() -> void:
 		"flag":
 			_line(Vector2(0.24, 0.1), Vector2(0.24, 0.92), 0.07, color)
 			_poly([Vector2(0.28, 0.14), Vector2(0.86, 0.26), Vector2(0.28, 0.5)], color)
+		"scroll":
+			_poly([Vector2(0.2, 0.12), Vector2(0.8, 0.12), Vector2(0.8, 0.78), Vector2(0.2, 0.78)], color)
+			draw_circle(_p(0.2, 0.84), 0.1 * _s, color)
+			draw_circle(_p(0.8, 0.84), 0.1 * _s, color)
+			draw_rect(Rect2(_p(0.2, 0.78), Vector2(0.6, 0.12) * _s), color)
+			for i in 3:
+				_line(Vector2(0.3, 0.28 + 0.16 * float(i)), Vector2(0.7, 0.28 + 0.16 * float(i)), 0.045, dark)
 		"close":
 			_line(Vector2(0.24, 0.24), Vector2(0.76, 0.76), 0.1, color)
 			_line(Vector2(0.76, 0.24), Vector2(0.24, 0.76), 0.1, color)

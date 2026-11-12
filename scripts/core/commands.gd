@@ -31,11 +31,17 @@ const EMBARGO := "embargo"
 const LIFT_EMBARGO := "lift_embargo"
 const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
+const ENACT_LAW := "enact_law"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
 static func set_speed(speed: int) -> Dictionary:
 	return {"type": SET_SPEED, "speed": speed}
+
+
+## Aprova uma lei: `group` = índice em Laws.GROUPS, `option` = opção escolhida.
+static func enact_law(group: int, option: int) -> Dictionary:
+	return {"type": ENACT_LAW, "group": group, "option": option}
 
 
 static func set_tax(country: int, pct: int) -> Dictionary:

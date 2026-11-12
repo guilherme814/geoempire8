@@ -11,7 +11,7 @@ enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE }
 
 const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos"]
 const GRID_SIZE := 100.0
-const OCEAN_COLOR := Color(0.55, 0.68, 0.74)   # mar de mapa antigo
+const OCEAN_COLOR := Color(0.055, 0.15, 0.21)   # azul petróleo escuro
 const UNOWNED_COLOR := Color(0.86, 0.80, 0.64)  # pergaminho: terra sem dono
 const ZOOM_STEP := 1.35   # o zoom é agrupado em faixas deste fator para redesenhar pouco
 
@@ -281,7 +281,7 @@ const OCEAN_NAMES := [
 func _draw_graticule(z: float) -> void:
 	var w := Game.map_size.x
 	var h := Game.map_size.y
-	var col := Color(0.25, 0.17, 0.08, 0.14)
+	var col := Color(0.55, 0.78, 0.88, 0.10)
 	for lon in range(-150, 180, 30):
 		var x := (float(lon) + 180.0) / 360.0 * w
 		draw_line(Vector2(x, 0), Vector2(x, h), col, -1.0)
@@ -304,7 +304,7 @@ func _draw_ocean_labels(z: float) -> void:
 		var text: String = o[0]
 		var pos := Vector2(float(o[1]) * Game.map_size.x, float(o[2]) * Game.map_size.y)
 		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.25, 0.35, 0.45, 0.5))
+		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.60, 0.80, 0.90, 0.42))
 
 
 func _draw_country_labels(z: float) -> void:

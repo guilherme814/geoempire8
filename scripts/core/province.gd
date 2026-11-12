@@ -53,6 +53,40 @@ const BUILDINGS := {
 const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging"]
 const MINE_RES := ["coal", "iron", "salt", "gold"]
 
+## ECONOMIA DOS EDIFÍCIOS (salários, impostos e materiais de obra).
+## Se true, as fábricas são empresas privadas: pagam salários à população e o Estado
+## recebe só o imposto (taxa nacional sobre o lucro operacional). Se false, a fábrica é
+## estatal: o tesouro recebe o lucro operacional (receita - insumos - salários).
+const FACTORIES_PRIVATE := true
+## Salário pago por edifício produtivo, em % da receita que ele gera.
+const WAGE_PCT := {
+	"mine": 35, "farm": 28, "logging": 30, "workshop": 25,
+	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38,
+}
+## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
+## SCHOOL_UPKEEP / UNIVERSITY_UPKEEP do game_state; o quartel passa a ter soldo de instrutores).
+const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3}
+## Empregos criados por nível (informativo: aparece na interface).
+const JOBS_PER_LEVEL := {
+	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
+	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340,
+}
+## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
+## de mercado do país, junto com o custo base (não há estoque no jogo).
+const BUILD_MATERIALS := {
+	"school": {"timber": 150},
+	"university": {"timber": 300, "tools": 80},
+	"barracks": {"timber": 200, "iron": 60},
+	"mine": {"timber": 200, "tools": 60},
+	"farm": {"timber": 150, "tools": 40},
+	"logging": {"tools": 60, "iron": 60},
+	"workshop": {"timber": 150, "tools": 60},
+	"textile": {"timber": 250, "tools": 80},
+	"carpentry": {"timber": 200, "tools": 50},
+	"smithy": {"iron": 200, "timber": 150},
+	"steel": {"iron": 300, "coal": 200, "tools": 80},
+}
+
 var id: int = 0
 var name: String = ""
 var port: int = -1                                 # célula marítima do porto (-1 = sem porto)
@@ -161,20 +195,44 @@ func base_units() -> int:
 	return population * tm / 1500000
 
 
+## Níveis atuais dos edifícios que mexem na produção do recurso.
+func _extraction_levels() -> Dictionary:
+	return {
+		"workshop": workshop, "mine": int(bld.get("mine", 0)),
+		"farm": int(bld.get("farm", 0)), "logging": int(bld.get("logging", 0)),
+	}
+
+
 @warning_ignore("integer_division")
-func units() -> int:
-	var boost: int = 25 * workshop + 35 * (int(bld.get("mine", 0)) + int(bld.get("farm", 0)))
+func _units_for(lv: Dictionary) -> int:
+	var boost: int = 25 * int(lv["workshop"]) + 35 * (int(lv["mine"]) + int(lv["farm"]))
 	if resource_type == "timber":
-		boost += 35 * int(bld.get("logging", 0))
+		boost += 35 * int(lv["logging"])
 	return base_units() * (100 + boost) / 100
 
 
-## Madeira extra da madeireira em província cujo recurso principal não é madeira.
 @warning_ignore("integer_division")
-func side_timber() -> int:
+func _side_timber_for(lv: Dictionary) -> int:
 	if resource_type == "timber":
 		return 0
-	return base_units() * 60 * int(bld.get("logging", 0)) / 100
+	return base_units() * 60 * int(lv["logging"]) / 100
+
+
+@warning_ignore("integer_division")
+func _production_for(lv: Dictionary) -> int:
+	var price: int = RESOURCE_PRICE.get(resource_type, 10)
+	var pct: int = price_of(resource_type)
+	var extra: int = _side_timber_for(lv) * base_price("timber") * price_of("timber") / 10000
+	return _units_for(lv) * price * pct / 10000 + extra
+
+
+func units() -> int:
+	return _units_for(_extraction_levels())
+
+
+## Madeira extra da madeireira em província cujo recurso principal não é madeira.
+func side_timber() -> int:
+	return _side_timber_for(_extraction_levels())
 
 
 ## Esta província pode receber a construção?
@@ -189,12 +247,8 @@ func can_host(kind: String) -> bool:
 
 
 ## Produção mensal em ouro (antes de impostos) = unidades x preço-base x preço de mercado.
-@warning_ignore("integer_division")
 func production() -> int:
-	var price: int = RESOURCE_PRICE.get(resource_type, 10)
-	var pct: int = price_of(resource_type)
-	var extra: int = side_timber() * base_price("timber") * price_of("timber") / 10000
-	return units() * price * pct / 10000 + extra
+	return _production_for(_extraction_levels())
 
 
 ## Imposto mensal que o dono recebe.
@@ -226,6 +280,90 @@ func factory_profit() -> int:
 	for g in ins.keys():
 		cost += int(ins[g]) * factory_level * base_price(g) * price_of(g) / 10000
 	return revenue - cost
+
+
+## Relatório mensal de um edifício no nível `level` (a preço de mercado do país).
+## Edifícios de extração (mina, fazenda, madeireira, oficina): a receita é o ganho de produção
+## que o edifício acrescenta; o imposto dela já é cobrado em monthly_tax, então `state_income` = 0.
+## Fábricas: receita das vendas - insumos - salários; o Estado recebe o imposto (ver FACTORIES_PRIVATE).
+## Governo (escola, universidade, quartel): só custo mensal (salários).
+## Chaves: units, product, revenue, inputs [{good, amount, value}], inputs_cost, wages,
+## operating, tax, net (lucro líquido do edifício), state_income, jobs.
+@warning_ignore("integer_division")
+func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
+	var r := {
+		"units": 0, "product": "", "revenue": 0, "inputs": [], "inputs_cost": 0, "wages": 0,
+		"operating": 0, "tax": 0, "net": 0, "state_income": 0,
+		"jobs": int(JOBS_PER_LEVEL.get(kind, 0)) * maxi(0, level),
+	}
+	if level <= 0 or not BUILDINGS.has(kind):
+		return r
+	var is_factory := FACTORIES.has(kind)
+	if is_factory:
+		var f: Dictionary = FACTORIES[kind]
+		var out: String = f["out"]
+		r["product"] = out
+		r["units"] = int(f["amount"]) * level
+		r["revenue"] = int(f["amount"]) * level * base_price(out) * price_of(out) / 10000
+		var ins: Dictionary = f["inputs"]
+		var cost := 0
+		for g in ins.keys():
+			var n: int = int(ins[g]) * level
+			var v: int = n * base_price(g) * price_of(g) / 10000
+			(r["inputs"] as Array).append({"good": g, "amount": n, "value": v})
+			cost += v
+		r["inputs_cost"] = cost
+	elif WAGE_PCT.has(kind):
+		var with_lv := _extraction_levels()
+		var without_lv := with_lv.duplicate()
+		with_lv[kind] = level
+		without_lv[kind] = 0
+		r["revenue"] = _production_for(with_lv) - _production_for(without_lv)
+		r["units"] = (_units_for(with_lv) + _side_timber_for(with_lv)) - (_units_for(without_lv) + _side_timber_for(without_lv))
+		r["product"] = "timber" if (kind == "logging" and resource_type != "timber") else resource_type
+	if WAGE_PCT.has(kind):
+		r["wages"] = int(r["revenue"]) * int(WAGE_PCT[kind]) / 100
+		var op: int = int(r["revenue"]) - int(r["inputs_cost"]) - int(r["wages"])
+		r["operating"] = op
+		if is_factory and not FACTORIES_PRIVATE:
+			r["net"] = op
+			r["state_income"] = op
+		else:
+			var tx: int = maxi(0, op) * tax_pct / 100
+			r["tax"] = tx
+			r["net"] = op - tx
+			r["state_income"] = tx if is_factory else 0
+	else:
+		var w: int = int(GOV_UPKEEP.get(kind, 0)) * level
+		r["wages"] = w
+		r["operating"] = -w
+		r["net"] = -w
+	return r
+
+
+## O que o tesouro recebe por mês da fábrica desta província.
+func factory_state_income(tax_pct: int) -> int:
+	if factory == "" or factory_level <= 0:
+		return 0
+	return int(building_report(factory, factory_level, tax_pct)["state_income"])
+
+
+## Materiais de obra para construir o nível `level`: [{good, amount, value}] (value em ouro).
+@warning_ignore("integer_division")
+func material_list(kind: String, level: int) -> Array:
+	var out: Array = []
+	var m: Dictionary = BUILD_MATERIALS.get(kind, {})
+	for g in m.keys():
+		var n: int = int(m[g]) * level
+		out.append({"good": g, "amount": n, "value": n * base_price(g) * price_of(g) / 10000})
+	return out
+
+
+func material_cost(kind: String, level: int) -> int:
+	var t := 0
+	for row in material_list(kind, level):
+		t += int(row["value"])
+	return t
 
 
 func building_level(kind: String) -> int:

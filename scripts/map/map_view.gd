@@ -268,7 +268,8 @@ func _draw() -> void:
 	if prov_alpha > 0.01:
 		draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, prov_alpha), -1.0)          # 1 px fixo na tela
 	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.2 / z)
-	draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
+	if not _front_lines.is_empty():
+		draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
 	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
 	if mode == Mode.POLITICAL:
 		if z >= 2.0:

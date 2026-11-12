@@ -37,6 +37,7 @@ var _count: int = -1
 var _moving: bool = false
 var _color: Color = Color.GRAY
 var _t: float = 0.0
+var _ready_ok: bool = false
 
 
 func _init() -> void:
@@ -69,7 +70,10 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless":
+		return   # sem renderização (teste automático): não monta a cena 3D
 	_build_world()
+	_ready_ok = true
 
 
 func _build_world() -> void:
@@ -159,6 +163,8 @@ func _build_world() -> void:
 
 ## Atualiza o modelo. Só reconstrói os soldados se o país ou o tamanho mudarem.
 func show_army(tag: String, color: Color, regiments: int, moving: bool) -> void:
+	if not _ready_ok:
+		return
 	_moving = moving
 	var n := clampi(regiments * 2, 4, MAX_SOLDIERS)
 	if tag != _tag or color != _color:

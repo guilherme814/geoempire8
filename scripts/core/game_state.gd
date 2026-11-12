@@ -276,24 +276,119 @@ func _advance_fleets() -> void:
 					continue
 				if not at_war(x.owner_id, y.owner_id):
 					continue
-				var loss_x := (y.ships * BATTLE_LOSS_PCT + 99) / 100
-				var loss_y := (x.ships * BATTLE_LOSS_PCT + 99) / 100
-				if x.ships == y.ships:
-					if rng.randi_range(0, 1) == 0:
-						loss_y = 0
-					else:
-						loss_x = 0
-				loss_x = mini(loss_x, x.ships)
-				loss_y = mini(loss_y, y.ships)
-				x.ships -= loss_x
-				y.ships -= loss_y
-				countries[x.owner_id].ships = maxi(0, countries[x.owner_id].ships - loss_x)
-				countries[y.owner_id].ships = maxi(0, countries[y.owner_id].ships - loss_y)
+				_naval_round(x, y)
+	# Combate também entre frotas em células vizinhas (alcance de canhão).
+	for ia in ids.size():
+		if not fleets.has(ids[ia]):
+			continue
+		var fa: Fleet = fleets[ids[ia]]
+		for ib in range(ia + 1, ids.size()):
+			if not fleets.has(ids[ib]):
+				continue
+			var fb: Fleet = fleets[ids[ib]]
+			if fa.ships <= 0 or fb.ships <= 0 or fa.cell == fb.cell or fa.owner_id == fb.owner_id:
+				continue
+			if not at_war(fa.owner_id, fb.owner_id) or _cell_dist(fa.cell, fb.cell) > 1:
+				continue
+			_naval_round(fa, fb)
 	for id in ids:
 		var f: Fleet = fleets[id]
 		if f.ships <= 0:
 			fleets.erase(id)
 			Events.fleet_removed.emit(id)
+
+
+## Um round de combate naval. A força de cada navio cresce com a tecnologia do dono
+## (fragata -> navio de linha -> vapor de guerra); com tecnologias iguais é a regra simples.
+func _naval_round(x: Fleet, y: Fleet) -> void:
+	var qx: int = 10 + 3 * countries[x.owner_id].tech_level()
+	var qy: int = 10 + 3 * countries[y.owner_id].tech_level()
+	var loss_x := ((y.ships * qy) * BATTLE_LOSS_PCT / 100 + qx - 1) / qx
+	var loss_y := ((x.ships * qx) * BATTLE_LOSS_PCT / 100 + qy - 1) / qy
+	if x.ships * qx == y.ships * qy:
+		if rng.randi_range(0, 1) == 0:
+			loss_y = 0
+		else:
+			loss_x = 0
+	loss_x = maxi(1, mini(loss_x, x.ships)) if loss_x > 0 else 0
+	loss_y = maxi(1, mini(loss_y, y.ships)) if loss_y > 0 else 0
+	x.ships -= loss_x
+	y.ships -= loss_y
+	countries[x.owner_id].ships = maxi(0, countries[x.owner_id].ships - loss_x)
+	countries[y.owner_id].ships = maxi(0, countries[y.owner_id].ships - loss_y)
+
+
+## Nome da classe de navio que o país constrói, conforme a tecnologia.
+func ship_class_name(c: Country) -> String:
+	var t: int = c.tech_level()
+	if t >= 2:
+		return "Vapor de guerra"
+	if t >= 1:
+		return "Navio de linha"
+	return "Fragata"
+
+
+## Distância (Chebyshev) entre duas células da grade marítima.
+func _cell_dist(a: int, b: int) -> int:
+	if sea_w <= 0:
+		return 1000
+	return maxi(absi(a % sea_w - b % sea_w), absi(a / sea_w - b / sea_w))
+
+
+## Frotas ociosas de um país em guerra: caçam a frota inimiga mais próxima (se não estiverem
+## em desvantagem) ou bloqueiam o porto inimigo mais próximo; sem chance, voltam ao porto.
+func _auto_fleets(c: Country) -> void:
+	var enemies := wars_of(c.id)
+	if enemies.is_empty():
+		return
+	var ids: Array = fleets.keys()
+	ids.sort()
+	for id in ids:
+		var f: Fleet = fleets[id]
+		if f.owner_id != c.id or f.is_moving() or f.ships <= 0:
+			continue
+		var foe: Fleet = null
+		var foe_d := 1000000
+		for eid in ids:
+			var e: Fleet = fleets[eid]
+			if not enemies.has(e.owner_id) or e.ships <= 0:
+				continue
+			var d := _cell_dist(f.cell, e.cell)
+			if d < foe_d:
+				foe_d = d
+				foe = e
+		var target := -1
+		if foe != null and foe_d <= 60:
+			if f.ships * 10 >= foe.ships * 8:
+				target = foe.cell
+			else:
+				target = _nearest_own_port_cell(c, f.cell)
+		elif f.ships >= 2:
+			var best_d := 1000000
+			for p in provinces:
+				if p.port >= 0 and enemies.has(p.owner_id):
+					var d2 := _cell_dist(f.cell, p.port)
+					if d2 < best_d:
+						best_d = d2
+						target = p.port
+		if target >= 0 and target != f.cell and is_sea_cell(target):
+			var path := find_sea_path(f.cell, target)
+			if not path.is_empty():
+				f.path = path
+				Events.fleet_changed.emit(f.id)
+
+
+func _nearest_own_port_cell(c: Country, from_cell: int) -> int:
+	var best := -1
+	var best_d := 1000000
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		if p.port >= 0:
+			var d := _cell_dist(from_cell, p.port)
+			if d < best_d:
+				best_d = d
+				best = p.port
+	return best
 
 
 func fleets_of(cid: int) -> Array:
@@ -929,6 +1024,7 @@ func _start_war(attacker: int, target: int) -> void:
 	for cid in [attacker, target]:
 		if is_human(cid) and countries[cid].auto_front:
 			_ai_war(countries[cid])
+			_auto_fleets(countries[cid])
 
 
 func _war_index(x: int, y: int) -> int:
@@ -1246,6 +1342,7 @@ func _advance_ai() -> void:
 			# Frente automática: exércitos parados do jogador marcham sozinhos em guerra.
 			if c.auto_front and not wars_of(c.id).is_empty():
 				_ai_war(c)
+				_auto_fleets(c)
 			continue
 		if tick % 30 == 0:
 			_ai_recruit(c)
@@ -1253,6 +1350,7 @@ func _advance_ai() -> void:
 			_ai_declare_war(c)
 		if not wars_of(c.id).is_empty():
 			_ai_war(c)
+			_auto_fleets(c)
 
 
 @warning_ignore("integer_division")

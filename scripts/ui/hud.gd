@@ -1100,7 +1100,7 @@ func _build_info_panel() -> void:
 	_btn_war = _info_button("Declarar guerra", bsize, _on_war_pressed, grid)
 	_btn_improve = _info_button("Melhorar rel. (%d)" % Game.IMPROVE_COST, bsize, _on_improve_pressed, grid)
 	_btn_embargo = _info_button("Embargar", bsize, _on_embargo_pressed, grid)
-	_btn_ship = _info_button("Navio (%d)" % Game.SHIP_COST, bsize, _on_ship_pressed, grid)
+	_btn_ship = _info_button("%s (%d)" % [Game.ship_class_name(Game.countries[Game.player_country]), Game.SHIP_COST], bsize, _on_ship_pressed, grid)
 	_btn_ally = _info_button("Propor aliança", bsize, _on_ally_pressed, grid)
 	_btn_annex = _info_button("Anexar (debug)", bsize, _on_annex_pressed, grid)
 
@@ -1345,7 +1345,7 @@ func _refresh_side() -> void:
 			_side_wars.add_child(r)
 		if not war_ids.is_empty():
 			var af := Game.countries[me].auto_front
-			var ab := UIKit.button("Frente automática: %s" % ("LIGADA" if af else "desligada"), Vector2(0, 40), "PrimaryButton" if af else "")
+			var ab := UIKit.button("Frente automática (exército e frota): %s" % ("LIGADA" if af else "desligada"), Vector2(0, 40), "PrimaryButton" if af else "")
 			ab.add_theme_font_size_override("font_size", 16)
 			ab.pressed.connect(_on_auto_front_pressed)
 			_side_wars.add_child(ab)
@@ -1435,6 +1435,7 @@ func _refresh_info() -> void:
 	_btn_ship.visible = mine and p.port >= 0
 	if mine and p.port >= 0:
 		_btn_ship.disabled = not Game.can_build_ship(p.id, Game.player_country)
+		_btn_ship.text = "%s (%d)" % [Game.ship_class_name(Game.countries[Game.player_country]), Game.SHIP_COST]
 	if has_owner and not mine:
 		var has_emb := Game.embargoes.has(Game.player_country * 1000 + p.owner_id)
 		_btn_embargo.text = "Suspender embargo" if has_emb else "Embargar"

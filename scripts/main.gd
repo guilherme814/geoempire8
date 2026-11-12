@@ -19,6 +19,10 @@ func _ready() -> void:
 		push_error("GeoEmpire: mundo não carregado; verifique data/world.json")
 		return
 
+	var audio := AudioManager.new()
+	audio.name = "Audio"
+	add_child(audio)
+
 	map_view = MapView.new()
 	map_view.name = "MapView"
 	add_child(map_view)

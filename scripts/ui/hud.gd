@@ -589,7 +589,7 @@ func _build_windows() -> void:
 	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
 	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
-	var menu := _make_window("menu", "Menu", Vector2(420, 340), "menu")
+	var menu := _make_window("menu", "Menu", Vector2(420, 480), "menu")
 	var b_save := _make_button("Salvar jogo", Vector2(0, 52))
 	b_save.pressed.connect(_on_save_pressed)
 	menu.add_child(b_save)
@@ -599,6 +599,14 @@ func _build_windows() -> void:
 	var b_swap := _make_button("Trocar de país", Vector2(0, 52))
 	b_swap.pressed.connect(_on_swap_pressed)
 	menu.add_child(b_swap)
+	var b_music := _make_button("", Vector2(0, 52))
+	b_music.text = "Música: ligada"
+	b_music.pressed.connect(_on_music_pressed.bind(b_music))
+	menu.add_child(b_music)
+	var b_sfx := _make_button("", Vector2(0, 52))
+	b_sfx.text = "Efeitos sonoros: ligados"
+	b_sfx.pressed.connect(_on_sfx_pressed.bind(b_sfx))
+	menu.add_child(b_sfx)
 	menu.add_child(UIKit.label("Atalhos: Espaço pausa, + e - mudam a velocidade.", 15, UIKit.TEXT_DIM))
 
 
@@ -993,6 +1001,16 @@ func _on_load_pressed() -> void:
 		_show_toast("Indisponível online.")
 		return
 	_show_toast("Jogo carregado." if Game.load_game() else "Nenhum save encontrado.")
+
+
+func _on_music_pressed(b: Button) -> void:
+	AudioManager.set_music(not AudioManager.music_on)
+	b.text = "Música: ligada" if AudioManager.music_on else "Música: desligada"
+
+
+func _on_sfx_pressed(b: Button) -> void:
+	AudioManager.set_sfx(not AudioManager.sfx_on)
+	b.text = "Efeitos sonoros: ligados" if AudioManager.sfx_on else "Efeitos sonoros: desligados"
 
 
 func _on_swap_pressed() -> void:

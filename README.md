@@ -99,3 +99,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - 10 grupos de leis (governo, imprensa, serviço militar, política econômica, comercial, tributária, trabalho compulsório, educação, trabalhista, associação), cada um com 3 opções, em `scripts/core/laws.gd`.
 - Janela **Leis** na barra lateral, em três colunas: Estrutura de poder / Economia / Direitos e sociedade. Aprovar custa ouro, exige tecnologia e alfabetização, abala a satisfação das classes e bloqueia o grupo por 24 meses.
 - Efeitos: arrecadação, comércio, custo do exército, crescimento da alfabetização, tecnologia, estabilidade e satisfação por classe. Comando `enact_law` (online-safe); estado em `Country.laws` / `law_cd`, salvo e no hash.
+
+## Som e música
+- Tudo sintetizado em código (`scripts/audio/audio_manager.gd`), sem arquivos de áudio: cliques de botão, moeda, construção, lei, sino, tambor, guerra e eventos.
+- Música em Ré menor (pad, baixo, arpejo e melodia) gerada numa thread ao iniciar e tocada em loop. Liga/desliga música e efeitos no Menu.

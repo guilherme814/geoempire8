@@ -338,6 +338,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 		countries.append(Country.from_dict(cd))
 	for pd in dict["provinces"]:
 		provinces.append(Province.from_dict(pd))
+	_apply_regions()
 
 	# Os índices dos arrays precisam ser iguais aos ids (acesso O(1) em todo o código).
 	for i in countries.size():
@@ -417,6 +418,32 @@ func load_world(path: String = WORLD_PATH) -> bool:
 # Comandos
 # ---------------------------------------------------------------------------
 const HISTORY_PATH := "res://data/history_1836.json"
+
+
+const REGIONS_PATH := "res://data/regions.json"
+
+
+## Agrupa as províncias-célula em províncias históricas e dá nomes de época (dado estático).
+func _apply_regions() -> void:
+	if not FileAccess.file_exists(REGIONS_PATH):
+		return
+	var f := FileAccess.open(REGIONS_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	if not (parsed is Dictionary):
+		return
+	for tag in (parsed as Dictionary).keys():
+		var entry: Dictionary = parsed[tag]
+		var regs: Dictionary = entry.get("regions", {})
+		for rname in regs.keys():
+			for pid in regs[rname]:
+				if int(pid) >= 0 and int(pid) < provinces.size():
+					provinces[int(pid)].region = str(rname)
+		var nm: Dictionary = entry.get("names", {})
+		for k in nm.keys():
+			if int(k) >= 0 and int(k) < provinces.size():
+				provinces[int(k)].name = str(nm[k])
 
 
 ## Província com porto para a frota inicial: a capital, ou a primeira do país que tenha porto.
@@ -1510,6 +1537,12 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 			if ci >= 0:
 				c.sat[ci] = clampi(int(c.sat[ci]) + int(sd[k]), 0, 100)
 		c.stability = int(politics_of(c)["stability"])
+	if fx.has("region_pop_pct"):
+		var rp: Dictionary = fx["region_pop_pct"]
+		for p in provinces:
+			if p.owner_id == cid and rp.has(p.region):
+				p.population += p.population * int(rp[p.region]) / 100
+				Events.province_updated.emit(p.id)
 	if fx.has("pop_pct"):
 		var pct: int = int(fx["pop_pct"])
 		for pid in c.province_ids:

@@ -103,6 +103,7 @@ var terrain: String = "plains"
 var resource_type: String = "grain"
 var coastal: bool = false
 var population: int = 0
+var region: String = ""                           # província histórica (data/regions.json)
 var owner_id: int = -1                              # -1 = terra sem dono
 var lon: float = 0.0
 var lat: float = 0.0

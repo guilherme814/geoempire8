@@ -103,3 +103,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Som e música
 - Tudo sintetizado em código (`scripts/audio/audio_manager.gd`), sem arquivos de áudio: cliques de botão, moeda, construção, lei, sino, tambor, guerra e eventos.
 - Música em Ré menor (pad, baixo, arpejo e melodia) gerada numa thread ao iniciar e tocada em loop. Liga/desliga música e efeitos no Menu.
+
+## Regiões históricas (V0.12)
+- `data/regions.json` agrupa as províncias-célula em províncias históricas (Brasil: 16 províncias de 1836, de Grão-Pará a Rio Grande do Sul) e dá nomes de época às células. A ficha da província mostra "Prov. de ...".
+- Eventos regenciais do Brasil (Cabanagem, Farroupilha, Sabinada, Balaiada, Maioridade) com efeito regional (`region_pop_pct`).

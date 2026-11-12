@@ -1348,6 +1348,8 @@ func _refresh_info() -> void:
 	_info_panel.visible = true
 	_info_title.text = p.name
 	var sub := "%s%s" % ["★ " if p.capital_city else "", p.city] if p.city != "" else ""
+	if p.region != "" and p.region != p.name:
+		sub = ("%s · " % sub if sub != "" else "") + "Prov. de %s" % p.region
 
 	var owner_name := "Sem dono"
 	var tax := 0

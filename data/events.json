@@ -577,5 +577,247 @@
     }
    }
   ]
+ },
+ {
+  "id": "brz_cabanagem",
+  "title": "Cabanagem no interior do Pará",
+  "text": "Belém voltou às mãos do governo, mas os cabanos — indígenas, caboclos e escravizados — resistem pela floresta e pelos rios.",
+  "tags": [
+   "BRZ"
+  ],
+  "date": [
+   1836,
+   8
+  ],
+  "options": [
+   {
+    "label": "Enviar tropas e navios",
+    "effects": {
+     "gold": -150,
+     "sat": {
+      "soldiers": 3,
+      "aristocrats": 3
+     },
+     "region_pop_pct": {
+      "Grão-Pará": -3
+     }
+    }
+   },
+   {
+    "label": "Oferecer anistia",
+    "effects": {
+     "gold": -60,
+     "sat": {
+      "peasants": 4,
+      "aristocrats": -4
+     },
+     "region_pop_pct": {
+      "Grão-Pará": -1
+     }
+    }
+   },
+   {
+    "label": "Ignorar a revolta",
+    "effects": {
+     "sat": {
+      "peasants": -3
+     },
+     "region_pop_pct": {
+      "Grão-Pará": -6
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "brz_farroupilha",
+  "title": "República Rio-Grandense",
+  "text": "Os estancieiros gaúchos proclamam uma república, revoltados com o imposto sobre o charque e com a falta de autonomia.",
+  "tags": [
+   "BRZ"
+  ],
+  "date": [
+   1836,
+   9
+  ],
+  "options": [
+   {
+    "label": "Mandar o exército ao Sul",
+    "effects": {
+     "gold": -200,
+     "manpower": -300,
+     "sat": {
+      "soldiers": 2,
+      "peasants": -2
+     },
+     "region_pop_pct": {
+      "Rio Grande do Sul": -3
+     }
+    }
+   },
+   {
+    "label": "Negociar autonomia e baixar o imposto",
+    "effects": {
+     "gold": -80,
+     "sat": {
+      "aristocrats": -3,
+      "bourgeoisie": 2
+     },
+     "region_pop_pct": {
+      "Rio Grande do Sul": -1
+     }
+    }
+   },
+   {
+    "label": "Deixar a guerra se arrastar",
+    "effects": {
+     "sat": {
+      "soldiers": -3,
+      "officials": -2
+     },
+     "region_pop_pct": {
+      "Rio Grande do Sul": -5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "brz_sabinada",
+  "title": "Sabinada em Salvador",
+  "text": "Militares e classes médias baianas proclamam uma república que valerá até a maioridade do imperador.",
+  "tags": [
+   "BRZ"
+  ],
+  "date": [
+   1837,
+   11
+  ],
+  "options": [
+   {
+    "label": "Sitiar Salvador",
+    "effects": {
+     "gold": -170,
+     "sat": {
+      "soldiers": 3,
+      "workers": -2
+     },
+     "region_pop_pct": {
+      "Bahia": -3
+     }
+    }
+   },
+   {
+    "label": "Prometer reformas",
+    "effects": {
+     "gold": -70,
+     "sat": {
+      "officials": 3,
+      "aristocrats": -3
+     },
+     "region_pop_pct": {
+      "Bahia": -1
+     }
+    }
+   },
+   {
+    "label": "Aguardar",
+    "effects": {
+     "sat": {
+      "bourgeoisie": -3
+     },
+     "region_pop_pct": {
+      "Bahia": -5
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "brz_balaiada",
+  "title": "Balaiada no Maranhão",
+  "text": "Vaqueiros, camponeses pobres e escravizados fugidos tomam vilas do interior do Maranhão e do Piauí.",
+  "tags": [
+   "BRZ"
+  ],
+  "date": [
+   1838,
+   12
+  ],
+  "options": [
+   {
+    "label": "Reprimir com a Guarda Nacional",
+    "effects": {
+     "gold": -130,
+     "sat": {
+      "soldiers": 3,
+      "peasants": -3
+     },
+     "region_pop_pct": {
+      "Maranhão": -4,
+      "Piauí": -2
+     }
+    }
+   },
+   {
+    "label": "Chamar um comandante conciliador",
+    "effects": {
+     "gold": -90,
+     "sat": {
+      "peasants": 2,
+      "aristocrats": -2
+     },
+     "region_pop_pct": {
+      "Maranhão": -2
+     }
+    }
+   },
+   {
+    "label": "Não agir",
+    "effects": {
+     "sat": {
+      "peasants": -4
+     },
+     "region_pop_pct": {
+      "Maranhão": -7,
+      "Piauí": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "brz_maioridade",
+  "title": "Golpe da Maioridade",
+  "text": "O Parlamento propõe declarar Pedro II maior de idade aos 14 anos para encerrar o período de regências.",
+  "tags": [
+   "BRZ"
+  ],
+  "date": [
+   1840,
+   7
+  ],
+  "options": [
+   {
+    "label": "Apoiar o golpe",
+    "effects": {
+     "sat": {
+      "aristocrats": 4,
+      "officials": 3,
+      "soldiers": 2
+     }
+    }
+   },
+   {
+    "label": "Manter a Regência",
+    "effects": {
+     "sat": {
+      "aristocrats": -5,
+      "officials": -3
+     },
+     "gold": 60
+    }
+   }
+  ]
  }
 ]

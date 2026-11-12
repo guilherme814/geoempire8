@@ -1,0 +1,85 @@
+{
+ "BRZ": {
+  "regions": {
+   "Grão-Pará": [
+    27,
+    31,
+    206,
+    322,
+    317
+   ],
+   "Maranhão": [
+    141
+   ],
+   "Piauí": [
+    174
+   ],
+   "Ceará": [
+    306
+   ],
+   "Rio Grande do Norte": [
+    541
+   ],
+   "Paraíba": [
+    550
+   ],
+   "Pernambuco": [
+    344
+   ],
+   "Bahia": [
+    234,
+    218,
+    266
+   ],
+   "Espírito Santo": [
+    561
+   ],
+   "Rio de Janeiro": [
+    539
+   ],
+   "Minas Gerais": [
+    66
+   ],
+   "São Paulo": [
+    161,
+    203
+   ],
+   "Santa Catarina": [
+    345
+   ],
+   "Rio Grande do Sul": [
+    132
+   ],
+   "Mato Grosso": [
+    199,
+    71,
+    364,
+    120,
+    184
+   ],
+   "Goiás": [
+    152,
+    121
+   ]
+  },
+  "names": {
+   "27": "Alto Amazonas",
+   "31": "Belém do Pará",
+   "206": "Rio Branco",
+   "322": "Macapá",
+   "317": "Alto Purus",
+   "152": "Goiás Norte",
+   "121": "Goiás",
+   "203": "Curitiba",
+   "120": "Mato Grosso Sul",
+   "184": "Guaporé",
+   "199": "Cuiabá",
+   "71": "Mato Grosso Oeste",
+   "364": "Mato Grosso Norte",
+   "234": "Salvador",
+   "218": "Bahia Sertão",
+   "266": "Bahia Oeste",
+   "539": "Corte (Rio de Janeiro)"
+  }
+ }
+}

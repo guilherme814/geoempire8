@@ -32,6 +32,7 @@ const LIFT_EMBARGO := "lift_embargo"
 const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
 const ENACT_LAW := "enact_law"
+const SET_AUTO_FRONT := "set_auto_front"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
@@ -42,6 +43,11 @@ static func set_speed(speed: int) -> Dictionary:
 ## Aprova uma lei: `group` = índice em Laws.GROUPS, `option` = opção escolhida.
 static func enact_law(group: int, option: int) -> Dictionary:
 	return {"type": ENACT_LAW, "group": group, "option": option}
+
+
+## Liga/desliga o avanço automático dos exércitos à linha de frente.
+static func set_auto_front(enabled: bool) -> Dictionary:
+	return {"type": SET_AUTO_FRONT, "enabled": enabled}
 
 
 static func set_tax(country: int, pct: int) -> Dictionary:

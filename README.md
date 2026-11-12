@@ -112,3 +112,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - `data/sea_gates.json`: 5 passagens estratégicas (Estreitos turcos, Øresund, Gibraltar, Cabo da Boa Esperança, Malaca), marcadas no mapa. O controlador é o dono da província-âncora e muda com a conquista.
 - `scripts/core/sea_zones.gd`: 6 zonas marítimas (Atlântico, Mediterrâneo, Mar Negro, Báltico, Índico, Pacífico). Uma rota comercial por mar cruza as passagens da zona de um porto à do outro.
 - O controlador fecha a passagem a países em guerra ou embargo com ele e cobra pedágio (3% nos Estreitos e no Øresund, 1% no Cabo e em Malaca). A janela de Economia lista controlador, pedágio e fluxo.
+
+## Guerra (V0.12)
+- **Frente automática** (botão no painel de guerras, ligada por padrão): os exércitos parados do jogador marcham sozinhos ao inimigo, inclusive no instante em que a guerra é declarada.
+- Território conquistado fica com o tom do dono original e contorno na cor de quem o tomou; fronteiras entre países em guerra ficam vermelhas; cercos mostram arco de progresso. `core_owner` entra no save.

@@ -639,6 +639,10 @@ func apply_command(cmd: Dictionary) -> void:
 		countries[cid].tax_pct = clampi(int(cmd.get("pct", 30)), 0, 100)
 		Events.treasury_changed.emit(cid)
 
+	elif t == Cmd.SET_AUTO_FRONT:
+		if issuer >= 0 and issuer < countries.size():
+			countries[issuer].auto_front = bool(cmd.get("enabled", true))
+
 	elif t == Cmd.ENACT_LAW:
 		if issuer < 0 or issuer >= countries.size():
 			return
@@ -921,6 +925,10 @@ func _start_war(attacker: int, target: int) -> void:
 			if al == player_country:
 				Events.notice.emit("Seu aliado %s foi atacado: você entrou na guerra." % countries[target].name)
 	Events.war_changed.emit()
+	# Frente automática: os exércitos do jogador marcham ao front assim que a guerra começa.
+	for cid in [attacker, target]:
+		if is_human(cid) and countries[cid].auto_front:
+			_ai_war(countries[cid])
 
 
 func _war_index(x: int, y: int) -> int:
@@ -1232,7 +1240,12 @@ func _advance_ai() -> void:
 	if tick % 5 != 0:
 		return
 	for c in countries:
-		if not c.is_alive() or is_human(c.id):
+		if not c.is_alive():
+			continue
+		if is_human(c.id):
+			# Frente automática: exércitos parados do jogador marcham sozinhos em guerra.
+			if c.auto_front and not wars_of(c.id).is_empty():
+				_ai_war(c)
 			continue
 		if tick % 30 == 0:
 			_ai_recruit(c)
@@ -2172,6 +2185,7 @@ func state_hash() -> int:
 		h = _mix(h, c.stability)
 		for v in c.sat:
 			h = _mix(h, int(v))
+		h = _mix(h, 1 if c.auto_front else 0)
 		for v in c.laws:
 			h = _mix(h, int(v))
 		for v in c.law_cd:
@@ -2307,6 +2321,7 @@ func serialize_state() -> Dictionary:
 		"speed": speed,
 		"date": clock.to_dict(),
 		"owners": owners,
+		"cores": _province_cores(),
 		"pops": pops,
 		"manpower": mps,
 		"workshops": workshops,
@@ -2315,6 +2330,7 @@ func serialize_state() -> Dictionary:
 		"lit_acc": _country_ints("lit_acc"),
 		"stab": _country_ints("stability"),
 		"sat": _sat_list(),
+		"auto_front": _country_ints("auto_front"),
 		"laws": _law_lists("laws"),
 		"law_cd": _law_lists("law_cd"),
 		"barracks": barracks,
@@ -2343,7 +2359,17 @@ func serialize_state() -> Dictionary:
 	}
 
 
+func _province_cores() -> Array:
+	var out: Array = []
+	for p in provinces:
+		out.append(p.core_owner)
+	return out
+
+
 func load_state(d: Dictionary) -> bool:
+	var cores: Array = d.get("cores", [])
+	for i in mini(cores.size(), provinces.size()):
+		provinces[i].core_owner = int(cores[i])
 	var owners: Array = d.get("owners", [])
 	var pops: Array = d.get("pops", [])
 	var mps: Array = d.get("manpower", [])
@@ -2423,6 +2449,9 @@ func load_state(d: Dictionary) -> bool:
 		if i < sts.size():
 			for j in 6:
 				countries[i].sat[j] = int(sts[i][j])
+	var af: Array = d.get("auto_front", [])
+	for i in countries.size():
+		countries[i].auto_front = (int(af[i]) != 0) if i < af.size() else true
 	var lw: Array = d.get("laws", [])
 	var lcd: Array = d.get("law_cd", [])
 	for i in countries.size():

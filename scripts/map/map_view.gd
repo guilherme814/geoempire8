@@ -38,6 +38,7 @@ var _grid: Dictionary = {}        # Vector2i -> Array[int] de ids de províncias
 var _prov_lines: PackedVector2Array = PackedVector2Array()
 var _country_lines: PackedVector2Array = PackedVector2Array()
 var _coast_lines: PackedVector2Array = PackedVector2Array()
+var _front_lines: PackedVector2Array = PackedVector2Array()   # fronteiras entre países em guerra
 var _sea_lines: PackedVector2Array = PackedVector2Array()
 var _ocean: Polygon2D
 var _mesh_node: MeshInstance2D
@@ -67,6 +68,7 @@ func _ready() -> void:
 	Events.province_changed.connect(_on_province_changed)
 	Events.month_changed.connect(_on_month_changed)
 	Events.state_loaded.connect(_refresh_all)
+	Events.war_changed.connect(_refresh_all)
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +177,7 @@ func _build_coast_and_sea() -> void:
 func _rebuild_borders() -> void:
 	_prov_lines.clear()
 	_country_lines.clear()
+	_front_lines.clear()
 	for p in Game.provinces:
 		var n := p.poly.size()
 		if p.edges.size() != n:
@@ -191,6 +194,9 @@ func _rebuild_borders() -> void:
 			if Game.provinces[nb].owner_id != p.owner_id:
 				_country_lines.append(a)
 				_country_lines.append(b)
+				if p.owner_id >= 0 and Game.provinces[nb].owner_id >= 0 and Game.at_war(p.owner_id, Game.provinces[nb].owner_id):
+					_front_lines.append(a)
+					_front_lines.append(b)
 			else:
 				_prov_lines.append(a)
 				_prov_lines.append(b)
@@ -262,6 +268,7 @@ func _draw() -> void:
 	if prov_alpha > 0.01:
 		draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, prov_alpha), -1.0)          # 1 px fixo na tela
 	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.2 / z)
+	draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
 	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
 	if mode == Mode.POLITICAL:
 		if z >= 2.0:

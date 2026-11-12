@@ -103,6 +103,7 @@ var terrain: String = "plains"
 var resource_type: String = "grain"
 var coastal: bool = false
 var population: int = 0
+var core_owner: int = -1                          # dono no início (para marcar território conquistado)
 var region: String = ""                           # província histórica (data/regions.json)
 var owner_id: int = -1                              # -1 = terra sem dono
 var lon: float = 0.0
@@ -149,6 +150,7 @@ static func from_dict(d: Dictionary) -> Province:
 	p.city = str(d.get("city", ""))
 	p.capital_city = bool(d.get("capital_city", false))
 	p.owner_id = int(d["owner"])
+	p.core_owner = p.owner_id
 	p.lon = float(d.get("lon", 0.0))
 	p.lat = float(d.get("lat", 0.0))
 	p.area = float(d.get("area", 0.0))

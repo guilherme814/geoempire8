@@ -1015,6 +1015,12 @@ func _on_load_pressed() -> void:
 	_show_toast("Jogo carregado." if Game.load_game() else "Nenhum save encontrado.")
 
 
+func _on_auto_front_pressed() -> void:
+	Game.submit_command(Cmd.set_auto_front(not Game.countries[Game.player_country].auto_front))
+	_wars_sig = ""
+	_refresh_side()
+
+
 func _on_music_pressed(b: Button) -> void:
 	AudioManager.set_music(not AudioManager.music_on)
 	b.text = "Música: ligada" if AudioManager.music_on else "Música: desligada"
@@ -1320,12 +1326,12 @@ func _refresh_side() -> void:
 	_side_head.visible = not ids.is_empty()
 
 	var war_ids: Array = Game.wars_of(me)
-	var sig := ",".join(PackedStringArray(war_ids.map(func(x): return str(x))))
+	var sig := ",".join(PackedStringArray(war_ids.map(func(x): return str(x)))) + ("|A" if Game.countries[me].auto_front else "|M")
 	if sig != _wars_sig:
 		_wars_sig = sig
 		UIKit.clear(_side_wars)
 		if not war_ids.is_empty():
-			_side_wars.add_child(UIKit.serif_label("Guerras", 19, UIKit.NEG))
+			_side_wars.add_child(UIKit.serif_label("MODO DE GUERRA", 19, UIKit.NEG))
 		for wid in war_ids:
 			var oc: Country = Game.countries[int(wid)]
 			var r := HBoxContainer.new()
@@ -1337,6 +1343,12 @@ func _refresh_side() -> void:
 			r.add_child(fl)
 			r.add_child(UIKit.label(oc.name, 16, UIKit.TEXT))
 			_side_wars.add_child(r)
+		if not war_ids.is_empty():
+			var af := Game.countries[me].auto_front
+			var ab := UIKit.button("Frente automática: %s" % ("LIGADA" if af else "desligada"), Vector2(0, 40), "PrimaryButton" if af else "")
+			ab.add_theme_font_size_override("font_size", 16)
+			ab.pressed.connect(_on_auto_front_pressed)
+			_side_wars.add_child(ab)
 	_side_panel.visible = not ids.is_empty() or not war_ids.is_empty()
 
 
@@ -1360,6 +1372,8 @@ func _refresh_info() -> void:
 	_info_panel.visible = true
 	_info_title.text = p.name
 	var sub := "%s%s" % ["★ " if p.capital_city else "", p.city] if p.city != "" else ""
+	if has_owner and p.core_owner >= 0 and p.core_owner != p.owner_id and p.core_owner < Game.countries.size():
+		sub = ("%s · " % sub if sub != "" else "") + "Conquistada de %s" % Game.countries[p.core_owner].name
 	if p.region != "" and p.region != p.name:
 		sub = ("%s · " % sub if sub != "" else "") + "Prov. de %s" % p.region
 

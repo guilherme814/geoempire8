@@ -157,6 +157,23 @@ func _draw() -> void:
 		outline.append(sp.poly[0])
 		draw_polyline(outline, Color(1.0, 0.92, 0.35), 3.0 / z)
 
+	# Território conquistado: tom do dono original por baixo e contorno na cor de quem tomou.
+	for p in Game.provinces:
+		if p.core_owner < 0 or p.owner_id < 0 or p.owner_id == p.core_owner:
+			continue
+		var oc: Color = Game.countries[p.core_owner].color
+		draw_colored_polygon(p.poly, Color(oc.r, oc.g, oc.b, 0.38))
+		var ring: PackedVector2Array = p.poly.duplicate()
+		ring.append(p.poly[0])
+		var nc: Color = Game.countries[p.owner_id].color.lightened(0.45)
+		draw_polyline(ring, Color(nc.r, nc.g, nc.b, 0.9), (3.0 if p.owner_id == Game.player_country else 1.8) / z)
+
+	# Cercos em andamento: arco de progresso sobre a província
+	for spid in Game.sieges.keys():
+		var sp2 := Game.provinces[int(spid)]
+		var frac := clampf(float(int(Game.sieges[spid]["days"])) / float(Game.SIEGE_DAYS), 0.0, 1.0)
+		draw_arc(sp2.center, 14.0 / z, -PI / 2.0, -PI / 2.0 + TAU * frac, 20, Color(1.0, 0.45, 0.2, 0.95), 3.5 / z, true)
+
 	# Passagens estratégicas (estreitos, cabos)
 	for gi in Game.gates.size():
 		var g: Dictionary = Game.gates[gi]

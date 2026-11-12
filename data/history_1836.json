@@ -27,7 +27,28 @@
   "slavery": true,
   "army": 4,
   "navy": 1,
-  "mil": 3
+  "mil": 3,
+  "profile": {
+   "lit": 35,
+   "tech": 1,
+   "gold": 7,
+   "laws": {
+    "gov": 0,
+    "press": 0,
+    "military": 2,
+    "economy": 0,
+    "trade": 0,
+    "tax": 0,
+    "land": 0,
+    "edu": 1,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "0": -2,
+    "2": 4
+   }
+  }
  },
  "BEL": {
   "gov": "monarquia_constitucional",
@@ -57,7 +78,29 @@
   "slavery": true,
   "army": 2,
   "navy": 2,
-  "mil": 2
+  "mil": 2,
+  "profile": {
+   "lit": 15,
+   "tech": 0,
+   "gold": 6,
+   "laws": {
+    "gov": 1,
+    "press": 1,
+    "military": 1,
+    "economy": 0,
+    "trade": 1,
+    "tax": 0,
+    "land": 0,
+    "edu": 0,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "0": -3,
+    "2": 5,
+    "3": -2
+   }
+  }
  },
  "CAM": {
   "gov": "republica_federal_em_colapso",
@@ -102,7 +145,28 @@
   "slavery": false,
   "army": 3,
   "navy": 1,
-  "mil": 2
+  "mil": 2,
+  "profile": {
+   "lit": 20,
+   "tech": 0,
+   "gold": 8,
+   "laws": {
+    "gov": 0,
+    "press": 0,
+    "military": 1,
+    "economy": 0,
+    "trade": 0,
+    "tax": 0,
+    "land": 1,
+    "edu": 0,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "0": -2,
+    "4": 3
+   }
+  }
  },
  "DEN": {
   "gov": "monarquia_absoluta",
@@ -162,7 +226,28 @@
   "slavery": true,
   "army": 4,
   "navy": 4,
-  "mil": 4
+  "mil": 4,
+  "profile": {
+   "lit": 40,
+   "tech": 2,
+   "gold": 8,
+   "laws": {
+    "gov": 1,
+    "press": 1,
+    "military": 2,
+    "economy": 1,
+    "trade": 0,
+    "tax": 1,
+    "land": 1,
+    "edu": 1,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "1": -3,
+    "3": 2
+   }
+  }
  },
  "GBR": {
   "gov": "monarquia_constitucional",
@@ -177,7 +262,28 @@
   "slavery": false,
   "army": 4,
   "navy": 5,
-  "mil": 5
+  "mil": 5,
+  "profile": {
+   "lit": 55,
+   "tech": 3,
+   "gold": 10,
+   "laws": {
+    "gov": 1,
+    "press": 2,
+    "military": 0,
+    "economy": 2,
+    "trade": 1,
+    "tax": 1,
+    "land": 1,
+    "edu": 0,
+    "labor": 1,
+    "unions": 1
+   },
+   "sat": {
+    "1": -4,
+    "3": 4
+   }
+  }
  },
  "HAI": {
   "gov": "republica_presidencial",
@@ -282,7 +388,28 @@
   "slavery": false,
   "army": 3,
   "navy": 2,
-  "mil": 2
+  "mil": 2,
+  "profile": {
+   "lit": 5,
+   "tech": 1,
+   "gold": 6,
+   "laws": {
+    "gov": 0,
+    "press": 0,
+    "military": 2,
+    "economy": 1,
+    "trade": 2,
+    "tax": 2,
+    "land": 1,
+    "edu": 0,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "5": -3,
+    "2": -2
+   }
+  }
  },
  "PAP": {
   "gov": "monarquia_eletiva_teocratica",
@@ -357,7 +484,28 @@
   "slavery": false,
   "army": 4,
   "navy": 1,
-  "mil": 4
+  "mil": 4,
+  "profile": {
+   "lit": 60,
+   "tech": 2,
+   "gold": 8,
+   "laws": {
+    "gov": 0,
+    "press": 0,
+    "military": 2,
+    "economy": 1,
+    "trade": 1,
+    "tax": 1,
+    "land": 1,
+    "edu": 1,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "4": 4,
+    "2": 3
+   }
+  }
  },
  "PAR": {
   "gov": "republica_autoritaria",
@@ -387,7 +535,28 @@
   "slavery": true,
   "army": 5,
   "navy": 3,
-  "mil": 3
+  "mil": 3,
+  "profile": {
+   "lit": 5,
+   "tech": 1,
+   "gold": 6,
+   "laws": {
+    "gov": 0,
+    "press": 0,
+    "military": 2,
+    "economy": 0,
+    "trade": 0,
+    "tax": 0,
+    "land": 0,
+    "edu": 0,
+    "labor": 0,
+    "unions": 0
+   },
+   "sat": {
+    "0": -4,
+    "2": 4
+   }
+  }
  },
  "SAR": {
   "gov": "monarquia_constitucional_limitada",
@@ -462,6 +631,27 @@
   "slavery": true,
   "army": 3,
   "navy": 3,
-  "mil": 3
+  "mil": 3,
+  "profile": {
+   "lit": 70,
+   "tech": 2,
+   "gold": 6,
+   "laws": {
+    "gov": 2,
+    "press": 2,
+    "military": 0,
+    "economy": 2,
+    "trade": 1,
+    "tax": 0,
+    "land": 0,
+    "edu": 1,
+    "labor": 0,
+    "unions": 1
+   },
+   "sat": {
+    "3": 3,
+    "0": 2
+   }
+  }
  }
 }

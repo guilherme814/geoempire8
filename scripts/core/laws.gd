@@ -147,6 +147,12 @@ static func defaults_for(h: Dictionary) -> Array:
 	return l
 
 
+## Aplica à lista de leis as opções do perfil de referência ({"gov": 1, ...}).
+static func apply_profile(l: Array, prof_laws: Dictionary) -> void:
+	for k in prof_laws.keys():
+		l[_gi(str(k))] = int(prof_laws[k])
+
+
 static func _gi(id: String) -> int:
 	for i in GROUPS.size():
 		if str(GROUPS[i]["id"]) == id:

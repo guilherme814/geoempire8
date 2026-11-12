@@ -376,8 +376,15 @@ func load_world(path: String = WORLD_PATH) -> bool:
 		c.tech_pts = maxi(c.tech_pts, (int(hh.get("ind", 0)) * 3 / 5) * Country.TECH_STEP)
 		if not hh.is_empty():
 			c.tax_pct = 20 + 4 * int(hh.get("tax", 2))   # capacidade fiscal histórica
+		var prof: Dictionary = hh.get("profile", {})
+		if not prof.is_empty():
+			# Perfil de referência (países principais): sobrepõe os valores genéricos.
+			c.literacy = int(prof.get("lit", c.literacy / 10)) * 10
+			c.tech_pts = int(prof.get("tech", c.tech_level())) * Country.TECH_STEP
+			Laws.apply_profile(c.laws, prof.get("laws", {}))
 	for c in countries:
-		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * 8)
+		var gold_months: int = int(history.get(c.tag, {}).get("profile", {}).get("gold", 8))
+		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * gold_months)
 		if c.is_alive():
 			# Exército inicial na capital, proporcional à população histórica.
 			var h: Dictionary = history.get(c.tag, {})
@@ -1552,8 +1559,9 @@ func politics_of(c: Country) -> Dictionary:
 	tg[5] = 55 + (-25 if broke else 10) + wars_n * 5
 	var lmp := law_mods(c)
 	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
+	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
 	for i in 6:
-		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(lmp["sat"][i]) + hist_bias, 0, 100)
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(lmp["sat"][i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
 
 	var pw := [0, 0, 0, 0, 0, 0]
 	var tot_pw := 0

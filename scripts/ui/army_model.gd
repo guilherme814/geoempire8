@@ -71,6 +71,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
+		set_process(false)
 		return   # sem renderização (teste automático): não monta a cena 3D
 	_build_world()
 	_ready_ok = true
@@ -244,6 +245,8 @@ func _rebuild_soldiers(n: int) -> void:
 
 
 func _process(delta: float) -> void:
+	if _stage == null:
+		return
 	_t += delta
 	# Câmera "gira" levemente: balança a formação em vez de mover a câmera.
 	_stage.rotation.y = sin(_t * 0.35) * 0.35

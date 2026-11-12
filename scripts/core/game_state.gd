@@ -1864,10 +1864,6 @@ func _init_market() -> void:
 		market_dem[g] = 3000 if Province.PROCESSED.has(g) else int(sup[g])
 	market_pop0 = market_population()
 	local_price.clear()
-	var zmask: Array = _zone_mask_of_all()
-	var route_cache := {}
-	for gi in gate_flow.size():
-		gate_flow[gi] = 0
 	trade_imp.clear()
 	trade_exp.clear()
 	trade_bonus.clear()
@@ -1945,6 +1941,10 @@ func _run_trade() -> void:
 	for i in n:
 		cap.append(sea_capacity(i) if countries[i].is_alive() else 0)
 
+	var zmask: Array = _zone_mask_of_all()
+	var route_cache := {}
+	for gi in gate_flow.size():
+		gate_flow[gi] = 0
 	trade_imp.clear()
 	trade_exp.clear()
 	trade_bonus.clear()

@@ -374,12 +374,22 @@ func load_world(path: String = WORLD_PATH) -> bool:
 		# O desenvolvimento industrial histórico adianta a tecnologia inicial.
 		var hh: Dictionary = history.get(c.tag, {})
 		c.tech_pts = maxi(c.tech_pts, (int(hh.get("ind", 0)) * 3 / 5) * Country.TECH_STEP)
+		if not hh.is_empty():
+			c.tax_pct = 20 + 4 * int(hh.get("tax", 2))   # capacidade fiscal histórica
 	for c in countries:
 		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * 8)
 		if c.is_alive():
 			# Exército inicial na capital, proporcional à população histórica.
+			var h: Dictionary = history.get(c.tag, {})
 			var regs := clampi(int(c.pop_total * 0.6), 1, 40)
+			if not h.is_empty():
+				# Capacidade militar histórica (0-5): de 80% a 140% do exército base.
+				regs = clampi(regs * (60 + 20 * int(h.get("army", 2))) / 100, 1, 50)
 			_add_regiments(c.capital, c.id, regs)
+			if not h.is_empty():
+				var nv: int = int(h.get("navy", 1))
+				if nv >= 2:
+					_add_ships(_port_province_of(c), c.id, (nv - 1) * nv)
 
 	for c in countries:
 		if c.is_alive():
@@ -400,6 +410,16 @@ func load_world(path: String = WORLD_PATH) -> bool:
 # Comandos
 # ---------------------------------------------------------------------------
 const HISTORY_PATH := "res://data/history_1836.json"
+
+
+## Província com porto para a frota inicial: a capital, ou a primeira do país que tenha porto.
+func _port_province_of(c: Country) -> int:
+	if c.capital >= 0 and c.capital < provinces.size() and provinces[c.capital].port >= 0:
+		return c.capital
+	for pid in c.province_ids:
+		if provinces[pid].port >= 0:
+			return pid
+	return c.capital
 
 
 func _load_history() -> void:

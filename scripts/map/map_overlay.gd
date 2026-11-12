@@ -157,6 +157,23 @@ func _draw() -> void:
 		outline.append(sp.poly[0])
 		draw_polyline(outline, Color(1.0, 0.92, 0.35), 3.0 / z)
 
+	# Passagens estratégicas (estreitos, cabos)
+	for gi in Game.gates.size():
+		var g: Dictionary = Game.gates[gi]
+		var gp := Vector2(float(g["x"]), float(g["y"]))
+		var gctrl := Game.gate_controller(gi)
+		var gcol := Color(0.95, 0.85, 0.5, 0.9)
+		if gctrl >= 0:
+			gcol = Game.countries[gctrl].color.lightened(0.35)
+			gcol.a = 0.95
+		var gr := 7.0 / z
+		draw_arc(gp, gr, 0.0, TAU, 18, gcol, 2.0 / z, true)
+		draw_circle(gp, gr * 0.35, gcol)
+		if z >= 0.45:
+			var gfs := maxi(8, int(12.0 / z))
+			draw_string_outline(_font, gp + Vector2(gr + 3.0 / z, 4.0 / z), str(g["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, gfs, 3, Color(0, 0, 0, 0.8))
+			draw_string(_font, gp + Vector2(gr + 3.0 / z, 4.0 / z), str(g["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, gfs, Color(0.95, 0.9, 0.7, 0.95))
+
 	# Rota do exército selecionado: linha tracejada com seta e dias restantes
 	# Rota da frota selecionada
 	var fsel: Fleet = Game.fleets.get(selected_fleet)

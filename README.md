@@ -107,3 +107,8 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Regiões históricas (V0.12)
 - `data/regions.json` agrupa as províncias-célula em províncias históricas (Brasil: 16 províncias de 1836, de Grão-Pará a Rio Grande do Sul) e dá nomes de época às células. A ficha da província mostra "Prov. de ...".
 - Eventos regenciais do Brasil (Cabanagem, Farroupilha, Sabinada, Balaiada, Maioridade) com efeito regional (`region_pop_pct`).
+
+## Estreitos e rotas (V0.12)
+- `data/sea_gates.json`: 5 passagens estratégicas (Estreitos turcos, Øresund, Gibraltar, Cabo da Boa Esperança, Malaca), marcadas no mapa. O controlador é o dono da província-âncora e muda com a conquista.
+- `scripts/core/sea_zones.gd`: 6 zonas marítimas (Atlântico, Mediterrâneo, Mar Negro, Báltico, Índico, Pacífico). Uma rota comercial por mar cruza as passagens da zona de um porto à do outro.
+- O controlador fecha a passagem a países em guerra ou embargo com ele e cobra pedágio (3% nos Estreitos e no Øresund, 1% no Cabo e em Malaca). A janela de Economia lista controlador, pedágio e fluxo.

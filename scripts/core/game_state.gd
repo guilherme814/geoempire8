@@ -101,6 +101,10 @@ var wars: Array = []             # [{a, b, days}] com a < b
 var sieges: Dictionary = {}      # província -> {by, days}
 # Mercado mundial: preço (% do base) por recurso, demanda-base e população de referência.
 var local_price: Array = []        # por país: {bem -> % do preço-base}
+var gates: Array = []              # passagens estratégicas (data/sea_gates.json)
+var gate_flow: Array = []          # carga que passou por cada passagem no último mês (derivado)
+var prov_zone: PackedInt32Array = PackedInt32Array()
+var _zone_paths: Array = []        # [zona][zona] -> lista de índices de passagens
 var embargoes: Array = []          # emissor*1000+alvo
 var trade_imp: Array = []          # por país: {bem -> unidades} (derivado, mostra o último mês)
 var trade_exp: Array = []
@@ -339,6 +343,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	for pd in dict["provinces"]:
 		provinces.append(Province.from_dict(pd))
 	_apply_regions()
+	_load_gates()
 
 	# Os índices dos arrays precisam ser iguais aos ids (acesso O(1) em todo o código).
 	for i in countries.size():
@@ -418,6 +423,94 @@ func load_world(path: String = WORLD_PATH) -> bool:
 # Comandos
 # ---------------------------------------------------------------------------
 const HISTORY_PATH := "res://data/history_1836.json"
+
+
+const GATES_PATH := "res://data/sea_gates.json"
+const GATE_TOLL_BASE := 100
+
+
+func _load_gates() -> void:
+	gates = []
+	gate_flow = []
+	prov_zone = PackedInt32Array()
+	prov_zone.resize(provinces.size())
+	for p in provinces:
+		prov_zone[p.id] = SeaZones.zone_of(p.lon, p.lat)
+	if FileAccess.file_exists(GATES_PATH):
+		var f := FileAccess.open(GATES_PATH, FileAccess.READ)
+		if f != null:
+			var parsed: Variant = JSON.parse_string(f.get_as_text())
+			if parsed is Array:
+				gates = parsed
+	for g in gates:
+		gate_flow.append(0)
+	# Menor caminho (em passagens) entre cada par de zonas.
+	var n := SeaZones.COUNT
+	var paths: Array = []
+	var cost: Array = []
+	for a in n:
+		paths.append([])
+		cost.append([])
+		for b in n:
+			paths[a].append([])
+			cost[a].append(0 if a == b else 1000000)
+	for ed in SeaZones.EDGES:
+		var gi := -1
+		for i in gates.size():
+			if str(gates[i]["id"]) == str(ed[2]):
+				gi = i
+		var seg: Array = [] if gi < 0 else [gi]
+		var w: int = 1 + 100 * seg.size()
+		for dir in 2:
+			var a: int = int(ed[0]) if dir == 0 else int(ed[1])
+			var b: int = int(ed[1]) if dir == 0 else int(ed[0])
+			if w < int(cost[a][b]):
+				cost[a][b] = w
+				paths[a][b] = seg.duplicate()
+	for k in n:
+		for a in n:
+			for b in n:
+				var w2: int = int(cost[a][k]) + int(cost[k][b])
+				if w2 < int(cost[a][b]):
+					cost[a][b] = w2
+					paths[a][b] = (paths[a][k] as Array) + (paths[k][b] as Array)
+	_zone_paths = paths
+
+
+## Dono atual da passagem (-1 = ninguém): quem controla a província-âncora.
+func gate_controller(gi: int) -> int:
+	if gi < 0 or gi >= gates.size():
+		return -1
+	var pid: int = int(gates[gi]["prov"])
+	return provinces[pid].owner_id if pid >= 0 and pid < provinces.size() else -1
+
+
+## Zonas em que um país tem porto (máscara de bits).
+func _zone_mask_of_all() -> Array:
+	var masks: Array = []
+	for i in countries.size():
+		masks.append(0)
+	for p in provinces:
+		if p.port >= 0 and p.owner_id >= 0 and p.owner_id < masks.size():
+			masks[p.owner_id] = int(masks[p.owner_id]) | (1 << prov_zone[p.id])
+	return masks
+
+
+## Passagens que a rota marítima i <-> e precisa cruzar (a combinação de zonas com menos passagens).
+func _route_gates(mi: int, me: int) -> Array:
+	var best: Array = []
+	var best_n := 1000
+	for za in SeaZones.COUNT:
+		if (mi >> za) & 1 == 0:
+			continue
+		for zb in SeaZones.COUNT:
+			if (me >> zb) & 1 == 0:
+				continue
+			var gl: Array = _zone_paths[za][zb]
+			if gl.size() < best_n:
+				best_n = gl.size()
+				best = gl
+	return best
 
 
 const REGIONS_PATH := "res://data/regions.json"
@@ -1771,6 +1864,10 @@ func _init_market() -> void:
 		market_dem[g] = 3000 if Province.PROCESSED.has(g) else int(sup[g])
 	market_pop0 = market_population()
 	local_price.clear()
+	var zmask: Array = _zone_mask_of_all()
+	var route_cache := {}
+	for gi in gate_flow.size():
+		gate_flow[gi] = 0
 	trade_imp.clear()
 	trade_exp.clear()
 	trade_bonus.clear()
@@ -1883,7 +1980,20 @@ func _run_trade() -> void:
 					if land == by_sea:
 						continue
 					var q: int = mini(need, int(avail[e]))
+					var rgates: Array = []
 					if not land:
+						var rk: int = i * 1000 + e
+						if not route_cache.has(rk):
+							route_cache[rk] = _route_gates(int(zmask[i]), int(zmask[e]))
+						rgates = route_cache[rk]
+						var closed := false
+						for gi in rgates:
+							var gc := gate_controller(int(gi))
+							if gc >= 0 and gc != i and gc != e and (trade_blocked(gc, i) or trade_blocked(gc, e)):
+								closed = true
+								break
+						if closed:
+							continue
 						q = mini(q, mini(int(cap[i]), int(cap[e])))
 						if q <= 0:
 							continue
@@ -1897,6 +2007,14 @@ func _run_trade() -> void:
 					var pe: int = int(local_price[e][g])
 					trade_bonus[e] = int(trade_bonus[e]) + q * base * (pi - pe) / 10000
 					trade_bonus[i] = int(trade_bonus[i]) + q * base * pi / 10000 * TRADE_TARIFF_PCT / 100
+					for gi in rgates:
+						gate_flow[int(gi)] = int(gate_flow[int(gi)]) + q
+						var gc2 := gate_controller(int(gi))
+						var toll_pct: int = int(gates[int(gi)].get("toll", 0))
+						if gc2 >= 0 and gc2 != i and gc2 != e and toll_pct > 0:
+							var toll: int = q * base * pi / 10000 * toll_pct / GATE_TOLL_BASE
+							trade_bonus[gc2] = int(trade_bonus[gc2]) + toll
+							trade_bonus[e] = int(trade_bonus[e]) - toll
 
 	for i in n:
 		for g in goods:

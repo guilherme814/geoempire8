@@ -1,0 +1,47 @@
+[
+ {
+  "id": "straits",
+  "name": "Estreitos turcos",
+  "prov": 570,
+  "toll": 3,
+  "x": 1783,
+  "y": 486,
+  "desc": "Bósforo e Dardanelos: a porta do Mar Negro."
+ },
+ {
+  "id": "oresund",
+  "name": "Øresund",
+  "prov": 1087,
+  "toll": 3,
+  "x": 1644,
+  "y": 326,
+  "desc": "Passagem do Báltico; a Dinamarca cobra o Pedágio do Sund."
+ },
+ {
+  "id": "gibraltar",
+  "name": "Estreito de Gibraltar",
+  "prov": 786,
+  "toll": 0,
+  "x": 1490,
+  "y": 536,
+  "desc": "Liga o Atlântico ao Mediterrâneo."
+ },
+ {
+  "id": "cape",
+  "name": "Cabo da Boa Esperança",
+  "prov": 247,
+  "toll": 1,
+  "x": 1693,
+  "y": 1163,
+  "desc": "Rota das Índias: sem Suez, tudo contorna a África."
+ },
+ {
+  "id": "malacca",
+  "name": "Estreito de Malaca",
+  "prov": 1082,
+  "toll": 1,
+  "x": 2402,
+  "y": 837,
+  "desc": "Liga o Índico ao Pacífico asiático."
+ }
+]

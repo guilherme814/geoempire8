@@ -740,6 +740,18 @@ func _refresh_economy() -> void:
 	for r in Game.top_provinces(c, 5):
 		var p := Game.provinces[int(r["id"])]
 		right.add_child(UIKit.kv_row("%s%s" % [p.name, "" if p.city == "" else " (%s)" % p.city], "+%d" % int(r["tax"]), UIKit.POS, 16))
+	if not Game.gates.is_empty():
+		var gcard := _card(body, "Estreitos e rotas")
+		for gi in Game.gates.size():
+			var g: Dictionary = Game.gates[gi]
+			var gc := Game.gate_controller(gi)
+			var who := "ninguém" if gc < 0 else ("você" if gc == c.id else Game.countries[gc].name)
+			var toll := int(g.get("toll", 0))
+			var info := "%s · pedágio %d%% · fluxo %d" % [who, toll, int(Game.gate_flow[gi])]
+			gcard.add_child(UIKit.kv_row(str(g["name"]), info, UIKit.GOLD_BRIGHT if gc == c.id else UIKit.TEXT, 16))
+		var gnote := UIKit.label("Quem controla um estreito cobra pedágio e pode fechá-lo a países em guerra ou embargo com ele.", 14, UIKit.TEXT_DIM)
+		gnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gcard.add_child(gnote)
 
 
 func _big_number(parent: Control, title: String, value: String, color: Color) -> void:

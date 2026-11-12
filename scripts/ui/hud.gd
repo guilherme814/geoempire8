@@ -103,6 +103,7 @@ var _build_tab_btns: Dictionary = {}
 
 # Exército selecionado
 var _army_panel: PanelContainer
+var _army_model: ArmyModel
 var _army_label: Label
 var _btn_army_stop: Button
 var _btn_army_disband: Button
@@ -1143,6 +1144,9 @@ func _build_army_panel() -> void:
 	hrow.add_child(UiIcon.make("sword", 24, UIKit.GOLD_BRIGHT))
 	hrow.add_child(UIKit.serif_label("Exército", 20, UIKit.GOLD_BRIGHT))
 
+	_army_model = ArmyModel.new()
+	col.add_child(_army_model)
+
 	_army_label = UIKit.label("", 17, UIKit.TEXT)
 	_army_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_army_label.custom_minimum_size = Vector2(300, 0)
@@ -1470,6 +1474,7 @@ func _refresh_army() -> void:
 	elif mine:
 		txt += "\nToque numa província para marchar."
 	_army_label.text = txt
+	_army_model.show_army(oc.tag, oc.color, a.regiments, a.is_moving())
 	_btn_army_stop.visible = mine and a.is_moving()
 	_btn_army_disband.visible = mine
 

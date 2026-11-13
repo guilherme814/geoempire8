@@ -127,3 +127,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Construções e menus (V0.12)
 - Painel de construção redesenhado: cartões com ícone vetorial por construção, nível em 3 marcadores, efeito, empregos e líquido mensal em uma linha, rolagem vertical e "Ver detalhes" para a conta completa. O dock agora tem 4 abas (Governo, Recursos, Indústria, Infra) sem texto cortado.
 - 4 construções novas: **Hospital** (Governo: +0,03%/mês de crescimento por nível), **Mercado** (Infra: +8% de imposto da província por nível), **Ferrovia** (Infra, tec. 2: +12% de produção por nível) e **Cais comercial** (Infra, só litoral: +60 de comércio marítimo por nível). Manutenção de hospital/mercado/cais aparece no Orçamento.
+
+## Layout e mapa (V0.12)
+- Interface mais suave e centrada: cantos arredondados, bordas discretas, janelas centrais que se ajustam à tela (até 92% x 94%), dock inferior adaptável, painel de província mais estreito, painel de exército com largura própria e aviso (toast) proporcional. Baseado em `geoempire8_layout_rework_v1`, adaptado ao `hud.gd` desta branch.
+- Mapa remodelado (estilo Age of History 3 / Victoria): oceano com vinheta radial, faixa de águas rasas na costa (`CoastHalo`), divisões de província claras e translúcidas, fronteiras de país escuras com sombra suave, leve mistura da cor do país com o terreno e nomes em serifa para oceanos.

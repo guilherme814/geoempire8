@@ -11,7 +11,8 @@ enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE }
 
 const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos"]
 const GRID_SIZE := 100.0
-const OCEAN_COLOR := Color(0.055, 0.15, 0.21)   # azul petróleo escuro
+const OCEAN_COLOR := Color(0.045, 0.125, 0.185)  # azul petróleo escuro (borda do mapa)
+const OCEAN_CENTER := Color(0.10, 0.27, 0.36)    # azul mais claro no centro (vinheta)
 const UNOWNED_COLOR := Color(0.86, 0.80, 0.64)  # pergaminho: terra sem dono
 const ZOOM_STEP := 1.35   # o zoom é agrupado em faixas deste fator para redesenhar pouco
 
@@ -41,6 +42,8 @@ var _coast_lines: PackedVector2Array = PackedVector2Array()
 var _front_lines: PackedVector2Array = PackedVector2Array()   # fronteiras entre países em guerra
 var _sea_lines: PackedVector2Array = PackedVector2Array()
 var _ocean: Polygon2D
+var _vignette: Sprite2D
+var _halo: CoastHalo
 var _mesh_node: MeshInstance2D
 var _font: Font
 var _max_pop: int = 1
@@ -58,6 +61,26 @@ func _ready() -> void:
 	])
 	_ocean.show_behind_parent = true
 	add_child(_ocean)
+	# Vinheta do oceano: gradiente radial (centro claro, bordas escuras).
+	var grad := Gradient.new()
+	grad.set_color(0, Color(OCEAN_CENTER, 1.0))
+	grad.set_color(1, Color(OCEAN_CENTER, 0.0))
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 256
+	gt.height = 256
+	_vignette = Sprite2D.new()
+	_vignette.texture = gt
+	_vignette.centered = false
+	_vignette.scale = Vector2(Game.map_size.x / 256.0, Game.map_size.y / 256.0)
+	_vignette.show_behind_parent = true
+	add_child(_vignette)
+	_halo = CoastHalo.new()
+	_halo.show_behind_parent = true
+	add_child(_halo)
 	_mesh_node = MeshInstance2D.new()
 	_mesh_node.show_behind_parent = true
 	add_child(_mesh_node)
@@ -80,6 +103,8 @@ func set_zoom_level(z: float) -> void:
 		return
 	_bucket = b
 	zoom_level = pow(ZOOM_STEP, float(b))
+	if _halo != null:
+		_halo.set_zoom(zoom_level)
 	queue_redraw()
 
 
@@ -171,6 +196,8 @@ func _build_coast_and_sea() -> void:
 			if s > p.id:
 				_sea_lines.append(p.center)
 				_sea_lines.append(Game.provinces[s].center)
+	if _halo != null:
+		_halo.set_data(_coast_lines)
 
 
 ## Fronteiras mudam quando uma província troca de dono.
@@ -226,7 +253,9 @@ func _province_color(p: Province) -> Color:
 	# Político
 	if p.owner_id < 0 or p.owner_id >= Game.countries.size():
 		return UNOWNED_COLOR.darkened(shade)
-	return Game.countries[p.owner_id].color.darkened(shade)
+	var base: Color = Game.countries[p.owner_id].color
+	var tc2: Color = _terrain_colors.get(p.terrain, base)
+	return base.lerp(tc2, 0.16).darkened(shade * 0.8)
 
 
 ## Uma única malha com todas as províncias (cor por vértice).
@@ -266,11 +295,12 @@ func _draw() -> void:
 	# Divisões internas só aparecem com zoom (fade entre 1,2x e 2,4x): mapa limpo de longe.
 	var prov_alpha := clampf((z - 1.2) / 1.2, 0.0, 1.0) * 0.35
 	if prov_alpha > 0.01:
-		draw_multiline(_prov_lines, Color(0.25, 0.17, 0.08, prov_alpha), -1.0)          # 1 px fixo na tela
-	draw_multiline(_country_lines, Color(0.22, 0.12, 0.05, 0.95), 2.2 / z)
+		draw_multiline(_prov_lines, Color(1.0, 1.0, 1.0, prov_alpha * 0.9), -1.0)       # 1 px fixo na tela
+	draw_multiline(_country_lines, Color(0.0, 0.0, 0.0, 0.14), 5.5 / z)               # sombra suave
+	draw_multiline(_country_lines, Color(0.07, 0.09, 0.12, 0.92), 1.9 / z)
 	if not _front_lines.is_empty():
 		draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
-	draw_multiline(_coast_lines, Color(0.20, 0.14, 0.08, 0.9), 1.6 / z)
+	draw_multiline(_coast_lines, Color(0.04, 0.12, 0.18, 0.85), 1.3 / z)
 	if mode == Mode.POLITICAL:
 		if z >= 2.0:
 			draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
@@ -289,7 +319,7 @@ const OCEAN_NAMES := [
 func _draw_graticule(z: float) -> void:
 	var w := Game.map_size.x
 	var h := Game.map_size.y
-	var col := Color(0.55, 0.78, 0.88, 0.10)
+	var col := Color(0.55, 0.78, 0.88, 0.06)
 	for lon in range(-150, 180, 30):
 		var x := (float(lon) + 180.0) / 360.0 * w
 		draw_line(Vector2(x, 0), Vector2(x, h), col, -1.0)
@@ -312,7 +342,7 @@ func _draw_ocean_labels(z: float) -> void:
 		var text: String = o[0]
 		var pos := Vector2(float(o[1]) * Game.map_size.x, float(o[2]) * Game.map_size.y)
 		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(_font, pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.60, 0.80, 0.90, 0.42))
+		draw_string(UIKit.serif(), pos - Vector2(ts.x * 0.5, 0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.62, 0.82, 0.92, 0.34))
 
 
 func _draw_country_labels(z: float) -> void:
@@ -338,5 +368,5 @@ func _draw_country_labels(z: float) -> void:
 			continue
 		ts = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 		var pos := c.label_pos - Vector2(ts.x * 0.5, -ts.y * 0.3)
-		draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.12)), Color(0, 0, 0, 0.65))
-		draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
+		draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.10)), Color(0, 0, 0, 0.45))
+		draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.92))

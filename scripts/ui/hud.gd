@@ -106,6 +106,7 @@ var _build_panel: PanelContainer
 var _build_head: Label
 var _build_rows: VBoxContainer
 var _build_tab_btns: Dictionary = {}
+var _win_sizes: Dictionary = {}   # janela -> tamanho desejado
 var _build_scroll: ScrollContainer
 var _build_open: Dictionary = {}   # kind -> detalhes expandidos
 
@@ -237,7 +238,7 @@ func _build_top_bar() -> void:
 	_bar.resized.connect(_on_bar_resized)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 14)
 	_bar.add_child(row)
 
 	var frame := PanelContainer.new()
@@ -253,7 +254,7 @@ func _build_top_bar() -> void:
 	names.add_theme_constant_override("separation", -1)
 	row.add_child(names)
 	_country_label = UIKit.serif_label("", 23, UIKit.GOLD_BRIGHT)
-	_country_label.custom_minimum_size = Vector2(150, 0)
+	_country_label.custom_minimum_size = Vector2(190, 0)
 	_country_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	names.add_child(_country_label)
 	_country_sub = UIKit.label("", 14, UIKit.TEXT_DIM)
@@ -394,7 +395,7 @@ func _build_toast() -> void:
 	_body.add_child(_toast_panel)
 	_toast = UIKit.label("", 19, UIKit.TEXT)
 	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast.custom_minimum_size = Vector2(420, 0)
+	_toast.custom_minimum_size = Vector2(minf(520.0, get_viewport().get_visible_rect().size.x * 0.72), 0)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_panel.add_child(_toast)
 
@@ -418,8 +419,10 @@ func _build_dock() -> void:
 	box.anchor_right = 0.5
 	box.anchor_top = 1.0
 	box.anchor_bottom = 1.0
-	box.offset_left = -250
-	box.offset_right = 250
+	var dock_half := minf(290.0, get_viewport().get_visible_rect().size.x * 0.4)
+	box.offset_left = -dock_half
+	box.offset_right = dock_half
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.offset_top = -MARGIN
 	box.offset_bottom = -MARGIN
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -607,6 +610,7 @@ func _make_window(key: String, title: String, win_size: Vector2, icon_kind: Stri
 	w.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	w.grow_vertical = Control.GROW_DIRECTION_BOTH
 	w.custom_minimum_size = win_size
+	_win_sizes[w] = win_size
 	w.visible = false
 	_body.add_child(w)
 	_blockers.append(w)
@@ -642,7 +646,20 @@ func _make_window(key: String, title: String, win_size: Vector2, icon_kind: Stri
 	return body
 
 
+## Ajusta as janelas ao espaço útil: tamanho desejado, no máximo 92% da largura e 94% da altura.
+func _fit_windows() -> void:
+	var area := _body.size
+	if area.x <= 0.0 or area.y <= 0.0:
+		return
+	for w in _win_sizes.keys():
+		var want: Vector2 = _win_sizes[w]
+		(w as Control).custom_minimum_size = Vector2(minf(want.x, area.x * 0.92), minf(want.y, area.y * 0.94))
+	if _toast != null:
+		_toast.custom_minimum_size = Vector2(minf(520.0, area.x * 0.72), 0)
+
+
 func _build_windows() -> void:
+	_body.resized.connect(_fit_windows)
 	_make_window("politics", "Política interna", Vector2(900, 540), "scales")
 	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
@@ -1194,9 +1211,11 @@ func _on_swap_pressed() -> void:
 # Painel da província
 # ---------------------------------------------------------------------------
 func _build_info_panel() -> void:
-	var width := 360.0
+	var width := 330.0
 	_info_panel = PanelContainer.new()
 	_info_panel.custom_minimum_size = Vector2(width, 0)
+	_info_panel.anchor_left = 0.0
+	_info_panel.anchor_right = 0.0
 	_info_panel.anchor_top = 1.0
 	_info_panel.anchor_bottom = 1.0
 	_info_panel.offset_left = SIDE_W + MARGIN
@@ -1270,7 +1289,7 @@ func _build_army_panel() -> void:
 	_army_panel.anchor_right = 1.0
 	_army_panel.anchor_top = 1.0
 	_army_panel.anchor_bottom = 1.0
-	_army_panel.offset_left = -MARGIN
+	_army_panel.offset_left = -326.0
 	_army_panel.offset_right = -MARGIN
 	_army_panel.offset_top = -MARGIN
 	_army_panel.offset_bottom = -MARGIN

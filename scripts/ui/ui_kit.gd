@@ -4,7 +4,7 @@ extends RefCounted
 ## Visual: painéis escuros com moldura dourada, cabeçalhos vinho e botões verde-azulados,
 ## inspirado em Victoria 3 e Age of History 3, mas com identidade própria.
 
-const BG := Color(0.055, 0.078, 0.102, 0.96)
+const BG := Color(0.055, 0.078, 0.102, 0.93)
 const BG_LIGHT := Color(0.085, 0.12, 0.155, 0.97)
 const BG_BAR := Color(0.04, 0.058, 0.078, 0.98)
 const GOLD := Color(0.79, 0.66, 0.36)
@@ -49,22 +49,22 @@ static func make_theme() -> Theme:
 	t.set_color("font_color", "Label", TEXT)
 
 	# Painéis
-	var p := box(BG, GOLD_DIM, 6, 2, 10)
-	p.shadow_color = Color(0, 0, 0, 0.5)
-	p.shadow_size = 8
+	var p := box(BG, Color(GOLD_DIM, 0.75), 12, 1, 14)
+	p.shadow_color = Color(0, 0, 0, 0.45)
+	p.shadow_size = 14
 	t.set_stylebox("panel", "PanelContainer", p)
 
 	t.set_type_variation("CardPanel", "PanelContainer")
-	t.set_stylebox("panel", "CardPanel", box(BG_LIGHT, Color(0.24, 0.30, 0.33), 5, 1, 10))
+	t.set_stylebox("panel", "CardPanel", box(BG_LIGHT, Color(0.24, 0.30, 0.33, 0.8), 10, 1, 12))
 
 	t.set_type_variation("BannerPanel", "PanelContainer")
-	var ban := box(MAROON, GOLD_DIM, 4, 0, 10)
+	var ban := box(MAROON, GOLD_DIM, 8, 0, 10)
 	ban.border_width_bottom = 2
 	ban.border_color = GOLD
 	t.set_stylebox("panel", "BannerPanel", ban)
 
 	t.set_type_variation("BarPanel", "PanelContainer")
-	var topbar := box(BG_BAR, GOLD_DIM, 0, 0, 8)
+	var topbar := box(BG_BAR, GOLD_DIM, 0, 0, 10)
 	topbar.border_width_bottom = 3
 	topbar.shadow_color = Color(0, 0, 0, 0.55)
 	topbar.shadow_size = 6
@@ -74,13 +74,13 @@ static func make_theme() -> Theme:
 	t.set_stylebox("panel", "FlagFrame", box(Color(0, 0, 0, 0.5), GOLD, 3, 2, 3))
 
 	# Botões
-	_button_styles(t, "Button", TEAL, TEAL_HOVER, TEAL_DOWN, GOLD_DIM, 5, 1, 8)
+	_button_styles(t, "Button", TEAL, TEAL_HOVER, TEAL_DOWN, GOLD_DIM, 9, 1, 8)
 
 	t.set_type_variation("DockButton", "Button")
-	_button_styles(t, "DockButton", TEAL, TEAL_HOVER, TEAL_DOWN, GOLD, 10, 2, 6)
+	_button_styles(t, "DockButton", TEAL, TEAL_HOVER, TEAL_DOWN, Color(GOLD, 0.8), 14, 1, 6)
 
 	t.set_type_variation("PrimaryButton", "Button")
-	_button_styles(t, "PrimaryButton", MAROON_LIGHT, Color(0.62, 0.2, 0.26), Color(0.36, 0.1, 0.15), GOLD, 6, 2, 10)
+	_button_styles(t, "PrimaryButton", MAROON_LIGHT, Color(0.62, 0.2, 0.26), Color(0.36, 0.1, 0.15), GOLD, 10, 1, 10)
 
 	t.set_type_variation("SpeedButton", "Button")
 	_button_styles(t, "SpeedButton", Color(0.08, 0.16, 0.18), TEAL_HOVER, MAROON_LIGHT, GOLD_DIM, 4, 1, 2)

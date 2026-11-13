@@ -683,6 +683,8 @@ func _refresh_economy() -> void:
 	_big_number(top, "Saldo mensal", "%+d" % net, _signed_color(net))
 	_big_number(top, "Tesouro", str(c.treasury), UIKit.NEG if c.treasury < 0 else UIKit.GOLD_BRIGHT)
 
+	_economy_dashboard(body, c)
+
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 12)
 	body.add_child(cols)
@@ -753,6 +755,95 @@ func _refresh_economy() -> void:
 		var gnote := UIKit.label("Quem controla um estreito cobra pedágio e pode fechá-lo a países em guerra ou embargo com ele.", 14, UIKit.TEXT_DIM)
 		gnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		gcard.add_child(gnote)
+
+
+## Painel de indicadores: PIB (valor agregado), inflação, comércio, emprego, gráficos e rankings.
+func _economy_dashboard(body: VBoxContainer, c: Country) -> void:
+	var r: Dictionary = EconomyManager.country_report(Game, c.id)
+	if r.is_empty():
+		return
+	var hist: Array = EconomyManager.get_history(c.id)
+	var infl := 0
+	var growth := 0
+	if not hist.is_empty():
+		infl = int(hist.back().get("inflation_pct", 0))
+		growth = int(hist.back().get("gdp_growth_pct", 0))
+	var unemp := Game.unemployment_pct(c)
+	var row1 := HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 12)
+	body.add_child(row1)
+	_big_number(row1, "PIB (valor agregado)", str(int(r["gdp_nominal"])), UIKit.GOLD_BRIGHT)
+	_big_number(row1, "Crescimento mensal", "%+d%%" % growth, _signed_color(growth))
+	_big_number(row1, "Inflação mensal", "%+d%%" % infl, UIKit.NEG if infl > 1 else (UIKit.POS if infl < 0 else UIKit.TEXT))
+	_big_number(row1, "Desemprego", "%d%%" % unemp, UIKit.NEG if unemp >= 16 else (UIKit.WARN if unemp >= 10 else UIKit.POS))
+
+	var charts := HBoxContainer.new()
+	charts.add_theme_constant_override("separation", 12)
+	body.add_child(charts)
+	var g1 := GDPChartPanel.new()
+	g1.custom_minimum_size = Vector2(0, 170)
+	g1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g1.set_metric("gdp_real", "PIB REAL — EVOLUÇÃO MENSAL")
+	g1.update_chart(hist)
+	charts.add_child(g1)
+	var g2 := GDPChartPanel.new()
+	g2.custom_minimum_size = Vector2(0, 170)
+	g2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g2.set_metric("monthly_balance", "SALDO FISCAL MENSAL")
+	g2.update_chart(hist)
+	charts.add_child(g2)
+
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 12)
+	body.add_child(cols)
+	var ind := _card(cols, "Indicadores", "bars")
+	ind.add_child(UIKit.kv_row("PIB por habitante", "%.2f" % (float(int(r["gdp_per_capita_x100"])) / 100.0)))
+	ind.add_child(UIKit.kv_row("Índice de preços", "%d" % int(r["price_index"]), UIKit.WARN if int(r["price_index"]) > 115 else UIKit.TEXT))
+	ind.add_child(UIKit.kv_row("Valor agregado industrial", str(int(r["industry_value_added"]))))
+	ind.add_child(UIKit.kv_row("Balança comercial", "%+d" % int(r["trade_balance"]), _signed_color(int(r["trade_balance"]))))
+	ind.add_child(UIKit.kv_row("Investimento privado (fluxo)", "%d" % int(r["investment_flow"])))
+	ind.add_child(UIKit.kv_row("Empregos formais (capacidade)", str(int(r["estimated_jobs"]) * Game.JOB_SCALE)))
+	var un := UIKit.label("Desemprego alto derruba a satisfação de trabalhadores e camponeses; construa minas, fazendas e fábricas para gerar empregos.", 14, UIKit.TEXT_DIM)
+	un.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ind.add_child(un)
+
+	var rk := _card(cols, "Maiores economias", "coin")
+	var ranking: Array = _ranking_cached()
+	var shown := 0
+	var my_pos := -1
+	for i in ranking.size():
+		var row: Dictionary = ranking[i]
+		if int(row["id"]) == c.id:
+			my_pos = i
+		if i < 5:
+			rk.add_child(UIKit.kv_row("%d. %s" % [i + 1, str(row["name"])], str(int(row["gdp_nominal"])), UIKit.GOLD_BRIGHT if int(row["id"]) == c.id else UIKit.TEXT, 16))
+			shown += 1
+	if my_pos >= shown:
+		rk.add_child(UIKit.kv_row("%d. %s" % [my_pos + 1, c.name], str(int(ranking[my_pos]["gdp_nominal"])), UIKit.GOLD_BRIGHT, 16))
+	rk.add_child(HSeparator.new())
+	rk.add_child(UIKit.label("Gargalos e excedentes", 17, UIKit.GOLD))
+	var alerts: Array = EconomyManager.bottlenecks(Game, c.id)
+	var na := 0
+	for a in alerts:
+		if na >= 4:
+			break
+		var surplus := str(a["severity"]) == "surplus"
+		rk.add_child(UIKit.kv_row("%s %s" % ["Excesso de" if surplus else "Falta de", str(a["good"])], "preço %d%%" % int(a["price_pct"]), UIKit.POS if surplus else (UIKit.NEG if str(a["severity"]) == "critical" else UIKit.WARN), 16))
+		na += 1
+	if na == 0:
+		rk.add_child(UIKit.label("Mercado equilibrado.", 15, UIKit.TEXT_DIM))
+
+
+var _rank_cache: Array = []
+var _rank_stamp: int = -1
+
+
+func _ranking_cached() -> Array:
+	var stamp: int = Game.clock.year * 12 + Game.clock.month
+	if stamp != _rank_stamp:
+		_rank_stamp = stamp
+		_rank_cache = EconomyManager.global_rankings(Game)
+	return _rank_cache
 
 
 func _big_number(parent: Control, title: String, value: String, color: Color) -> void:
@@ -1509,6 +1600,7 @@ func _on_month_changed(_date: Dictionary) -> void:
 		Game.save_game("user://autosave.json")   # autosave anual (só local)
 	_refresh_top()
 	_refresh_info()
+	_refresh_windows()
 
 
 func _on_treasury_changed(cid: int) -> void:

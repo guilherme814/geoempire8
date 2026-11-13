@@ -37,6 +37,10 @@ const CLASS_PART := [2, 3, 40, 25, 15, 10]       # participação política por 
 const CLASS_AFF := [[40, 10, 5, 15, 30], [10, 25, 45, 20, 0], [30, 0, 0, 10, 60],
 	[25, 55, 5, 15, 0], [45, 25, 0, 25, 5], [30, 5, 0, 50, 15]]
 const CLASS_RADICAL := [2, 2, 4, 1, 1, 3]        # corrente que cresce quando a classe fica insatisfeita
+const LABOR_FORCE_PCT := 35                      # força de trabalho (% da população)
+const SURPLUS_LABOR_PCT := 20                    # % da força de trabalho que busca emprego formal
+const JOB_SCALE := 60                            # trabalhadores por vaga declarada em JOBS_PER_LEVEL
+const UNEMP_BASE := 14                           # desemprego "neutro" para a satisfação
 const REVOLT_STABILITY := 25                     # abaixo disso há risco de revolta
 const UNREST_TAX_STABILITY := 40                 # abaixo disso a arrecadação cai
 const SCHOOL_UPKEEP := 2         # por nível de escola / mês
@@ -1602,6 +1606,7 @@ func _simulate_month() -> void:
 			continue
 		relations[k] = v - signi(v) * mini(absi(v), 2)
 	_roll_events()
+	EconomyManager.record_month(self)
 	Events.month_changed.emit(clock.to_dict())
 	for c in countries:
 		Events.treasury_changed.emit(c.id)
@@ -1785,11 +1790,12 @@ func politics_of(c: Country) -> Dictionary:
 			emb_n += 1
 	var e := estimate_monthly(c)
 	var sol := standard_of_living_x10(c, e)
+	var unemp := unemployment_pct(c)
 	var tax := c.tax_pct
 	var broke := c.treasury < 0
 	var tg := [0, 0, 0, 0, 0, 0]
-	tg[0] = 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4
-	tg[1] = 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4
+	tg[0] = 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 4
+	tg[1] = 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 2
 	tg[2] = 75 - (tax - 30) / 2 - c.literacy / 25
 	tg[3] = 45 + clampi(int(e["trade"]) / 10, 0, 25) + clampi(int(e["industry"]) / 10, 0, 15) - emb_n * 5 - (15 if is_blockaded(c.id) else 0) - (tax - 30)
 	tg[4] = 50 + (-30 if broke else 15) + c.literacy / 30
@@ -1903,6 +1909,26 @@ func estimate_monthly(c: Country) -> Dictionary:
 	}
 
 
+## Desemprego (% da força de trabalho, 0..20). A economia de subsistência absorve 80% da força de
+## trabalho; os 20% restantes procuram emprego formal (minas, fazendas, fábricas, escolas...), cuja
+## capacidade vem de Province.JOBS_PER_LEVEL x JOB_SCALE. Sem empregos formais: 20%.
+@warning_ignore("integer_division")
+func unemployment_pct(c: Country) -> int:
+	var pop := maxi(1, population_of(c))
+	var surplus := pop * LABOR_FORCE_PCT / 100 * SURPLUS_LABOR_PCT / 100
+	if surplus <= 0:
+		return 0
+	var jobs := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		for kind in Province.JOBS_PER_LEVEL.keys():
+			var lv := p.building_level(str(kind))
+			if lv > 0:
+				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv
+	jobs *= JOB_SCALE
+	return SURPLUS_LABOR_PCT * maxi(0, surplus - jobs) / surplus
+
+
 ## População total do país.
 func population_of(c: Country) -> int:
 	var n := 0
@@ -1968,6 +1994,7 @@ func market_population() -> int:
 
 
 func _init_market() -> void:
+	EconomyManager.reset_history()
 	market_dem.clear()
 	var sup := market_supply()
 	for g in goods_list():

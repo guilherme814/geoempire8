@@ -118,3 +118,8 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - Território conquistado fica com o tom do dono original e contorno na cor de quem o tomou; fronteiras entre países em guerra ficam vermelhas; cercos mostram arco de progresso. `core_owner` entra no save.
 - **Marinha:** frotas ociosas em guerra (da IA e do jogador com a frente automática) caçam a frota inimiga mais próxima se não estiverem em desvantagem, bloqueiam o porto inimigo mais próximo ou voltam ao porto. O combate ocorre também entre células vizinhas, e a força de cada navio cresce com a tecnologia (fragata, navio de linha, vapor de guerra).
 - **Molde 3D do exército** (`scripts/ui/army_model.gd`): ao selecionar um exército, o painel mostra soldados 3D em formação (até 24, conforme os regimentos), que marcham em movimento e balançam parados, com o estandarte do país ondulando por shader. É um protótipo de formas simples, a ser trocado por modelos melhores.
+
+## Camada econômica analítica (V0.12)
+- `EconomyManager` (autoload): PIB por **valor agregado** (produção primária + indústria − insumos), PIB real (deflacionado por índice de preços ponderado), inflação, crescimento, balança comercial, fluxo de investimento privado, rankings mundiais e gargalos/excedentes. Histórico de até 120 meses (não vai para o save nem para o hash P2P).
+- Janela **Economia**: indicadores, gráficos de PIB real e saldo fiscal (`GDPChartPanel`), maiores economias e alertas de mercado. Detalhes em `docs/INTEGRACAO_ECONOMIA.md`.
+- **Desemprego** (`Game.unemployment_pct`): 20% da força de trabalho busca emprego formal; vagas vêm de `Province.JOBS_PER_LEVEL`. Desemprego acima de 14% reduz a satisfação de trabalhadores (÷2) e camponeses (÷4); abaixo disso dá bônus.

@@ -44,9 +44,15 @@ const IDEO_COLORS := [
 	Color(0.38, 0.58, 0.88), Color(0.96, 0.80, 0.30), Color(0.90, 0.30, 0.30),
 	Color(0.35, 0.76, 0.46), Color(0.68, 0.46, 0.82),
 ]
-const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria"}
-const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory"}
-const TAB_ORDER := ["gov", "res", "ind"]
+const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria", "inf": "Infra"}
+const BUILD_ICON := {
+	"school": "book", "university": "cap", "barracks": "tent", "hospital": "cross",
+	"mine": "pick", "farm": "wheat", "logging": "tree", "workshop": "hammer",
+	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot",
+	"market": "stall", "railway": "rail", "dock": "anchor",
+}
+const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory", "inf": "rail"}
+const TAB_ORDER := ["gov", "res", "ind", "inf"]
 
 var map_view: MapView
 
@@ -100,6 +106,8 @@ var _build_panel: PanelContainer
 var _build_head: Label
 var _build_rows: VBoxContainer
 var _build_tab_btns: Dictionary = {}
+var _build_scroll: ScrollContainer
+var _build_open: Dictionary = {}   # kind -> detalhes expandidos
 
 # Exército selecionado
 var _army_panel: PanelContainer
@@ -410,8 +418,8 @@ func _build_dock() -> void:
 	box.anchor_right = 0.5
 	box.anchor_top = 1.0
 	box.anchor_bottom = 1.0
-	box.offset_left = -175
-	box.offset_right = 175
+	box.offset_left = -250
+	box.offset_right = 250
 	box.offset_top = -MARGIN
 	box.offset_bottom = -MARGIN
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -429,15 +437,20 @@ func _build_dock() -> void:
 	_build_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pcol.add_child(_build_head)
 	pcol.add_child(HSeparator.new())
+	_build_scroll = ScrollContainer.new()
+	_build_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_build_scroll.custom_minimum_size = Vector2(0, 300)
+	pcol.add_child(_build_scroll)
 	_build_rows = VBoxContainer.new()
+	_build_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build_rows.add_theme_constant_override("separation", 6)
-	pcol.add_child(_build_rows)
+	_build_scroll.add_child(_build_rows)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 	for tab in TAB_ORDER:
-		var b := UIKit.icon_button(str(TAB_ICON[tab]), str(TAB_PT[tab]), Vector2(110, 60), "DockButton")
+		var b := UIKit.icon_button(str(TAB_ICON[tab]), str(TAB_PT[tab]), Vector2(120, 60), "DockButton")
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(_on_build_tab_pressed.bind(tab))
@@ -479,6 +492,8 @@ func _building_detail(p: Province, kind: String, lv: int, me: int) -> String:
 				ins.append("%d %s" % [int(i["amount"]), str(RESOURCE_PT.get(i["good"], i["good"])).to_lower()])
 			parts.append("Consome %s (custo %d)" % [", ".join(ins), int(rep["inputs_cost"])])
 		parts.append("Salários -%d · impostos -%d · líquido %+d/mês · %d empregos" % [int(rep["wages"]), int(rep["tax"]), int(rep["net"]), int(rep["jobs"])])
+	elif kind == "market":
+		parts.append("%s: +%d de imposto extra/mês · manutenção -%d · %d empregos" % [lbl, int(rep["revenue"]), int(rep["wages"]), int(rep["jobs"])])
 	else:
 		parts.append("%s: custo mensal -%d (salários) · %d empregos" % [lbl, int(rep["wages"]), int(rep["jobs"])])
 	return "\n".join(parts)
@@ -501,24 +516,53 @@ func _refresh_build_panel() -> void:
 		_build_head.text = head + "\nSelecione uma província sua para construir."
 		return
 	_build_head.text = head + "\nem %s" % p.name
+	_build_scroll.custom_minimum_size = Vector2(0, clampf(_root.size.y * 0.42, 220.0, 420.0))
 	for k in Province.BUILDINGS.keys():
 		var b: Dictionary = Province.BUILDINGS[k]
 		if b["tab"] != _build_tab or not p.can_host(k):
 			continue
 		var lv := p.building_level(k)
+		var rep_next := p.building_report(k, mini(Province.MAX_BUILDING, lv + 1), Game.countries[me].tax_pct)
+		var pc := PanelContainer.new()
+		pc.theme_type_variation = "CardPanel"
+		pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_build_rows.add_child(pc)
 		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 2)
-		_build_rows.add_child(box)
+		box.add_theme_constant_override("separation", 4)
+		pc.add_child(box)
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
+		row.add_theme_constant_override("separation", 10)
 		box.add_child(row)
-		var lab := UIKit.label("%s  nív. %d/%d\n%s" % [b["name"], lv, Province.MAX_BUILDING, b["desc"]], 16, UIKit.TEXT)
-		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.custom_minimum_size = Vector2(170, 0)
-		row.add_child(lab)
-		var btn := _make_button("", Vector2(140, 48))
+		row.add_child(UiIcon.make(str(BUILD_ICON.get(k, "building")), 44.0, UIKit.GOLD_BRIGHT if lv > 0 else UiIcon.DEFAULT_COLOR))
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 2)
+		row.add_child(info)
+		var title := HBoxContainer.new()
+		title.add_theme_constant_override("separation", 8)
+		info.add_child(title)
+		title.add_child(UIKit.label(str(b["name"]), 19, UIKit.TEXT))
+		for i in Province.MAX_BUILDING:
+			var pip := ColorRect.new()
+			pip.custom_minimum_size = Vector2(16, 7)
+			pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			pip.color = UIKit.GOLD_BRIGHT if i < lv else Color(1, 1, 1, 0.15)
+			title.add_child(pip)
+		var dl := UIKit.label(str(b["desc"]), 14, UIKit.TEXT_DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.add_child(dl)
+		var stats := PackedStringArray()
+		stats.append("%d empregos" % int(rep_next["jobs"]))
+		if int(rep_next["revenue"]) != 0 or Province.WAGE_PCT.has(k):
+			stats.append("líquido %+d/mês" % int(rep_next["net"]))
+		elif int(rep_next["wages"]) > 0:
+			stats.append("custo -%d/mês" % int(rep_next["wages"]))
+		var sl := UIKit.label(" · ".join(stats), 14, UIKit.GOLD)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.add_child(sl)
+		var btn := _make_button("", Vector2(140, 52))
 		btn.add_theme_font_size_override("font_size", 16)
+		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(btn)
 		if lv >= Province.MAX_BUILDING:
 			btn.text = "Máximo"
@@ -530,12 +574,25 @@ func _refresh_build_panel() -> void:
 			btn.text = "Outra fábrica"
 			btn.disabled = true
 		else:
-			btn.text = "Construir (%d)" % Game.build_total_cost(p, k)
+			btn.text = "Construir\n%d" % Game.build_total_cost(p, k)
 			btn.disabled = not Game.can_build(p.id, me, k)
 			btn.pressed.connect(_on_build_pressed.bind(k))
-		var detail := UIKit.label(_building_detail(p, k, lv, me), 14, UIKit.TEXT_DIM)
-		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(detail)
+		var tog := Button.new()
+		tog.flat = true
+		tog.text = "Ocultar detalhes" if bool(_build_open.get(k, false)) else "Ver detalhes"
+		tog.add_theme_font_size_override("font_size", 14)
+		tog.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		tog.pressed.connect(_on_build_details.bind(k))
+		box.add_child(tog)
+		if bool(_build_open.get(k, false)):
+			var detail := UIKit.label(_building_detail(p, k, lv, me), 14, UIKit.TEXT_DIM)
+			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			box.add_child(detail)
+
+
+func _on_build_details(kind: String) -> void:
+	_build_open[kind] = not bool(_build_open.get(kind, false))
+	_refresh_build_panel()
 
 
 # ---------------------------------------------------------------------------
@@ -700,6 +757,8 @@ func _refresh_economy() -> void:
 	left.add_child(UIKit.kv_row("Exércitos (%d reg.)" % int(e["regiments"]), "-%d" % int(e["upkeep_army"]), UIKit.NEG))
 	left.add_child(UIKit.kv_row("Frota (%d navios)" % c.ships, "-%d" % int(e["upkeep_navy"]), UIKit.NEG))
 	left.add_child(UIKit.kv_row("Escolas e universidades (salários)", "-%d" % int(e["upkeep_edu"]), UIKit.NEG))
+	if int(e["upkeep_infra"]) > 0:
+		left.add_child(UIKit.kv_row("Hospitais, mercados e cais", "-%d" % int(e["upkeep_infra"]), UIKit.NEG))
 	if int(e["upkeep_barracks"]) > 0:
 		left.add_child(UIKit.kv_row("Quartéis (instrutores)", "-%d" % int(e["upkeep_barracks"]), UIKit.NEG))
 	if net < 0 and c.treasury > 0:

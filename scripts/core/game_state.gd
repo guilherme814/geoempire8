@@ -73,6 +73,7 @@ const SHIP_DAYS := 40
 const SHIP_UPKEEP := 3
 const SEA_SPEED := 3             # células da grade por dia
 const SHIP_CAP := 120            # unidades de comércio marítimo por navio por mês
+const DOCK_CAP := 60             # comércio marítimo extra por nível de cais comercial
 const PORT_CAP := 40             # capacidade básica por porto (província costeira)
 const PRICE_MIN := 70
 const PRICE_MAX := 140
@@ -988,8 +989,15 @@ func sea_capacity(cid: int) -> int:
 	for o in wars_of(cid):
 		enemy_ships += countries[o].ships
 	var mine: int = countries[cid].ships
-	var base: int = 0 if enemy_ships > mine else ports_of(cid) * PORT_CAP
+	var base: int = 0 if enemy_ships > mine else ports_of(cid) * PORT_CAP + dock_levels(cid) * DOCK_CAP
 	return base + maxi(0, mine - enemy_ships) * SHIP_CAP
+
+
+func dock_levels(cid: int) -> int:
+	var n := 0
+	for pid in countries[cid].province_ids:
+		n += int(provinces[pid].bld.get("dock", 0))
+	return n
 
 
 func is_blockaded(cid: int) -> bool:
@@ -1571,7 +1579,7 @@ func _advance_war() -> void:
 func _simulate_month() -> void:
 	for p in provinces:
 		# Crescimento demográfico: +0,1% ao mês.
-		p.population += p.population / 1000
+		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500
 		# Recuperação de mão de obra.
 		var mx := p.manpower_max()
 		if p.manpower < mx:
@@ -1873,8 +1881,11 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var f_wages := 0
 	var f_tax := 0
 	var up_barracks := 0
+	var up_infra := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
+		for ik in ["hospital", "market", "dock"]:
+			up_infra += int(p.bld.get(ik, 0)) * int(Province.GOV_UPKEEP[ik])
 		tax += p.monthly_tax(c.tax_pct)
 		industry += p.factory_profit()
 		up_barracks += p.barracks * int(Province.GOV_UPKEEP["barracks"])
@@ -1904,7 +1915,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
-		"expense": up_prov + up_army + up_navy + up_edu + up_barracks, "upkeep_edu": up_edu, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 

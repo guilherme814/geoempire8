@@ -49,8 +49,12 @@ const BUILDINGS := {
 	"carpentry": {"tab": "ind", "name": "Marcenaria", "cost": 130, "tech": 0, "desc": "Madeira -> móveis"},
 	"smithy": {"tab": "ind", "name": "Ferraria", "cost": 180, "tech": 1, "desc": "Ferro + madeira -> ferramentas"},
 	"steel": {"tab": "ind", "name": "Siderúrgica", "cost": 260, "tech": 3, "desc": "Ferro + carvão -> aço"},
+	"hospital": {"tab": "gov", "name": "Hospital", "cost": 180, "tech": 1, "desc": "Crescimento populacional +0,03%/mês por nível"},
+	"market": {"tab": "inf", "name": "Mercado", "cost": 160, "tech": 0, "desc": "+8% de imposto da província por nível"},
+	"railway": {"tab": "inf", "name": "Ferrovia", "cost": 220, "tech": 2, "desc": "+12% de produção do recurso por nível"},
+	"dock": {"tab": "inf", "name": "Cais comercial", "cost": 200, "tech": 1, "desc": "+60 de comércio marítimo (só litoral)"},
 }
-const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging"]
+const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging", "hospital", "market", "railway", "dock"]
 const MINE_RES := ["coal", "iron", "salt", "gold"]
 
 ## ECONOMIA DOS EDIFÍCIOS (salários, impostos e materiais de obra).
@@ -61,15 +65,16 @@ const FACTORIES_PRIVATE := true
 ## Salário pago por edifício produtivo, em % da receita que ele gera.
 const WAGE_PCT := {
 	"mine": 35, "farm": 28, "logging": 30, "workshop": 25,
-	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38,
+	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38, "railway": 28,
 }
 ## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
 ## SCHOOL_UPKEEP / UNIVERSITY_UPKEEP do game_state; o quartel passa a ter soldo de instrutores).
-const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3}
+const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3, "market": 2, "dock": 3}
 ## Empregos criados por nível (informativo: aparece na interface).
 const JOBS_PER_LEVEL := {
 	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
 	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340,
+	"hospital": 40, "market": 90, "railway": 200, "dock": 150,
 }
 ## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
 ## de mercado do país, junto com o custo base (não há estoque no jogo).
@@ -85,6 +90,10 @@ const BUILD_MATERIALS := {
 	"carpentry": {"timber": 200, "tools": 50},
 	"smithy": {"iron": 200, "timber": 150},
 	"steel": {"iron": 300, "coal": 200, "tools": 80},
+	"hospital": {"timber": 200, "tools": 40},
+	"market": {"timber": 180, "tools": 30},
+	"railway": {"iron": 250, "timber": 150, "tools": 60},
+	"dock": {"timber": 250, "iron": 80, "tools": 40},
 }
 
 var id: int = 0
@@ -203,12 +212,13 @@ func _extraction_levels() -> Dictionary:
 	return {
 		"workshop": workshop, "mine": int(bld.get("mine", 0)),
 		"farm": int(bld.get("farm", 0)), "logging": int(bld.get("logging", 0)),
+		"railway": int(bld.get("railway", 0)),
 	}
 
 
 @warning_ignore("integer_division")
 func _units_for(lv: Dictionary) -> int:
-	var boost: int = 25 * int(lv["workshop"]) + 35 * (int(lv["mine"]) + int(lv["farm"]))
+	var boost: int = 25 * int(lv["workshop"]) + 35 * (int(lv["mine"]) + int(lv["farm"])) + 12 * int(lv["railway"])
 	if resource_type == "timber":
 		boost += 35 * int(lv["logging"])
 	return base_units() * (100 + boost) / 100
@@ -246,6 +256,8 @@ func can_host(kind: String) -> bool:
 		return resource_type != "timber" and not (resource_type in MINE_RES)
 	if kind == "logging":
 		return resource_type == "timber" or terrain == "forest" or terrain == "jungle"
+	if kind == "dock":
+		return port >= 0
 	return BUILDINGS.has(kind)
 
 
@@ -257,7 +269,8 @@ func production() -> int:
 ## Imposto mensal que o dono recebe.
 @warning_ignore("integer_division")
 func monthly_tax(tax_pct: int) -> int:
-	return FLAT_TAX + production() * tax_pct / 100
+	var base_tax: int = production() * tax_pct / 100
+	return FLAT_TAX + base_tax * (100 + 8 * int(bld.get("market", 0))) / 100
 
 
 ## Mão de obra máxima: 2% da população (+1% por nível de quartel).
@@ -341,6 +354,9 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 		r["wages"] = w
 		r["operating"] = -w
 		r["net"] = -w
+		if kind == "market":
+			r["revenue"] = production() * tax_pct / 100 * 8 * level / 100
+			r["net"] = int(r["revenue"]) - w
 	return r
 
 

@@ -153,6 +153,67 @@ func _draw() -> void:
 			draw_rect(Rect2(_p(0.2, 0.78), Vector2(0.6, 0.12) * _s), color)
 			for i in 3:
 				_line(Vector2(0.3, 0.28 + 0.16 * float(i)), Vector2(0.7, 0.28 + 0.16 * float(i)), 0.045, dark)
+		"cap":
+			_poly([Vector2(0.5, 0.18), Vector2(0.96, 0.4), Vector2(0.5, 0.62), Vector2(0.04, 0.4)], color)
+			_poly([Vector2(0.24, 0.54), Vector2(0.5, 0.67), Vector2(0.76, 0.54), Vector2(0.76, 0.76), Vector2(0.5, 0.88), Vector2(0.24, 0.76)], dark)
+			_line(Vector2(0.9, 0.44), Vector2(0.9, 0.72), 0.04, color)
+		"tent":
+			_poly([Vector2(0.5, 0.12), Vector2(0.94, 0.86), Vector2(0.06, 0.86)], color)
+			_poly([Vector2(0.5, 0.48), Vector2(0.66, 0.86), Vector2(0.34, 0.86)], dark)
+			_line(Vector2(0.5, 0.12), Vector2(0.5, 0.02), 0.04, color)
+		"wheat":
+			_line(Vector2(0.5, 0.94), Vector2(0.5, 0.26), 0.05, color)
+			for i in 3:
+				var wy := 0.34 + 0.17 * float(i)
+				draw_circle(_p(0.36, wy), 0.075 * _s, color)
+				draw_circle(_p(0.64, wy), 0.075 * _s, color)
+			draw_circle(_p(0.5, 0.18), 0.08 * _s, color)
+		"tree":
+			draw_rect(Rect2(_p(0.44, 0.64), Vector2(0.12, 0.28) * _s), dark)
+			_poly([Vector2(0.5, 0.06), Vector2(0.82, 0.48), Vector2(0.18, 0.48)], color)
+			_poly([Vector2(0.5, 0.28), Vector2(0.9, 0.74), Vector2(0.1, 0.74)], color)
+		"spool":
+			draw_rect(Rect2(_p(0.2, 0.1), Vector2(0.6, 0.1) * _s), color)
+			draw_rect(Rect2(_p(0.2, 0.8), Vector2(0.6, 0.1) * _s), color)
+			draw_rect(Rect2(_p(0.32, 0.2), Vector2(0.36, 0.6) * _s), dark)
+			for i in 4:
+				_line(Vector2(0.32, 0.3 + 0.13 * float(i)), Vector2(0.68, 0.36 + 0.13 * float(i)), 0.035, color)
+		"logs":
+			for i in 3:
+				draw_rect(Rect2(_p(0.08, 0.16 + 0.23 * float(i)), Vector2(0.84, 0.18) * _s), color)
+				draw_circle(_p(0.92, 0.25 + 0.23 * float(i)), 0.09 * _s, dark)
+		"anvil":
+			draw_rect(Rect2(_p(0.1, 0.26), Vector2(0.8, 0.18) * _s), color)
+			_poly([Vector2(0.1, 0.26), Vector2(0.0, 0.34), Vector2(0.1, 0.44)], color)
+			draw_rect(Rect2(_p(0.36, 0.44), Vector2(0.28, 0.2) * _s), color)
+			draw_rect(Rect2(_p(0.22, 0.64), Vector2(0.56, 0.24) * _s), color)
+			_line(Vector2(0.2, 0.35), Vector2(0.8, 0.35), 0.03, dark)
+		"ingot":
+			_poly([Vector2(0.3, 0.24), Vector2(0.7, 0.24), Vector2(0.8, 0.42), Vector2(0.2, 0.42)], color.lightened(0.3))
+			_poly([Vector2(0.2, 0.42), Vector2(0.8, 0.42), Vector2(0.96, 0.78), Vector2(0.04, 0.78)], color)
+			_line(Vector2(0.26, 0.6), Vector2(0.74, 0.6), 0.04, dark)
+		"stall":
+			_poly([Vector2(0.08, 0.18), Vector2(0.92, 0.18), Vector2(0.98, 0.44), Vector2(0.02, 0.44)], color)
+			for i in 3:
+				_line(Vector2(0.25 + 0.25 * float(i), 0.18), Vector2(0.24 + 0.26 * float(i), 0.44), 0.05, dark)
+			draw_rect(Rect2(_p(0.12, 0.44), Vector2(0.06, 0.46) * _s), color)
+			draw_rect(Rect2(_p(0.82, 0.44), Vector2(0.06, 0.46) * _s), color)
+			draw_rect(Rect2(_p(0.1, 0.64), Vector2(0.8, 0.1) * _s), color)
+		"rail":
+			_line(Vector2(0.3, 0.06), Vector2(0.16, 0.94), 0.06, color)
+			_line(Vector2(0.7, 0.06), Vector2(0.84, 0.94), 0.06, color)
+			for i in 4:
+				var ry := 0.2 + 0.2 * float(i)
+				var rt := (ry - 0.06) / 0.88
+				_line(Vector2(0.3 - 0.14 * rt - 0.04, ry), Vector2(0.7 + 0.14 * rt + 0.04, ry), 0.05, dark)
+		"cross":
+			draw_rect(Rect2(_p(0.4, 0.1), Vector2(0.2, 0.8) * _s), color)
+			draw_rect(Rect2(_p(0.1, 0.4), Vector2(0.8, 0.2) * _s), color)
+		"anchor":
+			draw_arc(_p(0.5, 0.16), 0.08 * _s, 0.0, TAU, 12, color, maxf(1.0, 0.05 * _s), true)
+			_line(Vector2(0.5, 0.24), Vector2(0.5, 0.86), 0.07, color)
+			_line(Vector2(0.32, 0.38), Vector2(0.68, 0.38), 0.06, color)
+			draw_arc(_p(0.5, 0.6), 0.34 * _s, 0.15, PI - 0.15, 16, color, maxf(1.0, 0.07 * _s), true)
 		"close":
 			_line(Vector2(0.24, 0.24), Vector2(0.76, 0.76), 0.1, color)
 			_line(Vector2(0.76, 0.24), Vector2(0.24, 0.76), 0.1, color)

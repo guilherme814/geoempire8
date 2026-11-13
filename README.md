@@ -123,3 +123,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - `EconomyManager` (autoload): PIB por **valor agregado** (produção primária + indústria − insumos), PIB real (deflacionado por índice de preços ponderado), inflação, crescimento, balança comercial, fluxo de investimento privado, rankings mundiais e gargalos/excedentes. Histórico de até 120 meses (não vai para o save nem para o hash P2P).
 - Janela **Economia**: indicadores, gráficos de PIB real e saldo fiscal (`GDPChartPanel`), maiores economias e alertas de mercado. Detalhes em `docs/INTEGRACAO_ECONOMIA.md`.
 - **Desemprego** (`Game.unemployment_pct`): 20% da força de trabalho busca emprego formal; vagas vêm de `Province.JOBS_PER_LEVEL`. Desemprego acima de 14% reduz a satisfação de trabalhadores (÷2) e camponeses (÷4); abaixo disso dá bônus.
+
+## Construções e menus (V0.12)
+- Painel de construção redesenhado: cartões com ícone vetorial por construção, nível em 3 marcadores, efeito, empregos e líquido mensal em uma linha, rolagem vertical e "Ver detalhes" para a conta completa. O dock agora tem 4 abas (Governo, Recursos, Indústria, Infra) sem texto cortado.
+- 4 construções novas: **Hospital** (Governo: +0,03%/mês de crescimento por nível), **Mercado** (Infra: +8% de imposto da província por nível), **Ferrovia** (Infra, tec. 2: +12% de produção por nível) e **Cais comercial** (Infra, só litoral: +60 de comércio marítimo por nível). Manutenção de hospital/mercado/cais aparece no Orçamento.

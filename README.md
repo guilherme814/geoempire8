@@ -131,3 +131,8 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Layout e mapa (V0.12)
 - Interface mais suave e centrada: cantos arredondados, bordas discretas, janelas centrais que se ajustam à tela (até 92% x 94%), dock inferior adaptável, painel de província mais estreito, painel de exército com largura própria e aviso (toast) proporcional. Baseado em `geoempire8_layout_rework_v1`, adaptado ao `hud.gd` desta branch.
 - Mapa remodelado (estilo Age of History 3 / Victoria): oceano com vinheta radial, faixa de águas rasas na costa (`CoastHalo`), divisões de província claras e translúcidas, fronteiras de país escuras com sombra suave, leve mistura da cor do país com o terreno e nomes em serifa para oceanos.
+
+## IA estratégica (V0.15, fase 1)
+`AiBrain` substitui a antiga regra "ataca o vizinho mais fraco". Ciclo mensal: **avaliação nacional** (força própria, reservas de 6 meses de despesa, estabilidade ≥ 35), **interesses** (reivindicações = províncias núcleo em mãos do rival, hostilidade, oportunismo), **preparação** (recruta até +2/+4 regimentos), **pressão diplomática** (relação com o alvo cai 3/mês, aviso ao jogador, cortejo e alianças com quem também odeia o alvo).
+- Razão de forças exigida (própria / estimada do rival): 75% com 2+ reivindicações, 90% com 1, 130% com hostilidade forte, 180% com hostilidade, 250% por oportunismo. Sem razão excepcional, nada de atacar uma potência mais forte.
+- **Informação limitada:** a IA vê só regimentos e navios do rival (não tecnologia nem tesouro), com ruído determinístico de ±15% a ±45% (menor com tecnologia e alfabetização, muda a cada semestre) e aliados do rival entram com peso menor e mais incerteza. Não usa `rng` no plano: segue determinístico no multiplayer.

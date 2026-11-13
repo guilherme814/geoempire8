@@ -1357,19 +1357,20 @@ func _advance_ai() -> void:
 				_auto_fleets(c)
 			continue
 		if tick % 30 == 0:
-			_ai_recruit(c)
+			var plan := AiBrain.plan(self, c)
+			_ai_recruit(c, plan)
 			_ai_build_ship(c)
-			_ai_declare_war(c)
+			_ai_declare_war(c, plan)
 		if not wars_of(c.id).is_empty():
 			_ai_war(c)
 			_auto_fleets(c)
 
 
 @warning_ignore("integer_division")
-func _ai_recruit(c: Country) -> void:
+func _ai_recruit(c: Country, plan: Dictionary) -> void:
 	var enemies := wars_of(c.id)
 	var want: int = 2 + c.province_ids.size() / 6 + (2 if not enemies.is_empty() else 0)
-	want = mini(want, 30)
+	want = mini(want + AiBrain.recruit_bonus(plan), 30)
 	if regiments_of(c.id) + _queued_for(c.id) >= want or c.treasury < RECRUIT_COST + 100:
 		return
 	if can_recruit(c.capital, c.id):
@@ -1381,42 +1382,19 @@ func _ai_recruit(c: Country) -> void:
 			return
 
 
-## A IA ataca o vizinho mais fraco que não seja aliado, em trégua nem de boa relação.
-@warning_ignore("integer_division")
-func _ai_declare_war(c: Country) -> void:
-	if tick < AI_WAR_GRACE_TICKS or not wars_of(c.id).is_empty():
+## Ciclo da IA (ver AiBrain): só declara guerra se o plano do mês for "war"; em "pressure"
+## ameaça o alvo e busca coalizão. Atacar um rival forte exige razão excepcional.
+func _ai_declare_war(c: Country, plan: Dictionary) -> void:
+	var stage := str(plan["stage"])
+	if stage == "pressure":
+		AiBrain.apply_pressure(self, c, plan)
 		return
-	var mine := regiments_of(c.id)
-	if mine < 3 or c.treasury < 200:
+	if stage != "war":
 		return
-	var nbrs := {}
-	for pid in c.province_ids:
-		var p := provinces[pid]
-		for n in p.neighbors:
-			var o := provinces[int(n)].owner_id
-			if o >= 0 and o != c.id:
-				nbrs[o] = true
-		for n in p.sea_links:
-			var o2 := provinces[int(n)].owner_id
-			if o2 >= 0 and o2 != c.id:
-				nbrs[o2] = true
-	var keys: Array = nbrs.keys()
-	keys.sort()
-	var best := -1
-	var best_regs := 1 << 30
-	for o in keys:
-		var oc := countries[int(o)]
-		if not oc.is_alive() or not can_declare_war(c.id, oc.id) or opinion(c.id, oc.id) >= 20:
-			continue
-		var r := regiments_of(oc.id)
-		if r * 2 > mine:
-			continue
-		if r < best_regs:
-			best_regs = r
-			best = oc.id
-	if best < 0 or rng.randi_range(0, AI_WAR_CHANCE - 1) != 0:
+	var chance: int = AI_WAR_CHANCE if int(plan["motive"]) < 30 else 4
+	if rng.randi_range(0, chance - 1) != 0:
 		return
-	_start_war(c.id, best)
+	_start_war(c.id, int(plan["target"]))
 
 
 func _ai_build_ship(c: Country) -> void:

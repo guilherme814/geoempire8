@@ -133,7 +133,7 @@ static func plan(g: Node, c) -> Dictionary:
 			stage = "prepare"   # forte o bastante, mas sem reservas: junta dinheiro
 		if stage == "none":
 			continue
-		var rank := {"war": 3, "pressure": 2, "prepare": 1}[stage]
+		var rank: int = int({"war": 3, "pressure": 2, "prepare": 1}[stage])
 		var score: int = rank * 100000 + mot * 100 + mini(ratio, 99)
 		if score > best_score:
 			best_score = score

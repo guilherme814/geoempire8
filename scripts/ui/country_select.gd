@@ -97,12 +97,26 @@ func _build_title() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
 	panel.add_child(col)
-	var t := UIKit.serif_label("GEOEMPIRE", 38, UIKit.GOLD_BRIGHT)
+	var t := UIKit.serif_label("G E O E M P I R E", 40, UIKit.GOLD_BRIGHT)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(t)
-	var s := UIKit.label("Escolha sua nação  ·  1836", 18, UIKit.TEXT)
+	var rule := TitleRule.new()
+	rule.custom_minimum_size = Vector2(0, 14)
+	col.add_child(rule)
+	var s := UIKit.label("GRANDE ESTRATÉGIA  ·  1836  ·  ESCOLHA SUA NAÇÃO", 15, UIKit.TEXT_DIM)
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(s)
+
+
+## Filete dourado com losango central e ponta rubra, sob o título.
+class TitleRule extends Control:
+	func _draw() -> void:
+		var c := Vector2(size.x * 0.5, size.y * 0.5)
+		var half: float = minf(size.x * 0.5, 230.0)
+		draw_line(c + Vector2(-half, 0), c + Vector2(-12, 0), UIKit.GOLD_DIM, 1.5)
+		draw_line(c + Vector2(12, 0), c + Vector2(half, 0), UIKit.GOLD_DIM, 1.5)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(8, 0), c + Vector2(0, 6), c + Vector2(-8, 0)]), UIKit.GOLD)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -3), c + Vector2(4, 0), c + Vector2(0, 3), c + Vector2(-4, 0)]), UIKit.MAROON)
 
 
 func _build_list_panel() -> void:

@@ -165,3 +165,7 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - `tools/acceptance_test.gd`: teste de aceitação headless (mundo, determinismo, salvar/carregar, guerra/paz/vassalagem). Roda no CI e falha o build.
 - `tools/economy_audit.gd`: simula 10 anos sem jogador e imprime estatísticas anuais (tesouro, saldo, preços, desemprego, PIB, população) e alertas. Informativo no CI.
 - Corrigidos: bônus de capital nunca aplicado, conquista contada em dobro, placar fora do hash, renda/despesa fora do save, erro de script ao fundir exércitos, IA que nunca investia.
+
+## Navegação por toque
+
+- `scripts/ui/touch_scroll.gd` (`TouchScroll`): todas as listas e janelas rolam arrastando o dedo em qualquer ponto (inclusive sobre botões e cartões), com inércia. Toque curto continua acionando botões; ao arrastar, o botão pressionado é cancelado.

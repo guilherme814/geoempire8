@@ -158,7 +158,7 @@ func _build_list_panel() -> void:
 	b_az.pressed.connect(_on_sort_pressed.bind(false))
 	sort_row.add_child(b_az)
 
-	_scroll = ScrollContainer.new()
+	_scroll = TouchScroll.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(_scroll)

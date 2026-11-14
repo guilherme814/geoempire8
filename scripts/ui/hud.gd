@@ -447,7 +447,7 @@ func _build_dock() -> void:
 	_build_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pcol.add_child(_build_head)
 	pcol.add_child(HSeparator.new())
-	_build_scroll = ScrollContainer.new()
+	_build_scroll = TouchScroll.new()
 	_build_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_build_scroll.custom_minimum_size = Vector2(0, 300)
 	pcol.add_child(_build_scroll)
@@ -641,7 +641,7 @@ func _make_window(key: String, title: String, win_size: Vector2, icon_kind: Stri
 	x.pressed.connect(_toggle_window.bind(key))
 	hrow.add_child(x)
 
-	var scroll := ScrollContainer.new()
+	var scroll := TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)

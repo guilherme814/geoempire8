@@ -1518,6 +1518,8 @@ func _add_regiments(pid: int, owner: int, count: int) -> void:
 func _merge_stationary(a: Army) -> void:
 	var current: Army = a
 	for id in armies.keys():
+		if not armies.has(id):
+			continue   # já fundido neste laço
 		var o: Army = armies[id]
 		if o.id == current.id or o.owner_id != current.owner_id:
 			continue
@@ -1578,6 +1580,8 @@ func _advance_training() -> void:
 
 func _advance_armies() -> void:
 	for id in armies.keys():
+		if not armies.has(id):
+			continue   # fundido por _merge_stationary durante este laço
 		var a: Army = armies[id]
 		if a.path.is_empty():
 			continue
@@ -1627,10 +1631,45 @@ func _advance_ai() -> void:
 			var plan := AiBrain.plan(self, c, heg)
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
+			_ai_invest(c)
 			_ai_declare_war(c, plan)
 		if not wars_of(c.id).is_empty():
 			_ai_war(c)
 			_auto_fleets(c)
+
+
+const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university"]
+const AI_INVEST_RESERVE_MONTHS := 8
+
+
+## Investimento da IA: com folga de caixa (acima de ~8 meses de despesa) constrói edifícios
+## produtivos e de governo, espalhando por nível (primeiro nível 0, depois 1...). Sem isso os
+## tesouros das potências cresciam sem uso e ninguém criava empregos. Determinístico:
+## percorre províncias e tipos em ordem fixa, sem rng.
+@warning_ignore("integer_division")
+func _ai_invest(c: Country) -> void:
+	var reserve: int = maxi(400, c.last_expense * AI_INVEST_RESERVE_MONTHS)
+	if not wars_of(c.id).is_empty():
+		reserve *= 2
+	var spare: int = c.treasury - reserve
+	if spare < 150:
+		return
+	var budget: int = clampi(spare / 800, 1, 5)
+	for level in 3:
+		for kind in AI_BUILD_ORDER:
+			for pid in c.province_ids:
+				if budget <= 0:
+					return
+				var p := provinces[int(pid)]
+				if p.building_level(kind) != level or not can_build(int(pid), c.id, kind):
+					continue
+				var cost: int = build_total_cost(p, kind)
+				if c.treasury - cost < reserve:
+					continue
+				c.treasury -= cost
+				p.set_building_level(kind, level + 1)
+				budget -= 1
+				Events.province_updated.emit(int(pid))
 
 
 @warning_ignore("integer_division")

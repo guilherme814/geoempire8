@@ -144,3 +144,9 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - Equilíbrio de poder: uma potência dominante (≥160% da segunda e ≥250% da mediana) passa a ser vista com desconfiança pelos países "balance" (relação −1/mês) e vira alvo de contenção.
 - Defesa: vizinho hostil bem mais forte faz a IA recrutar mais e procurar aliados.
 - Campanha: exércitos priorizam núcleos próprios, capitais, portos e recursos raros do inimigo.
+
+## Diplomacia 2.0, vassalos e anexação (V0.12)
+- **Pontuação de guerra** (0-100) por par em guerra: % das províncias do inimigo tomadas desde o início + 30 pela capital. Guardada em `wars` (salva e restaurada).
+- **Termos de paz** (`Cmd.make_peace(alvo, termo)`): paz branca, indenização (≥15 pts), vassalizar (≥45) e anexar o país (≥75). IAs vencedoras ditam os termos nas guerras entre IAs (após 120 dias; empate longo vira paz branca).
+- **Vassalos:** pagam 25% da renda como tributo, seguem o suserano nas guerras, não declaram guerra nem fazem alianças e não podem ser atacados pelo suserano. O suserano pode **anexar** (após 360 dias, custo 60 por província) ou **libertar**. O vassalo se rebela se o suserano some ou cai abaixo de 15% de estabilidade. IAs anexam vassalos quando têm ouro.
+- **Janela Diplomacia** (ícone de bandeira na lateral ou botão "Diplomacia" no cartão da província): lista de países com situação e opinião, detalhes do país escolhido e ações (melhorar relações, aliança, embargo, guerra, termos de paz, anexar/libertar vassalo).

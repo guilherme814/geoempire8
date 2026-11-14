@@ -93,6 +93,7 @@ var _info_sub: Label
 var _info_body: Label
 var _btn_recruit: Button
 var _btn_take: Button
+var _btn_diplo: Button
 var _btn_annex: Button
 var _btn_war: Button
 var _btn_improve: Button
@@ -106,6 +107,7 @@ var _build_panel: PanelContainer
 var _build_head: Label
 var _build_rows: VBoxContainer
 var _build_tab_btns: Dictionary = {}
+var _diplo_target: int = -1
 var _win_sizes: Dictionary = {}   # janela -> tamanho desejado
 var _build_scroll: ScrollContainer
 var _build_open: Dictionary = {}   # kind -> detalhes expandidos
@@ -344,6 +346,7 @@ func _build_sidebar() -> void:
 	var defs: Array = [
 		["politics", "scales", "Política: classes sociais e ideologias"],
 		["laws", "scroll", "Leis: estrutura de poder, economia e direitos"],
+		["diplo", "flag", "Diplomacia: relações, alianças, guerra, paz e vassalos"],
 		["eco", "coin", "Economia: orçamento e impostos"],
 		["market", "bars", "Mercado: oferta, demanda e preços"],
 		["map", "globe", "Modo do mapa"],
@@ -662,6 +665,7 @@ func _build_windows() -> void:
 	_body.resized.connect(_fit_windows)
 	_make_window("politics", "Política interna", Vector2(900, 540), "scales")
 	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
+	_make_window("diplo", "Diplomacia", Vector2(980, 600), "flag")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
 	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
 	var menu := _make_window("menu", "Menu", Vector2(420, 480), "menu")
@@ -707,6 +711,8 @@ func _refresh_windows() -> void:
 		_refresh_politics()
 	if _windows["laws"].visible:
 		_refresh_laws()
+	if _windows["diplo"].visible:
+		_refresh_diplomacy()
 
 
 func _on_side_pressed(key: String) -> void:
@@ -1272,6 +1278,7 @@ func _build_info_panel() -> void:
 	_btn_embargo = _info_button("Embargar", bsize, _on_embargo_pressed, grid)
 	_btn_ship = _info_button("%s (%d)" % [Game.ship_class_name(Game.countries[Game.player_country]), Game.SHIP_COST], bsize, _on_ship_pressed, grid)
 	_btn_ally = _info_button("Propor aliança", bsize, _on_ally_pressed, grid)
+	_btn_diplo = _info_button("Diplomacia", bsize, _on_diplo_pressed, grid)
 	_btn_annex = _info_button("Anexar (debug)", bsize, _on_annex_pressed, grid)
 
 
@@ -1602,6 +1609,7 @@ func _refresh_info() -> void:
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
 	_btn_annex.visible = DEBUG_TOOLS and not mine
 	_btn_war.visible = has_owner and not mine
+	_btn_diplo.visible = has_owner and not mine
 	_btn_improve.visible = has_owner and not mine
 	_btn_ally.visible = has_owner and not mine
 	_btn_embargo.visible = has_owner and not mine
@@ -1620,7 +1628,7 @@ func _refresh_info() -> void:
 		_btn_ally.disabled = not is_ally and not Game.can_ally(me3, p.owner_id)
 		if Game.at_war(me3, p.owner_id):
 			var left := Game.WAR_MIN_DAYS - Game.war_days(me3, p.owner_id)
-			_btn_war.text = "Propor paz" if left <= 0 else "Paz em %d dias" % left
+			_btn_war.text = "Negociar paz" if left <= 0 else "Paz em %d dias" % left
 			_btn_war.disabled = left > 0
 		else:
 			_btn_war.text = "Declarar guerra"
@@ -1763,12 +1771,25 @@ func _on_take_pressed() -> void:
 		Game.set_player_country(Game.provinces[_selected].owner_id)
 
 
+func _on_diplo_pressed() -> void:
+	if _selected >= 0 and Game.provinces[_selected].owner_id >= 0:
+		_open_diplomacy(Game.provinces[_selected].owner_id)
+
+
+func _open_diplomacy(target: int) -> void:
+	_diplo_target = target
+	if not _windows["diplo"].visible:
+		_toggle_window("diplo")
+	else:
+		_refresh_diplomacy()
+
+
 func _on_war_pressed() -> void:
 	if _selected < 0:
 		return
 	var target := Game.provinces[_selected].owner_id
 	if Game.at_war(Game.player_country, target):
-		Game.submit_command(Cmd.make_peace(target))
+		_open_diplomacy(target)   # a paz agora tem termos: escolha na janela de Diplomacia
 	else:
 		Game.submit_command(Cmd.declare_war(target))
 
@@ -1801,6 +1822,182 @@ func _on_ally_pressed() -> void:
 		Game.submit_command(Cmd.break_alliance(target))
 	else:
 		Game.submit_command(Cmd.propose_alliance(target))
+
+
+# ---------------------------------------------------------------------------
+# Diplomacia: relações, alianças, guerra, paz com termos, vassalos e anexação
+# ---------------------------------------------------------------------------
+func _diplo_status(me: int, t: int) -> Array:
+	var tc := Game.countries[t]
+	if Game.at_war(me, t):
+		return ["Em guerra", UIKit.NEG]
+	if tc.overlord == me:
+		return ["Seu vassalo", UIKit.GOLD_BRIGHT]
+	if Game.countries[me].overlord == t:
+		return ["Seu suserano", UIKit.GOLD_BRIGHT]
+	if tc.overlord >= 0:
+		return ["Vassalo de %s" % Game.countries[tc.overlord].name, UIKit.GOLD]
+	if Game.allied(me, t):
+		return ["Aliado", UIKit.POS]
+	if Game.embargoes.has(me * 1000 + t) or Game.embargoes.has(t * 1000 + me):
+		return ["Embargo", UIKit.WARN]
+	if Game.truce_left(me, t) > 0:
+		return ["Trégua (%d dias)" % Game.truce_left(me, t), UIKit.TEXT_DIM]
+	return ["Neutro", UIKit.TEXT]
+
+
+func _war_block_reason(me: int, t: int) -> String:
+	if Game.countries[me].overlord >= 0:
+		return "Vassalos não declaram guerra."
+	if Game.countries[t].overlord == me:
+		return "Não se ataca o próprio vassalo."
+	if Game.allied(me, t):
+		return "Rompa a aliança antes."
+	if Game.truce_left(me, t) > 0:
+		return "Trégua por mais %d dias." % Game.truce_left(me, t)
+	return ""
+
+
+func _refresh_diplomacy() -> void:
+	var body: VBoxContainer = _win_bodies["diplo"]
+	UIKit.clear(body)
+	var me := Game.player_country
+	var mc := Game.countries[me]
+	var line := PackedStringArray()
+	if mc.overlord >= 0:
+		line.append("Vassalo de %s (tributo de %d%% da renda)" % [Game.countries[mc.overlord].name, Game.VASSAL_TRIBUTE_PCT])
+	var vs := Game.vassals_of(me)
+	if not vs.is_empty():
+		line.append("%d vassalo(s)" % vs.size())
+	line.append("%d aliado(s)" % Game.allies_of(me).size())
+	line.append("%d guerra(s)" % Game.wars_of(me).size())
+	body.add_child(UIKit.label(" · ".join(line), 16, UIKit.TEXT_DIM))
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 12)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(cols)
+
+	var left := _card(cols, "Países", "globe")
+	left.get_parent().custom_minimum_size = Vector2(330, 0)
+	var rows: Array = []
+	for c in Game.countries:
+		if c.id == me or not c.is_alive():
+			continue
+		var st := _diplo_status(me, c.id)
+		var pr := 3
+		if Game.at_war(me, c.id):
+			pr = 0
+		elif c.overlord == me or mc.overlord == c.id:
+			pr = 1
+		elif Game.allied(me, c.id):
+			pr = 2
+		rows.append({"id": c.id, "pr": pr, "op": Game.opinion(me, c.id), "st": st})
+	rows.sort_custom(_diplo_less)
+	if _diplo_target < 0 or _diplo_target == me or not Game.countries[_diplo_target].is_alive():
+		_diplo_target = int(rows[0]["id"]) if not rows.is_empty() else -1
+	for r in rows:
+		var rc := Game.countries[int(r["id"])]
+		var b := Button.new()
+		b.flat = true
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.text = "%s — %s (%+d)" % [rc.name, str((r["st"] as Array)[0]), int(r["op"])]
+		b.add_theme_font_size_override("font_size", 16)
+		b.add_theme_color_override("font_color", (r["st"] as Array)[1])
+		if int(r["id"]) == _diplo_target:
+			b.add_theme_color_override("font_color", UIKit.GOLD_BRIGHT)
+			b.text = "▶ " + b.text
+		b.pressed.connect(_on_diplo_pick.bind(int(r["id"])))
+		left.add_child(b)
+
+	var right_box := VBoxContainer.new()
+	right_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_box.add_theme_constant_override("separation", 10)
+	cols.add_child(right_box)
+	if _diplo_target >= 0:
+		_diplo_detail(right_box, me, _diplo_target)
+
+
+func _diplo_less(x: Dictionary, y: Dictionary) -> bool:
+	if int(x["pr"]) != int(y["pr"]):
+		return int(x["pr"]) < int(y["pr"])
+	if int(x["op"]) != int(y["op"]):
+		return int(x["op"]) > int(y["op"])
+	return int(x["id"]) < int(y["id"])
+
+
+func _on_diplo_pick(id: int) -> void:
+	_diplo_target = id
+	_refresh_diplomacy()
+
+
+func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
+	var tc := Game.countries[t]
+	var st := _diplo_status(me, t)
+	var card := _card(parent, tc.name, "flag")
+	card.add_child(UIKit.kv_row("Situação", str(st[0]), st[1]))
+	var op := Game.opinion(me, t)
+	card.add_child(UIKit.kv_row("Opinião sobre você", "%+d" % op, UIKit.POS if op > 10 else (UIKit.NEG if op < -10 else UIKit.TEXT)))
+	card.add_child(UIKit.kv_row("Províncias · exércitos · navios", "%d · %d · %d" % [tc.province_ids.size(), Game.regiments_of(t), tc.ships]))
+	card.add_child(UIKit.kv_row("Seu exército · navios", "%d · %d" % [Game.regiments_of(me), Game.countries[me].ships]))
+	if tc.overlord == me:
+		var left_days := maxi(0, Game.ANNEX_MIN_DAYS - (Game.tick - tc.overlord_since))
+		card.add_child(UIKit.kv_row("Tributo mensal", "%d" % (maxi(0, tc.last_income) * Game.VASSAL_TRIBUTE_PCT / 100), UIKit.POS))
+		card.add_child(UIKit.kv_row("Anexação", "pronta" if left_days == 0 else "em %d dias" % left_days))
+
+	var acts := _card(parent, "Ações", "scroll")
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	acts.add_child(grid)
+	var bs := Vector2(210, 46)
+	var at_war := Game.at_war(me, t)
+	var b1 := _info_button("Melhorar relações (%d)" % Game.IMPROVE_COST, bs, _diplo_cmd.bind(Cmd.improve_relations(t)), grid)
+	b1.disabled = not Game.can_improve(me, t)
+	var is_ally := Game.allied(me, t)
+	var vassal_pair := tc.overlord == me or Game.countries[me].overlord == t
+	var b2 := _info_button("Romper aliança" if is_ally else "Propor aliança", bs,
+		_diplo_cmd.bind(Cmd.break_alliance(t) if is_ally else Cmd.propose_alliance(t)), grid)
+	b2.disabled = vassal_pair or (not is_ally and not Game.can_ally(me, t))
+	var has_emb := Game.embargoes.has(me * 1000 + t)
+	var b3 := _info_button("Suspender embargo" if has_emb else "Embargar", bs,
+		_diplo_cmd.bind(Cmd.lift_embargo(t) if has_emb else Cmd.embargo(t)), grid)
+	b3.disabled = not has_emb and not Game.can_embargo(me, t)
+	if not at_war:
+		var b4 := _info_button("Declarar guerra", bs, _diplo_cmd.bind(Cmd.declare_war(t)), grid)
+		b4.disabled = not Game.can_declare_war(me, t)
+		var why := _war_block_reason(me, t)
+		if why != "":
+			acts.add_child(UIKit.label(why, 14, UIKit.TEXT_DIM))
+	if tc.overlord == me:
+		var b5 := _info_button("Anexar vassal (%d)" % Game.annex_cost(t), bs, _diplo_cmd.bind(Cmd.annex_vassal(t)), grid)
+		b5.disabled = not Game.can_annex_vassal(me, t)
+		_info_button("Libertar vassal", bs, _diplo_cmd.bind(Cmd.release_vassal(t)), grid)
+
+	if at_war:
+		var wc := _card(parent, "Guerra e paz", "sword")
+		var mine_sc := Game.war_score(me, t)
+		var their_sc := Game.war_score(t, me)
+		wc.add_child(UIKit.kv_row("Pontuação de guerra (você × eles)", "%d × %d" % [mine_sc, their_sc], UIKit.POS if mine_sc > their_sc else UIKit.NEG))
+		var left_d := Game.WAR_MIN_DAYS - Game.war_days(me, t)
+		if left_d > 0:
+			wc.add_child(UIKit.label("Paz possível em %d dias." % left_d, 15, UIKit.TEXT_DIM))
+		var wg := GridContainer.new()
+		wg.columns = 2
+		wg.add_theme_constant_override("h_separation", 8)
+		wg.add_theme_constant_override("v_separation", 8)
+		wc.add_child(wg)
+		for o in Game.peace_options(me, t):
+			var need := int(o["need"])
+			var label := str(o["label"]) + ("" if need == 0 else " (≥%d)" % need)
+			var pb := _info_button(label, bs, _diplo_cmd.bind(Cmd.make_peace(t, str(o["id"]))), wg)
+			pb.disabled = not bool(o["ok"])
+		wc.add_child(UIKit.label("Conquistar províncias, cercar e tomar a capital aumenta a pontuação.", 14, UIKit.TEXT_DIM))
+
+
+func _diplo_cmd(cmd: Dictionary) -> void:
+	Game.submit_command(cmd)
+	_refresh_diplomacy()
 
 
 func _on_annex_pressed() -> void:

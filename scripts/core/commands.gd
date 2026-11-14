@@ -31,6 +31,8 @@ const EMBARGO := "embargo"
 const LIFT_EMBARGO := "lift_embargo"
 const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
+const RELEASE_VASSAL := "release_vassal"
+const ANNEX_VASSAL := "annex_vassal"
 const ENACT_LAW := "enact_law"
 const SET_AUTO_FRONT := "set_auto_front"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
@@ -90,9 +92,18 @@ static func declare_war(target: int) -> Dictionary:
 	return {"type": DECLARE_WAR, "target": target}
 
 
-## Propõe paz branca (vale após Game.WAR_MIN_DAYS dias de guerra; sem IA, é aceita na hora).
-static func make_peace(target: int) -> Dictionary:
-	return {"type": MAKE_PEACE, "target": target}
+## Propõe paz (vale após Game.WAR_MIN_DAYS dias de guerra). `term`: "white", "indemnity",
+## "vassal" ou "annex" (cada um exige uma pontuação de guerra mínima, ver Game.war_score).
+static func make_peace(target: int, term: String = "white") -> Dictionary:
+	return {"type": MAKE_PEACE, "target": target, "term": term}
+
+
+static func release_vassal(target: int) -> Dictionary:
+	return {"type": RELEASE_VASSAL, "target": target}
+
+
+static func annex_vassal(target: int) -> Dictionary:
+	return {"type": ANNEX_VASSAL, "target": target}
 
 
 ## Gasta ouro para melhorar a opinião do país alvo (+20).

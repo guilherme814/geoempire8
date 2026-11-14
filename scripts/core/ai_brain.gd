@@ -251,7 +251,7 @@ static func neighbors(g: Node, c) -> Array:
 @warning_ignore("integer_division")
 static func plan(g: Node, c, heg: int) -> Dictionary:
 	var best := {"stage": "none", "target": -1, "ratio": 0, "motive": 0, "goal": ""}
-	if not g.wars_of(c.id).is_empty() or int(g.tick) < int(g.AI_WAR_GRACE_TICKS):
+	if not g.wars_of(c.id).is_empty() or int(g.tick) < int(g.AI_WAR_GRACE_TICKS) or int(c.overlord) >= 0:
 		return best
 	var mine := own_power(g, c.id)
 	var best_score := -1

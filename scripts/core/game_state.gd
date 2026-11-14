@@ -82,6 +82,13 @@ const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor i
 # Diplomacia
 const IMPROVE_COST := 50
 const ALLIANCE_MIN_OPINION := 40
+const VASSAL_TRIBUTE_PCT := 25     # % da renda do vassalo enviada ao suserano
+const ANNEX_MIN_DAYS := 360        # tempo mínimo como vassalo antes de poder ser anexado
+const ANNEX_COST_PER_PROVINCE := 60
+const SCORE_INDEMNITY := 15        # pontuação de guerra mínima para cada termo de paz
+const SCORE_VASSAL := 45
+const SCORE_ANNEX := 75
+const CAPITAL_SCORE := 30          # bônus por capturar a capital inimiga
 const TRUCE_DAYS := 360          # após a paz, ninguém declara guerra por 1 ano
 const AI_WAR_GRACE_TICKS := 360  # a IA só declara guerra depois do primeiro ano
 const AI_WAR_CHANCE := 12        # 1 em N por mês, por país elegível
@@ -867,15 +874,35 @@ func apply_command(cmd: Dictionary) -> void:
 
 	elif t == Cmd.MAKE_PEACE:
 		var target: int = int(cmd.get("target", -1))
-		if not can_make_peace(issuer, target):
+		var term := str(cmd.get("term", "white"))
+		if not can_peace_term(issuer, target, term):
+			if issuer == player_country:
+				Events.notice.emit("Pontuação de guerra insuficiente para esses termos.")
 			return
-		if not is_human(target) and regiments_of(target) > regiments_of(issuer):
+		if not is_human(target) and term == "white" and regiments_of(target) > regiments_of(issuer) \
+				and war_score(issuer, target) < SCORE_INDEMNITY:
 			if issuer == player_country:
 				Events.notice.emit("%s recusou a paz: ainda se sente mais forte." % countries[target].name)
 			return
-		_end_war(issuer, target)
-		truces[_pair(issuer, target)] = tick + TRUCE_DAYS
-		Events.war_changed.emit()
+		_apply_peace(issuer, target, term)
+
+	elif t == Cmd.RELEASE_VASSAL:
+		var target: int = int(cmd.get("target", -1))
+		if target < 0 or target >= countries.size() or countries[target].overlord != issuer:
+			return
+		_free_vassal(target, true)
+
+	elif t == Cmd.ANNEX_VASSAL:
+		var target: int = int(cmd.get("target", -1))
+		if not can_annex_vassal(issuer, target):
+			if issuer == player_country:
+				Events.notice.emit("Não é possível anexar: tempo de vassalagem ou ouro insuficiente.")
+			return
+		countries[issuer].treasury -= annex_cost(target)
+		_annex_country(issuer, target)
+		if issuer == player_country:
+			Events.notice.emit("%s foi anexado ao seu país." % countries[target].name)
+		Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.IMPROVE_RELATIONS:
 		var target: int = int(cmd.get("target", -1))
@@ -905,7 +932,7 @@ func apply_command(cmd: Dictionary) -> void:
 
 	elif t == Cmd.BREAK_ALLIANCE:
 		var target: int = int(cmd.get("target", -1))
-		if not allied(issuer, target):
+		if not allied(issuer, target) or countries[target].overlord == issuer or countries[issuer].overlord == target:
 			return
 		alliances.erase(_pair(issuer, target))
 		relations[_pair(issuer, target)] = opinion(issuer, target) - 20
@@ -943,6 +970,167 @@ func allied(x: int, y: int) -> bool:
 
 func truce_left(x: int, y: int) -> int:
 	return maxi(0, int(truces.get(_pair(x, y), 0)) - tick)
+
+
+func is_vassal(cid: int) -> bool:
+	return cid >= 0 and cid < countries.size() and countries[cid].overlord >= 0
+
+
+func vassals_of(cid: int) -> Array:
+	var out: Array = []
+	for c in countries:
+		if c.overlord == cid and c.is_alive():
+			out.append(c.id)
+	return out
+
+
+func annex_cost(v: int) -> int:
+	return countries[v].province_ids.size() * ANNEX_COST_PER_PROVINCE
+
+
+func can_annex_vassal(issuer: int, v: int) -> bool:
+	if v < 0 or v >= countries.size() or issuer < 0 or issuer >= countries.size():
+		return false
+	var c := countries[v]
+	return c.overlord == issuer and c.is_alive() and tick - c.overlord_since >= ANNEX_MIN_DAYS \
+		and countries[issuer].treasury >= annex_cost(v)
+
+
+## Pontuação de guerra de x contra y (0-100): % das províncias de y tomadas + bônus pela capital.
+@warning_ignore("integer_division")
+func war_score(x: int, y: int) -> int:
+	var i := _war_index(x, y)
+	if i < 0:
+		return 0
+	var w: Dictionary = wars[i]
+	var xa := x == int(w["a"])
+	var gained: int = int(w.get("ga" if xa else "gb", 0))
+	var base_n: int = maxi(1, int(w.get("nb" if xa else "na", 1)))
+	var s: int = gained * 100 / base_n
+	if bool(w.get("capa" if xa else "capb", false)):
+		s += CAPITAL_SCORE
+	return clampi(s, 0, 100)
+
+
+## Termos de paz que `issuer` pode impor a `target` agora: [{"id","label","need","ok"}].
+func peace_options(issuer: int, target: int) -> Array:
+	var sc := war_score(issuer, target)
+	var out: Array = []
+	var defs := [["white", "Paz branca", 0], ["indemnity", "Indenização", SCORE_INDEMNITY],
+		["vassal", "Vassalizar", SCORE_VASSAL], ["annex", "Anexar o país", SCORE_ANNEX]]
+	for d in defs:
+		out.append({"id": d[0], "label": d[1], "need": d[2], "ok": can_peace_term(issuer, target, str(d[0])), "score": sc})
+	return out
+
+
+func can_peace_term(issuer: int, target: int, term: String) -> bool:
+	if not can_make_peace(issuer, target):
+		return false
+	var sc := war_score(issuer, target)
+	match term:
+		"white":
+			return true
+		"indemnity":
+			return sc >= SCORE_INDEMNITY and countries[target].treasury > 0
+		"vassal":
+			return sc >= SCORE_VASSAL and countries[target].overlord < 0 and countries[issuer].overlord < 0
+		"annex":
+			return sc >= SCORE_ANNEX
+	return false
+
+
+func _apply_peace(issuer: int, target: int, term: String) -> void:
+	var sc := war_score(issuer, target)
+	_end_war(issuer, target)
+	truces[_pair(issuer, target)] = tick + TRUCE_DAYS
+	var involves_player := issuer == player_country or target == player_country
+	var msg := "%s e %s firmaram a paz." % [countries[issuer].name, countries[target].name]
+	match term:
+		"indemnity":
+			var amt := mini(countries[target].treasury, 150 + sc * 10)
+			countries[target].treasury -= amt
+			countries[issuer].treasury += amt
+			msg = "%s pagou %d de indenização a %s." % [countries[target].name, amt, countries[issuer].name]
+		"vassal":
+			_make_vassal(issuer, target)
+			msg = "%s tornou-se vassalo de %s." % [countries[target].name, countries[issuer].name]
+		"annex":
+			_annex_country(issuer, target)
+			msg = "%s foi anexado por %s." % [countries[target].name, countries[issuer].name]
+	if involves_player:
+		Events.notice.emit(msg)
+	Events.war_changed.emit()
+	Events.treasury_changed.emit(issuer)
+	Events.treasury_changed.emit(target)
+
+
+func _make_vassal(o: int, v: int) -> void:
+	for al in allies_of(v):
+		alliances.erase(_pair(v, int(al)))
+	countries[v].overlord = o
+	countries[v].overlord_since = tick
+	alliances.append(_pair(o, v))
+	relations[_pair(o, v)] = maxi(opinion(o, v), 0)
+
+
+func _free_vassal(v: int, friendly: bool) -> void:
+	var o: int = countries[v].overlord
+	if o < 0:
+		return
+	countries[v].overlord = -1
+	alliances.erase(_pair(o, v))
+	relations[_pair(o, v)] = clampi(opinion(o, v) + (30 if friendly else -40), -100, 100)
+	if v == player_country or o == player_country:
+		Events.notice.emit("%s %s." % [countries[v].name, "foi libertado" if friendly else "rompeu com o suserano e tornou-se independente"])
+	Events.war_changed.emit()
+
+
+## Anexa o país inteiro: províncias, exércitos e frota passam ao anexador.
+func _annex_country(o: int, v: int) -> void:
+	for pid in countries[v].province_ids.duplicate():
+		transfer_province(int(pid), o)
+	for id in armies.keys():
+		var a: Army = armies[id]
+		if a.owner_id == v:
+			a.owner_id = o
+			Events.army_changed.emit(id)
+	for id in fleets.keys():
+		var fl: Fleet = fleets[id]
+		if fl.owner_id == v:
+			fl.owner_id = o
+	countries[o].ships += countries[v].ships
+	countries[v].ships = 0
+	for al in allies_of(v):
+		alliances.erase(_pair(v, int(al)))
+	for q in wars_of(v):
+		_end_war(v, int(q))
+	for c in countries:
+		if c.overlord == v:
+			c.overlord = o if o != c.id else -1
+			c.overlord_since = tick
+			if c.overlord >= 0:
+				alliances.append(_pair(o, c.id))
+	countries[v].overlord = -1
+	Events.war_changed.emit()
+
+
+func _record_conquest(by: int, loser: int, pid: int) -> void:
+	var i := _war_index(by, loser)
+	if i < 0:
+		return
+	var w: Dictionary = wars[i]
+	var by_a := by == int(w["a"])
+	var k := "ga" if by_a else "gb"
+	w[k] = int(w.get(k, 0)) + 1
+	if countries[loser].capital == pid:
+		w["capa" if by_a else "capb"] = true
+
+
+func _new_war(x: int, y: int) -> Dictionary:
+	var lo := mini(x, y)
+	var hi := maxi(x, y)
+	return {"a": lo, "b": hi, "days": 0, "na": countries[lo].province_ids.size(), "nb": countries[hi].province_ids.size(),
+		"ga": 0, "gb": 0, "capa": false, "capb": false}
 
 
 func allies_of(cid: int) -> Array:
@@ -1017,20 +1205,26 @@ func can_improve(issuer: int, target: int) -> bool:
 func can_ally(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
-	return countries[target].is_alive() and not at_war(issuer, target) and not allied(issuer, target)
+	return countries[target].is_alive() and not at_war(issuer, target) and not allied(issuer, target) \
+		and countries[issuer].overlord < 0 and countries[target].overlord < 0
 
 
 ## Declara a guerra e chama os aliados do alvo (defensivo).
 func _start_war(attacker: int, target: int) -> void:
-	wars.append({"a": mini(attacker, target), "b": maxi(attacker, target), "days": 0})
+	wars.append(_new_war(attacker, target))
 	relations[_pair(attacker, target)] = -100
 	if attacker == player_country or target == player_country:
 		Events.notice.emit("%s declarou guerra a %s!" % [countries[attacker].name, countries[target].name])
 	for al in allies_of(target):
 		if al != attacker and not at_war(al, attacker) and not allied(al, attacker) and countries[al].is_alive():
-			wars.append({"a": mini(al, attacker), "b": maxi(al, attacker), "days": 0})
+			wars.append(_new_war(al, attacker))
 			if al == player_country:
 				Events.notice.emit("Seu aliado %s foi atacado: você entrou na guerra." % countries[target].name)
+	for v in vassals_of(attacker):
+		if v != target and not at_war(v, target) and not at_war(v, attacker):
+			wars.append(_new_war(v, target))
+			if v == player_country:
+				Events.notice.emit("Seu suserano %s entrou em guerra: você o acompanha." % countries[attacker].name)
 	Events.war_changed.emit()
 	# Frente automática: os exércitos do jogador marcham ao front assim que a guerra começa.
 	for cid in [attacker, target]:
@@ -1062,6 +1256,8 @@ func can_declare_war(attacker: int, target: int) -> bool:
 		return false
 	if attacker == target or at_war(attacker, target) or allied(attacker, target):
 		return false
+	if countries[attacker].overlord >= 0 or countries[target].overlord == attacker:
+		return false   # vassalo não declara guerra; suserano não ataca o próprio vassalo
 	if truce_left(attacker, target) > 0:
 		return false
 	return countries[attacker].is_alive() and countries[target].is_alive()
@@ -1386,6 +1582,49 @@ func _ai_recruit(c: Country, plan: Dictionary) -> void:
 			return
 
 
+## Fim das guerras entre IAs: o vencedor dita os termos conforme a pontuação; empate longo vira paz
+## branca. IAs suseranas anexam vassalos quando podem pagar.
+func _ai_peace() -> void:
+	for w in wars.duplicate():
+		var x: int = int(w["a"])
+		var y: int = int(w["b"])
+		if not at_war(x, y) or is_human(x) or is_human(y):
+			continue
+		var days: int = int(w["days"])
+		if days < 120:
+			continue
+		var sx := war_score(x, y)
+		var sy := war_score(y, x)
+		var win := x
+		var lose := y
+		var sw := sx
+		if sy > sx:
+			win = y
+			lose = x
+			sw = sy
+		var term := ""
+		if sw >= SCORE_ANNEX:
+			term = "annex"
+		elif sw >= SCORE_VASSAL:
+			term = "vassal"
+		elif sw >= SCORE_INDEMNITY and days >= 180:
+			term = "indemnity"
+		elif days >= 360:
+			term = "white"
+		if term == "" or rng.randi_range(0, 1) != 0:
+			continue
+		if can_peace_term(win, lose, term):
+			_apply_peace(win, lose, term)
+	for c in countries:
+		if is_human(c.id) or not c.is_alive():
+			continue
+		for v in vassals_of(c.id):
+			if can_annex_vassal(c.id, int(v)) and c.treasury >= annex_cost(int(v)) * 2:
+				c.treasury -= annex_cost(int(v))
+				_annex_country(c.id, int(v))
+				break
+
+
 ## Ciclo da IA (ver AiBrain): só declara guerra se o plano do mês for "war"; em "pressure"
 ## ameaça o alvo e busca coalizão. Atacar um rival forte exige razão excepcional.
 func _ai_declare_war(c: Country, plan: Dictionary) -> void:
@@ -1563,6 +1802,7 @@ func _advance_war() -> void:
 			sieges.erase(pid)
 			var loser := p.owner_id
 			transfer_province(int(pid), besieger)
+			_record_conquest(besieger, loser, int(pid))
 			if not countries[loser].is_alive():
 				for o in wars_of(loser):
 					_end_war(loser, o)
@@ -1606,6 +1846,16 @@ func _simulate_month() -> void:
 		c.last_income = int(e["income"])
 		c.last_expense = int(e["expense"])
 		c.treasury += c.last_income - c.last_expense
+	for c in countries:
+		if c.overlord >= 0 and c.is_alive():
+			var ov := countries[c.overlord]
+			if not ov.is_alive() or ov.stability < 15:
+				_free_vassal(c.id, false)
+				continue
+			var tribute: int = maxi(0, c.last_income) * VASSAL_TRIBUTE_PCT / 100
+			c.treasury -= tribute
+			ov.treasury += tribute
+	_ai_peace()
 	for k in relations.keys():
 		var v: int = int(relations[k])
 		if at_war(int(k) / 1000, int(k) % 1000):
@@ -2320,6 +2570,8 @@ func state_hash() -> int:
 		for v in c.sat:
 			h = _mix(h, int(v))
 		h = _mix(h, 1 if c.auto_front else 0)
+		h = _mix(h, c.overlord)
+		h = _mix(h, c.overlord_since)
 		for v in c.laws:
 			h = _mix(h, int(v))
 		for v in c.law_cd:
@@ -2465,6 +2717,8 @@ func serialize_state() -> Dictionary:
 		"stab": _country_ints("stability"),
 		"sat": _sat_list(),
 		"auto_front": _country_ints("auto_front"),
+		"overlord": _country_ints("overlord"),
+		"overlord_since": _country_ints("overlord_since"),
 		"laws": _law_lists("laws"),
 		"law_cd": _law_lists("law_cd"),
 		"barracks": barracks,
@@ -2559,7 +2813,9 @@ func load_state(d: Dictionary) -> bool:
 	next_fleet_id = int(d.get("next_fleet_id", 1))
 	wars.clear()
 	for w in d.get("wars", []):
-		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"])})
+		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"]),
+			"na": int(w.get("na", 1)), "nb": int(w.get("nb", 1)), "ga": int(w.get("ga", 0)), "gb": int(w.get("gb", 0)),
+			"capa": bool(w.get("capa", false)), "capb": bool(w.get("capb", false))})
 	if d.has("market"):
 		var mk: Dictionary = d["market"]
 		var gl := goods_list()
@@ -2583,6 +2839,11 @@ func load_state(d: Dictionary) -> bool:
 		if i < sts.size():
 			for j in 6:
 				countries[i].sat[j] = int(sts[i][j])
+	var ovl: Array = d.get("overlord", [])
+	var ovs: Array = d.get("overlord_since", [])
+	for i in countries.size():
+		countries[i].overlord = int(ovl[i]) if i < ovl.size() else -1
+		countries[i].overlord_since = int(ovs[i]) if i < ovs.size() else 0
 	var af: Array = d.get("auto_front", [])
 	for i in countries.size():
 		countries[i].auto_front = (int(af[i]) != 0) if i < af.size() else true

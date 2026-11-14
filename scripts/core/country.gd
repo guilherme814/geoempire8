@@ -21,6 +21,8 @@ var stability: int = 50       # estabilidade interna (0-100), média ponderada d
 var auto_front: bool = true   # exércitos parados vão sozinhos à linha de frente em guerra
 var laws: Array = []         # opção em vigor de cada grupo de leis (ver Laws.GROUPS)
 var law_cd: Array = []        # meses de espera até poder mudar cada grupo
+var overlord: int = -1        # suserano (-1 = independente); vassalo paga tributo e segue o suserano
+var overlord_since: int = 0   # dia (tick) em que virou vassalo
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)
 
 # Derivados (recalculados por Game._refresh_country_geometry)

@@ -511,6 +511,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 			c.literacy = int(prof.get("lit", c.literacy / 10)) * 10
 			c.tech_pts = int(prof.get("tech", c.tech_level())) * Country.TECH_STEP
 			Laws.apply_profile(c.laws, prof.get("laws", {}))
+	_apply_historical_productivity()
 	for c in countries:
 		var gold_months: int = int(history.get(c.tag, {}).get("profile", {}).get("gold", 8))
 		c.treasury = maxi(MIN_START_TREASURY, int(estimate_monthly(c)["income"]) * gold_months)
@@ -2016,6 +2017,47 @@ func _simulate_month() -> void:
 # ---------------------------------------------------------------------------
 # Eventos (data/events.json)
 # ---------------------------------------------------------------------------
+const REAL_ECONOMY_PATH := "res://data/real_economy_1836.json"
+var usd_per_gold: float = 0.0     # milhões de US$ de 2011 (PPP) por unidade de valor do jogo (calibração de 1836)
+
+
+## Calibra o valor produzido por província para que a participação de cada país no PIB mundial
+## siga o PIB per capita histórico de 1836 (Maddison). A população já é a histórica. Mantém o
+## total mundial: só redistribui entre países. Estático e determinístico.
+func _apply_historical_productivity() -> void:
+	var file := FileAccess.open(REAL_ECONOMY_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var d: Variant = JSON.parse_string(file.get_as_text())
+	if typeof(d) != TYPE_DICTIONARY:
+		return
+	var pcs: Dictionary = d.get("gdp_pc_1836", {})
+	var def_pc: float = float(d.get("default_pc", 1100))
+	var real: Array = []
+	var prod: Array = []
+	var real_total := 0.0
+	var prod_total := 0.0
+	for c in countries:
+		var r: float = float(pcs.get(c.tag, def_pc)) * c.pop_total
+		var pr := 0.0
+		for pid in c.province_ids:
+			pr += float(provinces[pid].production())
+		real.append(r)
+		prod.append(pr)
+		real_total += r
+		prod_total += pr
+	if real_total <= 0.0 or prod_total <= 0.0:
+		return
+	usd_per_gold = real_total / prod_total
+	for c in countries:
+		if prod[c.id] <= 0.0 or real[c.id] <= 0.0:
+			continue
+		var f: float = (real[c.id] / real_total) / (prod[c.id] / prod_total)
+		var pct: int = clampi(int(round(f * 100.0)), 30, 400)
+		for pid in c.province_ids:
+			provinces[pid].value_pct = pct
+
+
 func _load_event_defs() -> void:
 	event_defs = []
 	var file := FileAccess.open(EVENTS_PATH, FileAccess.READ)

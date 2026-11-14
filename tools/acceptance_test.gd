@@ -66,6 +66,32 @@ func run_all() -> void:
 			owned += 1
 	check("province_ids consistente com owner_id", listed == owned, "%d x %d" % [listed, owned])
 
+	# --- calibração histórica do PIB (1836) ---------------------------------
+	var em: Node = root.get_node("EconomyManager")
+	var rf := FileAccess.open("res://data/real_economy_1836.json", FileAccess.READ)
+	var table: Dictionary = JSON.parse_string(rf.get_as_text())
+	var pcs: Dictionary = table["gdp_pc_1836"]
+	var real_tot := 0.0
+	var game_tot := 0.0
+	var rows: Array = []
+	for c in g.countries:
+		if c.is_alive():
+			var rr: float = float(pcs.get(c.tag, table["default_pc"])) * c.pop_total
+			var gg: float = float(em.country_report(g, c.id)["gdp_nominal"])
+			real_tot += rr
+			game_tot += gg
+			rows.append([c.tag, rr, gg])
+	rows.sort_custom(func(x, y): return x[1] > y[1])
+	var worst := 1.0
+	var worst_tag := ""
+	for i in 12:
+		var ratio: float = (rows[i][2] / game_tot) / (rows[i][1] / real_tot)
+		if absf(ratio - 1.0) > absf(worst - 1.0):
+			worst = ratio
+			worst_tag = rows[i][0]
+	check("PIB dos 12 maiores segue a participacao historica (±35%)", worst > 0.65 and worst < 1.35, "pior %s x%.2f" % [worst_tag, worst])
+	check("usd_per_gold calibrado", g.usd_per_gold > 0.0, "%.2f" % g.usd_per_gold)
+
 	# --- simulação + desempenho ------------------------------------------
 	g.speed = 1
 	var snap0: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))

@@ -938,6 +938,9 @@ func _economy_dashboard(body: VBoxContainer, c: Country) -> void:
 	row1.add_theme_constant_override("separation", 12)
 	body.add_child(row1)
 	_big_number(row1, "PIB (valor agregado)", str(int(r["gdp_nominal"])), UIKit.GOLD_BRIGHT)
+	if Game.usd_per_gold > 0.0:
+		var usd_mi: float = float(int(r["gdp_nominal"])) * Game.usd_per_gold
+		_big_number(row1, "PIB histórico (US$ 2011)", "%.1f bi" % (usd_mi / 1000.0), UIKit.TEXT)
 	_big_number(row1, "Crescimento mensal", "%+d%%" % growth, _signed_color(growth))
 	_big_number(row1, "Inflação mensal", "%+d%%" % infl, UIKit.NEG if infl > 1 else (UIKit.POS if infl < 0 else UIKit.TEXT))
 	_big_number(row1, "Desemprego", "%d%%" % unemp, UIKit.NEG if unemp >= 16 else (UIKit.WARN if unemp >= 10 else UIKit.POS))
@@ -963,6 +966,8 @@ func _economy_dashboard(body: VBoxContainer, c: Country) -> void:
 	body.add_child(cols)
 	var ind := _card(cols, "Indicadores", "bars")
 	ind.add_child(UIKit.kv_row("PIB por habitante", "%.2f" % (float(int(r["gdp_per_capita_x100"])) / 100.0)))
+	if Game.usd_per_gold > 0.0 and int(r["population"]) > 0:
+		ind.add_child(UIKit.kv_row("PIB per capita (US$ 2011, PPP)", "%d" % int(float(int(r["gdp_nominal"])) * Game.usd_per_gold * 1000000.0 / float(int(r["population"])))))
 	ind.add_child(UIKit.kv_row("Índice de preços", "%d" % int(r["price_index"]), UIKit.WARN if int(r["price_index"]) > 115 else UIKit.TEXT))
 	ind.add_child(UIKit.kv_row("Valor agregado industrial", str(int(r["industry_value_added"]))))
 	ind.add_child(UIKit.kv_row("Balança comercial", "%+d" % int(r["trade_balance"]), _signed_color(int(r["trade_balance"]))))

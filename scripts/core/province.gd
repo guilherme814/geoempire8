@@ -232,11 +232,17 @@ func _side_timber_for(lv: Dictionary) -> int:
 
 
 @warning_ignore("integer_division")
+## Produtividade histórica da província (% do valor), definida no carregamento do mundo a partir do
+## PIB per capita de 1836 do país de origem (data/real_economy_1836.json). Dado estático: não entra
+## no estado salvo e vale igual para todos os jogadores. Afeta o valor (imposto, PIB), não as unidades.
+var value_pct: int = 100
+
+
 func _production_for(lv: Dictionary) -> int:
 	var price: int = RESOURCE_PRICE.get(resource_type, 10)
 	var pct: int = price_of(resource_type)
 	var extra: int = _side_timber_for(lv) * base_price("timber") * price_of("timber") / 10000
-	return _units_for(lv) * price * pct / 10000 + extra
+	return (_units_for(lv) * price * pct / 10000 + extra) * value_pct / 100
 
 
 func units() -> int:

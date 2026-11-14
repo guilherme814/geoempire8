@@ -12,6 +12,7 @@ func _initialize() -> void:
 	em = root.get_node("EconomyManager")
 	if not g.loaded:
 		g.load_world()
+	_calibration()
 	var start := _snapshot()
 	print("ANO  0 | ", _fmt(start))
 	for year in range(1, 11):
@@ -113,3 +114,35 @@ func _worst() -> void:
 		print("PIORES tesouro: ", rows[i])
 	for i in mini(5, rows.size()):
 		print("MELHORES tesouro: ", rows[rows.size() - 1 - i])
+
+
+## Compara a participação de cada país no PIB/população do jogo com a histórica (data/real_economy_1836.json).
+func _calibration() -> void:
+	var f := FileAccess.open("res://data/real_economy_1836.json", FileAccess.READ)
+	var d: Dictionary = JSON.parse_string(f.get_as_text())
+	var pcs: Dictionary = d["gdp_pc_1836"]
+	var def_pc: int = int(d["default_pc"])
+	var rows: Array = []
+	var real_total := 0.0
+	var game_total := 0.0
+	var pop_game_total := 0.0
+	var pop_real_total := 0.0
+	for c in g.countries:
+		if not c.is_alive():
+			continue
+		var r: Dictionary = em.country_report(g, c.id)
+		var real: float = float(pcs.get(c.tag, def_pc)) * float(c.pop_total)   # milhões de US$
+		real_total += real
+		game_total += float(r["gdp_nominal"])
+		pop_game_total += float(r["population"])
+		pop_real_total += float(c.pop_total) * 1000000.0
+		rows.append([c.tag, c.name, real, float(r["gdp_nominal"]), float(c.pop_total) * 1000000.0, float(r["population"])])
+	rows.sort_custom(func(a, b): return a[2] > b[2])
+	print("CAL mundo: PIB real %.0f mi US$, PIB jogo %.0f | pop real %.0f mi, pop jogo %.0f mi" % [real_total, game_total, pop_real_total / 1e6, pop_game_total / 1e6])
+	for i in mini(30, rows.size()):
+		var r = rows[i]
+		var rs: float = r[2] / real_total * 100.0
+		var gs: float = r[3] / game_total * 100.0
+		var pr: float = r[4] / pop_real_total * 100.0
+		var pg: float = r[5] / pop_game_total * 100.0
+		print("CAL %-4s %-26s PIB real %5.2f%% jogo %5.2f%% (x%.2f) | pop real %5.2f%% jogo %5.2f%% (x%.2f) | pop jogo/hist %.2f" % [r[0], r[1], rs, gs, gs / maxf(0.001, rs), pr, pg, pg / maxf(0.001, pr), r[5] / maxf(1.0, r[4])])

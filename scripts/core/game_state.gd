@@ -715,7 +715,7 @@ func law_block_reason(c: Country, gi: int, oi: int) -> String:
 	if c.literacy < int(o["lit"]):
 		return "Requer alfabetização %.1f%%" % (float(int(o["lit"])) / 10.0)
 	if c.treasury < int(o["cost"]):
-		return "Ouro insuficiente"
+		return "Libras insuficientes"
 	return ""
 
 
@@ -939,7 +939,7 @@ func apply_command(cmd: Dictionary) -> void:
 		var target: int = int(cmd.get("target", -1))
 		if not can_annex_vassal(issuer, target):
 			if issuer == player_country:
-				Events.notice.emit("Não é possível anexar: tempo de vassalagem ou ouro insuficiente.")
+				Events.notice.emit("Não é possível anexar: tempo de vassalagem ou libras insuficientes.")
 			return
 		countries[issuer].treasury -= annex_cost(target)
 		_annex_country(issuer, target)
@@ -1099,7 +1099,7 @@ func peace_term_text(winner: int, loser: int, term: String, viewer: int) -> Stri
 	var ln := countries[loser].name
 	match term:
 		"indemnity":
-			return "%s pagará %d de indenização a %s" % [ln if loser != viewer else "você", indemnity_amount(winner, loser), wn if winner != viewer else "você"]
+			return "%s pagará %s de indenização a %s" % [ln if loser != viewer else "você", Money.fmt(indemnity_amount(winner, loser)), wn if winner != viewer else "você"]
 		"vassal":
 			if loser == viewer:
 				return "você se tornará vassalo de %s (tributo de %d%% da renda)" % [wn, VASSAL_TRIBUTE_PCT]

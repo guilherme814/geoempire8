@@ -341,8 +341,8 @@ func _update_card() -> void:
 	_stat("bulb", "Tecnologia", "nível %d" % c.tech_level())
 	_stat("shield", "Estabilidade", "%d%%" % c.stability)
 	_stat("sword", "Exército", "%d regimentos" % int(e["regiments"]))
-	_stat("coin", "Tesouro", str(c.treasury))
-	_stat("coin", "Saldo mensal", "%+d" % (int(e["income"]) - int(e["expense"])))
+	_stat("coin", "Tesouro", Money.fmt(c.treasury))
+	_stat("coin", "Saldo mensal", Money.signed(int(e["income"]) - int(e["expense"])))
 
 
 func _on_play_pressed() -> void:

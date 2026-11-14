@@ -492,7 +492,7 @@ func _building_detail(p: Province, kind: String, lv: int, me: int) -> String:
 		var mats: Array[String] = []
 		for m in p.material_list(kind, nxt):
 			mats.append("%d %s" % [int(m["amount"]), str(RESOURCE_PT.get(m["good"], m["good"])).to_lower()])
-		parts.append("Obra: %d ouro + materiais %d (%s)" % [Game.build_cost(p, kind), Game.build_material_cost(p, kind), ", ".join(mats)])
+		parts.append("Obra: %s + materiais %s (%s)" % [Money.fmt(Game.build_cost(p, kind)), Money.fmt(Game.build_material_cost(p, kind)), ", ".join(mats)])
 	var lbl := "Nível %d" % nxt
 	if Province.FACTORIES.has(kind) or Province.WAGE_PCT.has(kind):
 		parts.append("%s: produz %d %s/mês · receita %d" % [lbl, int(rep["units"]), str(RESOURCE_PT.get(rep["product"], rep["product"])).to_lower(), int(rep["revenue"])])
@@ -500,8 +500,8 @@ func _building_detail(p: Province, kind: String, lv: int, me: int) -> String:
 			var ins: Array[String] = []
 			for i in rep["inputs"]:
 				ins.append("%d %s" % [int(i["amount"]), str(RESOURCE_PT.get(i["good"], i["good"])).to_lower()])
-			parts.append("Consome %s (custo %d)" % [", ".join(ins), int(rep["inputs_cost"])])
-		parts.append("Salários -%d · impostos -%d · líquido %+d/mês · %d empregos" % [int(rep["wages"]), int(rep["tax"]), int(rep["net"]), int(rep["jobs"])])
+			parts.append("Consome %s (custo %s)" % [", ".join(ins), Money.fmt(int(rep["inputs_cost"]))])
+		parts.append("Salários -%s · impostos -%s · líquido %s/mês · %d empregos" % [Money.fmt(int(rep["wages"])), Money.fmt(int(rep["tax"])), Money.signed(int(rep["net"])), int(rep["jobs"])])
 	elif kind == "market":
 		parts.append("%s: +%d de imposto extra/mês · manutenção -%d · %d empregos" % [lbl, int(rep["revenue"]), int(rep["wages"]), int(rep["jobs"])])
 	else:
@@ -564,7 +564,7 @@ func _refresh_build_panel() -> void:
 		var stats := PackedStringArray()
 		stats.append("%d empregos" % int(rep_next["jobs"]))
 		if int(rep_next["revenue"]) != 0 or Province.WAGE_PCT.has(k):
-			stats.append("líquido %+d/mês" % int(rep_next["net"]))
+			stats.append("líquido %s/mês" % Money.signed(int(rep_next["net"])))
 		elif int(rep_next["wages"]) > 0:
 			stats.append("custo -%d/mês" % int(rep_next["wages"]))
 		var sl := UIKit.label(" · ".join(stats), 14, UIKit.GOLD)
@@ -584,7 +584,7 @@ func _refresh_build_panel() -> void:
 			btn.text = "Outra fábrica"
 			btn.disabled = true
 		else:
-			btn.text = "Construir\n%d" % Game.build_total_cost(p, k)
+			btn.text = "Construir\n%s" % Money.fmt(Game.build_total_cost(p, k))
 			btn.disabled = not Game.can_build(p.id, me, k)
 			btn.pressed.connect(_on_build_pressed.bind(k))
 		var tog := Button.new()
@@ -768,7 +768,7 @@ func _refresh_tech() -> void:
 	_big_number(top, "Nível", "%d / %d" % [lvl, Game.MAX_TECH], UIKit.GOLD_BRIGHT)
 	_big_number(top, "Era", str(Game.TECH_ERAS[lvl]["name"]), UIKit.TEXT)
 	_big_number(top, "Pontos por mês", "+%d" % gain, UIKit.POS)
-	_big_number(top, "Custo da pesquisa", "-%d" % int(e["upkeep_research"]), UIKit.NEG if int(e["upkeep_research"]) > 0 else UIKit.TEXT_DIM)
+	_big_number(top, "Custo da pesquisa", Money.signed(-int(e["upkeep_research"])), UIKit.NEG if int(e["upkeep_research"]) > 0 else UIKit.TEXT_DIM)
 
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 12)
@@ -800,7 +800,7 @@ func _refresh_tech() -> void:
 	var gross: int = int(e["income"]) + int(e["upkeep_research"])
 	for pct in range(0, Game.RESEARCH_MAX_PCT + 1, 5):
 		var b := _info_button("%d%%" % pct, Vector2(60, 44), _on_research_pct.bind(pct), grid)
-		b.tooltip_text = "Custa ~%d por mês" % (gross * pct / 100)
+		b.tooltip_text = "Custa ~%s por mês" % Money.fmt(gross * pct / 100)
 		b.disabled = pct == c.research_pct
 
 	var right := _card(cols, "Eras tecnológicas", "scroll")
@@ -839,10 +839,10 @@ func _refresh_economy() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
 	body.add_child(top)
-	_big_number(top, "Receita mensal", "%+d" % income, UIKit.POS)
-	_big_number(top, "Despesa mensal", "-%d" % expense, UIKit.NEG)
-	_big_number(top, "Saldo mensal", "%+d" % net, _signed_color(net))
-	_big_number(top, "Tesouro", str(c.treasury), UIKit.NEG if c.treasury < 0 else UIKit.GOLD_BRIGHT)
+	_big_number(top, "Receita mensal", Money.signed(income), UIKit.POS)
+	_big_number(top, "Despesa mensal", Money.signed(-expense), UIKit.NEG)
+	_big_number(top, "Saldo mensal", Money.signed(net), _signed_color(net))
+	_big_number(top, "Tesouro", Money.fmt(c.treasury), UIKit.NEG if c.treasury < 0 else UIKit.GOLD_BRIGHT)
 
 	_economy_dashboard(body, c)
 
@@ -851,22 +851,22 @@ func _refresh_economy() -> void:
 	body.add_child(cols)
 
 	var left := _card(cols, "Orçamento", "coin")
-	left.add_child(UIKit.kv_row("Impostos (%d%%) + base %d" % [c.tax_pct, int(e["flat"])], "%+d" % (income - int(e["industry_state"]) - int(e["trade"])), UIKit.POS))
+	left.add_child(UIKit.kv_row("Impostos (%d%%) + base %d" % [c.tax_pct, int(e["flat"])], Money.signed(income - int(e["industry_state"]) - int(e["trade"])), UIKit.POS))
 	left.add_child(UIKit.kv_row("Impostos das fábricas" if Province.FACTORIES_PRIVATE else "Lucro das fábricas", "%+d" % int(e["industry_state"]), _signed_color(int(e["industry_state"]))))
 	if int(e["factory_revenue"]) > 0:
 		left.add_child(UIKit.kv_row("   vendas %+d, insumos -%d, salários -%d%s" % [int(e["factory_revenue"]), int(e["factory_inputs"]), int(e["factory_wages"]), (", impostos -%d" % int(e["factory_tax"])) if int(e["factory_tax"]) > 0 else ""], "pagos pelas fábricas", UIKit.TEXT_DIM, 14))
 	left.add_child(UIKit.kv_row("Comércio exterior", "%+d" % int(e["trade"]), _signed_color(int(e["trade"]))))
 	left.add_child(HSeparator.new())
-	left.add_child(UIKit.kv_row("Manutenção das províncias", "-%d" % int(e["upkeep_prov"]), UIKit.NEG))
-	left.add_child(UIKit.kv_row("Exércitos (%d reg.)" % int(e["regiments"]), "-%d" % int(e["upkeep_army"]), UIKit.NEG))
-	left.add_child(UIKit.kv_row("Frota (%d navios)" % c.ships, "-%d" % int(e["upkeep_navy"]), UIKit.NEG))
-	left.add_child(UIKit.kv_row("Escolas e universidades (salários)", "-%d" % int(e["upkeep_edu"]), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Manutenção das províncias", Money.signed(-int(e["upkeep_prov"])), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Exércitos (%d reg.)" % int(e["regiments"]), Money.signed(-int(e["upkeep_army"])), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Frota (%d navios)" % c.ships, Money.signed(-int(e["upkeep_navy"])), UIKit.NEG))
+	left.add_child(UIKit.kv_row("Escolas e universidades (salários)", Money.signed(-int(e["upkeep_edu"])), UIKit.NEG))
 	if int(e["upkeep_research"]) > 0:
-		left.add_child(UIKit.kv_row("Pesquisa (%d%% da renda)" % c.research_pct, "-%d" % int(e["upkeep_research"]), UIKit.NEG))
+		left.add_child(UIKit.kv_row("Pesquisa (%d%% da renda)" % c.research_pct, Money.signed(-int(e["upkeep_research"])), UIKit.NEG))
 	if int(e["upkeep_infra"]) > 0:
-		left.add_child(UIKit.kv_row("Hospitais, mercados e cais", "-%d" % int(e["upkeep_infra"]), UIKit.NEG))
+		left.add_child(UIKit.kv_row("Hospitais, mercados e cais", Money.signed(-int(e["upkeep_infra"])), UIKit.NEG))
 	if int(e["upkeep_barracks"]) > 0:
-		left.add_child(UIKit.kv_row("Quartéis (instrutores)", "-%d" % int(e["upkeep_barracks"]), UIKit.NEG))
+		left.add_child(UIKit.kv_row("Quartéis (instrutores)", Money.signed(-int(e["upkeep_barracks"])), UIKit.NEG))
 	if net < 0 and c.treasury > 0:
 		left.add_child(UIKit.label("Tesouro acaba em ~%d meses." % (c.treasury / -net), 16, UIKit.WARN))
 
@@ -937,10 +937,7 @@ func _economy_dashboard(body: VBoxContainer, c: Country) -> void:
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 12)
 	body.add_child(row1)
-	_big_number(row1, "PIB (valor agregado)", str(int(r["gdp_nominal"])), UIKit.GOLD_BRIGHT)
-	if Game.usd_per_gold > 0.0:
-		var usd_mi: float = float(int(r["gdp_nominal"])) * Game.usd_per_gold
-		_big_number(row1, "PIB histórico (US$ 2011)", "%.1f bi" % (usd_mi / 1000.0), UIKit.TEXT)
+	_big_number(row1, "PIB mensal (valor agregado)", Money.fmt(int(r["gdp_nominal"])), UIKit.GOLD_BRIGHT)
 	_big_number(row1, "Crescimento mensal", "%+d%%" % growth, _signed_color(growth))
 	_big_number(row1, "Inflação mensal", "%+d%%" % infl, UIKit.NEG if infl > 1 else (UIKit.POS if infl < 0 else UIKit.TEXT))
 	_big_number(row1, "Desemprego", "%d%%" % unemp, UIKit.NEG if unemp >= 16 else (UIKit.WARN if unemp >= 10 else UIKit.POS))
@@ -966,8 +963,8 @@ func _economy_dashboard(body: VBoxContainer, c: Country) -> void:
 	body.add_child(cols)
 	var ind := _card(cols, "Indicadores", "bars")
 	ind.add_child(UIKit.kv_row("PIB por habitante", "%.2f" % (float(int(r["gdp_per_capita_x100"])) / 100.0)))
-	if Game.usd_per_gold > 0.0 and int(r["population"]) > 0:
-		ind.add_child(UIKit.kv_row("PIB per capita (US$ 2011, PPP)", "%d" % int(float(int(r["gdp_nominal"])) * Game.usd_per_gold * 1000000.0 / float(int(r["population"])))))
+	if int(r["population"]) > 0:
+		ind.add_child(UIKit.kv_row("PIB per capita (£ por ano)", "£%d" % int(float(int(r["gdp_nominal"])) * 12.0 * Money.GBP_PER_UNIT / float(int(r["population"])) * 1.0)))
 	ind.add_child(UIKit.kv_row("Índice de preços", "%d" % int(r["price_index"]), UIKit.WARN if int(r["price_index"]) > 115 else UIKit.TEXT))
 	ind.add_child(UIKit.kv_row("Valor agregado industrial", str(int(r["industry_value_added"]))))
 	ind.add_child(UIKit.kv_row("Balança comercial", "%+d" % int(r["trade_balance"]), _signed_color(int(r["trade_balance"]))))
@@ -1103,7 +1100,7 @@ func _refresh_laws() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 14)
 	body.add_child(head)
-	var info := UIKit.label("Cada lei só muda a cada %d meses e abala a satisfação das classes. Tesouro: %d" % [Laws.COOLDOWN_MONTHS, c.treasury], 16, UIKit.TEXT_DIM)
+	var info := UIKit.label("Cada lei só muda a cada %d meses e abala a satisfação das classes. Tesouro: %s" % [Laws.COOLDOWN_MONTHS, Money.fmt(c.treasury)], 16, UIKit.TEXT_DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(info)
@@ -1163,7 +1160,7 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 		row.add_child(UIKit.label("EM VIGOR", 14, UIKit.GOLD))
 		return pc
 	var why := Game.law_block_reason(c, gi, oi)
-	var b := UIKit.button("Aprovar (%d)" % int(o["cost"]), Vector2(0, 38))
+	var b := UIKit.button("Aprovar (%s)" % Money.fmt(int(o["cost"])), Vector2(0, 38))
 	b.disabled = why != ""
 	b.pressed.connect(_on_law_pressed.bind(gi, oi))
 	row.add_child(b)
@@ -1364,7 +1361,7 @@ func _build_info_panel() -> void:
 	_btn_war = _info_button("Declarar guerra", bsize, _on_war_pressed, grid)
 	_btn_improve = _info_button("Melhorar rel. (%d)" % Game.IMPROVE_COST, bsize, _on_improve_pressed, grid)
 	_btn_embargo = _info_button("Embargar", bsize, _on_embargo_pressed, grid)
-	_btn_ship = _info_button("%s (%d)" % [Game.ship_class_name(Game.countries[Game.player_country]), Game.SHIP_COST], bsize, _on_ship_pressed, grid)
+	_btn_ship = _info_button("%s (%s)" % [Game.ship_class_name(Game.countries[Game.player_country]), Money.fmt(Game.SHIP_COST)], bsize, _on_ship_pressed, grid)
 	_btn_ally = _info_button("Propor aliança", bsize, _on_ally_pressed, grid)
 	_btn_diplo = _info_button("Diplomacia", bsize, _on_diplo_pressed, grid)
 	_btn_annex = _info_button("Anexar (debug)", bsize, _on_annex_pressed, grid)
@@ -1572,7 +1569,7 @@ func _update_event_timer() -> void:
 static func _effects_text(fx: Dictionary) -> String:
 	var parts: Array[String] = []
 	if fx.has("gold"):
-		parts.append("%+d ouro" % int(fx["gold"]))
+		parts.append(Money.signed(int(fx["gold"])))
 	if fx.has("manpower"):
 		parts.append("%+d mão de obra" % int(fx["manpower"]))
 	if fx.has("pop_pct"):
@@ -1616,7 +1613,7 @@ func _refresh_top() -> void:
 	_country_sub.add_theme_color_override("font_color", UIKit.TEXT_DIM if wars == 0 else UIKit.NEG)
 	var e := Game.estimate_monthly(c)
 	var net: int = int(e["income"]) - int(e["expense"])
-	_set_chip("gold", str(c.treasury), "%+d/mês" % net, UIKit.POS if net >= 0 else UIKit.NEG, UIKit.NEG if c.treasury < 0 else UIKit.TEXT)
+	_set_chip("gold", Money.fmt(c.treasury), "%s/mês" % Money.signed(net), UIKit.POS if net >= 0 else UIKit.NEG, UIKit.NEG if c.treasury < 0 else UIKit.TEXT)
 	_set_chip("pop", _fmt_pop(Game.population_of(c)), "habitantes")
 	_set_chip("lit", "%d,%d%%" % [c.literacy / 10, c.literacy % 10], "alfabetização")
 	_set_chip("sol", "%.1f" % (float(Game.standard_of_living_x10(c, e)) / 10.0), "padrão de vida")
@@ -1748,7 +1745,7 @@ func _refresh_info() -> void:
 			lines.append(rel)
 	if p.factory != "":
 		var fr := p.building_report(p.factory, p.factory_level, tax)
-		lines.append("Indústria: %s nív. %d  (líquido %+d/mês, imposto %d)" % [Province.BUILDINGS[p.factory]["name"], p.factory_level, int(fr["net"]), int(fr["tax"])])
+		lines.append("Indústria: %s nív. %d  (líquido %s/mês, imposto %s)" % [Province.BUILDINGS[p.factory]["name"], p.factory_level, Money.signed(int(fr["net"])), Money.fmt(int(fr["tax"]))])
 	var queued := Game.queued_in(p.id)
 	if queued > 0:
 		lines.append("Treinando: %d regimento(s)" % queued)
@@ -1757,7 +1754,7 @@ func _refresh_info() -> void:
 	_btn_recruit.visible = mine
 	if mine:
 		var me := Game.player_country
-		_btn_recruit.text = "Recrutar (%d)" % Game.RECRUIT_COST
+		_btn_recruit.text = "Recrutar (%s)" % Money.fmt(Game.RECRUIT_COST)
 		_btn_recruit.disabled = not Game.can_recruit(p.id, me)
 	_refresh_build_panel()
 	_btn_take.visible = has_owner and not mine and not Net.is_online()
@@ -1770,7 +1767,7 @@ func _refresh_info() -> void:
 	_btn_ship.visible = mine and p.port >= 0
 	if mine and p.port >= 0:
 		_btn_ship.disabled = not Game.can_build_ship(p.id, Game.player_country)
-		_btn_ship.text = "%s (%d)" % [Game.ship_class_name(Game.countries[Game.player_country]), Game.SHIP_COST]
+		_btn_ship.text = "%s (%s)" % [Game.ship_class_name(Game.countries[Game.player_country]), Money.fmt(Game.SHIP_COST)]
 	if has_owner and not mine:
 		var has_emb := Game.embargoes.has(Game.player_country * 1000 + p.owner_id)
 		_btn_embargo.text = "Suspender embargo" if has_emb else "Embargar"
@@ -2096,7 +2093,7 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 	card.add_child(UIKit.kv_row("Seu exército · navios", "%d · %d" % [Game.regiments_of(me), Game.countries[me].ships]))
 	if tc.overlord == me:
 		var left_days := maxi(0, Game.ANNEX_MIN_DAYS - (Game.tick - tc.overlord_since))
-		card.add_child(UIKit.kv_row("Tributo mensal", "%d" % (maxi(0, tc.last_income) * Game.VASSAL_TRIBUTE_PCT / 100), UIKit.POS))
+		card.add_child(UIKit.kv_row("Tributo mensal", Money.fmt(maxi(0, tc.last_income) * Game.VASSAL_TRIBUTE_PCT / 100), UIKit.POS))
 		card.add_child(UIKit.kv_row("Anexação", "pronta" if left_days == 0 else "em %d dias" % left_days))
 
 	var acts := _card(parent, "Ações", "scroll")
@@ -2125,7 +2122,7 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 		if why != "":
 			acts.add_child(UIKit.label(why, 14, UIKit.TEXT_DIM))
 	if tc.overlord == me:
-		var b5 := _info_button("Anexar vassal (%d)" % Game.annex_cost(t), bs, _diplo_cmd.bind(Cmd.annex_vassal(t)), grid)
+		var b5 := _info_button("Anexar vassal (%s)" % Money.fmt(Game.annex_cost(t)), bs, _diplo_cmd.bind(Cmd.annex_vassal(t)), grid)
 		b5.disabled = not Game.can_annex_vassal(me, t)
 		_info_button("Libertar vassal", bs, _diplo_cmd.bind(Cmd.release_vassal(t)), grid)
 

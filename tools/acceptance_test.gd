@@ -92,6 +92,12 @@ func run_all() -> void:
 	check("PIB dos 12 maiores segue a participacao historica (±35%)", gdp_dev > 0.65 and gdp_dev < 1.35, "pior %s x%.2f" % [worst_tag, gdp_dev])
 	check("usd_per_gold calibrado", g.usd_per_gold > 0.0, "%.2f" % g.usd_per_gold)
 
+	# --- moeda (£) -----------------------------------------------------------
+	check("Money: 140 -> £980 mil", Money.fmt(140) == "£980 mil", Money.fmt(140))
+	check("Money: milhoes", Money.fmt(712) == "£5,0 mi", Money.fmt(712))
+	check("Money: negativo e sinal", Money.fmt(-3) == "-£21 mil" and Money.signed(5) == "+£35 mil", Money.signed(5))
+	check("Money: bilhoes", Money.fmt(1237731).ends_with(" bi"), Money.fmt(1237731))
+
 	# --- simulação + desempenho ------------------------------------------
 	g.speed = 1
 	var snap0: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))

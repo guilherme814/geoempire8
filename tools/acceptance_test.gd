@@ -115,8 +115,8 @@ func run_all() -> void:
 	var cap_b: int = g.countries[b].capital
 	var sc0: int = g.war_score(a, b)
 	# captura de capital: +30
+	g._record_conquest(a, b, cap_b)   # mesma ordem do cerco: registra antes de transferir
 	g.transfer_province(cap_b, a)
-	g._record_conquest(a, b, cap_b)
 	var sc1: int = g.war_score(a, b)
 	check("capital capturada soma 30 (+ 1 provincia)", sc1 == sc0 + g.CAPITAL_SCORE + 100 / n_b, "%d -> %d" % [sc0, sc1])
 	# outra província
@@ -124,15 +124,15 @@ func run_all() -> void:
 	for pid in g.countries[b].province_ids:
 		other = int(pid)
 		break
-	g.transfer_province(other, a)
 	g._record_conquest(a, b, other)
+	g.transfer_province(other, a)
 	var sc2: int = g.war_score(a, b)
-	check("provincia conquistada atualiza o placar", sc2 == sc1 + 100 / n_b, "%d -> %d" % [sc1, sc2])
+	check("provincia conquistada atualiza o placar", sc2 == 2 * 100 / n_b + g.CAPITAL_SCORE, "%d -> %d" % [sc1, sc2])
 	# retomada e reconquista não duplicam
-	g.transfer_province(other, b)
 	g._record_conquest(b, a, other)
-	g.transfer_province(other, a)
+	g.transfer_province(other, b)
 	g._record_conquest(a, b, other)
+	g.transfer_province(other, a)
 	check("retomar e reconquistar nao duplica", g.war_score(a, b) == sc2, "%d x %d" % [g.war_score(a, b), sc2])
 	# indenização transfere o valor correto
 	g.countries[b].treasury = 5000

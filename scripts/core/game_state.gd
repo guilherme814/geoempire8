@@ -1882,8 +1882,9 @@ func _advance_war() -> void:
 		if int(s["days"]) >= SIEGE_DAYS:
 			sieges.erase(pid)
 			var loser := p.owner_id
-			transfer_province(int(pid), besieger)
+			# registra ANTES de transferir: ao perder a capital o país escolhe outra e o bônus se perderia
 			_record_conquest(besieger, loser, int(pid))
+			transfer_province(int(pid), besieger)
 			if not countries[loser].is_alive():
 				for o in wars_of(loser):
 					_end_war(loser, o)

@@ -668,5 +668,64 @@
   "army": 2,
   "navy": 0,
   "mil": 3
- }
+ },
+ "TEX": {
+  "gov": "republica_provisoria",
+  "orient": "colonizacao_anglo_americana",
+  "stab": 2,
+  "cent": 1,
+  "cap": 1,
+  "tax": 1,
+  "ind": 1,
+  "urb": 1,
+  "trade": 1,
+  "slavery": true,
+  "army": 1,
+  "navy": 0,
+  "mil": 2
+ },
+ "CAU": {
+  "gov": "imamado_teocratico_de_guerra",
+  "orient": "islamismo_naqshbandi_anti_russo",
+  "stab": 3,
+  "cent": 1,
+  "cap": 1,
+  "tax": 1,
+  "ind": 1,
+  "urb": 1,
+  "trade": 1,
+  "slavery": true,
+  "army": 2,
+  "navy": 0,
+  "mil": 3
+ },
+ "MNE": {
+  "gov": "principado_teocratico",
+  "orient": "ortodoxia_njegos",
+  "stab": 3,
+  "cent": 1,
+  "cap": 1,
+  "tax": 1,
+  "ind": 1,
+  "urb": 1,
+  "trade": 1,
+  "slavery": false,
+  "army": 1,
+  "navy": 0,
+  "mil": 3
+ },
+ "_start_wars": [
+  [
+   "MEX",
+   "TEX"
+  ],
+  [
+   "FRA",
+   "ABD"
+  ],
+  [
+   "RUS",
+   "CAU"
+  ]
+ ]
 }

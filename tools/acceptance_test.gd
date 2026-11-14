@@ -66,6 +66,18 @@ func run_all() -> void:
 			owned += 1
 	check("province_ids consistente com owner_id", listed == owned, "%d x %d" % [listed, owned])
 
+	# --- guerras em curso em 1836 e novos países ----------------------------
+	var ids: Dictionary = {}
+	for c in g.countries:
+		ids[c.tag] = c.id
+	check("Texas, Cáucaso, Montenegro e Abd al-Qadir existem", ids.has("TEX") and ids.has("CAU") and ids.has("MNE") and ids.has("ABD"))
+	if ids.has("TEX") and ids.has("MEX"):
+		check("guerra Mexico x Texas em curso", g.at_war(ids["MEX"], ids["TEX"]))
+	if ids.has("ABD") and ids.has("FRA"):
+		check("guerra Franca x Abd al-Qadir em curso", g.at_war(ids["FRA"], ids["ABD"]))
+	if ids.has("CAU") and ids.has("RUS"):
+		check("guerra Russia x Imamado do Caucaso em curso", g.at_war(ids["RUS"], ids["CAU"]))
+
 	# --- calibração histórica do PIB (1836) ---------------------------------
 	var em: Node = root.get_node("EconomyManager")
 	var rf := FileAccess.open("res://data/real_economy_1836.json", FileAccess.READ)

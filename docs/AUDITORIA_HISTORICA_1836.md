@@ -38,3 +38,9 @@ censos britânicos de 1831/1841, estimativas provinciais Qing c.1850, literatura
 **Baixa**
 - Rússia e Áustria usam PIB per capita estimado (Maddison não cobre o império inteiro).
 - Governos/ideologias de ~40 países pequenos usam o perfil padrão (sem entrada própria em `history_1836.json`).
+
+## Segunda leva (`tools/historical_fixes2.py`)
+
+- **República do Texas** (Texas I-III), **Imamado do Cáucaso** (Dagestan; Xamil) e **Principado de Montenegro** viram países.
+- Guerras que já existiam em 1º/1/1836 começam ativas: México × Texas, França × Abd al-Qadir, Rússia × Imamado (`_start_wars` em `history_1836.json`).
+- Não resolvido: separar Baden de Württemberg exige dividir a geometria da província (redesenho do mapa).

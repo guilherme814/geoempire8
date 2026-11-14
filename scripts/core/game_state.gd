@@ -538,6 +538,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	for c in countries:
 		if c.tag == DEFAULT_PLAYER_TAG:
 			player_country = c.id
+	_apply_start_wars()
 	loaded = true
 	Events.world_loaded.emit()
 	return true
@@ -2024,6 +2025,23 @@ var usd_per_gold: float = 0.0     # milhões de US$ de 2011 (PPP) por unidade de
 ## Calibra o valor produzido por província para que a participação de cada país no PIB mundial
 ## siga o PIB per capita histórico de 1836 (Maddison). A população já é a histórica. Mantém o
 ## total mundial: só redistribui entre países. Estático e determinístico.
+## Guerras já em curso em 1/1/1836 (data/history_1836.json: "_start_wars" = [[atacante, alvo], ...]).
+func _apply_start_wars() -> void:
+	var tag_id: Dictionary = {}
+	for c in countries:
+		tag_id[c.tag] = c.id
+	for pair in history.get("_start_wars", []):
+		if pair.size() != 2 or not tag_id.has(str(pair[0])) or not tag_id.has(str(pair[1])):
+			continue
+		var a: int = tag_id[str(pair[0])]
+		var b: int = tag_id[str(pair[1])]
+		if a != b and not at_war(a, b):
+			_start_war(a, b)
+			var wi := _war_index(a, b)
+			if wi >= 0:
+				wars[wi]["days"] = 120   # já dura há meses: a paz pode ser negociada
+
+
 func _apply_historical_productivity() -> void:
 	var file := FileAccess.open(REAL_ECONOMY_PATH, FileAccess.READ)
 	if file == null:

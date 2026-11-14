@@ -389,5 +389,44 @@
    "rivalry": 160,
    "claim": 60
   }
+ },
+ "TEX": {
+  "ambition": 30,
+  "boldness": 55,
+  "rivals": [
+   "MEX"
+  ],
+  "claims": [],
+  "protect": [],
+  "balance": false,
+  "weights": {
+   "rivalry": 140
+  }
+ },
+ "CAU": {
+  "ambition": 20,
+  "boldness": 60,
+  "rivals": [
+   "RUS"
+  ],
+  "claims": [],
+  "protect": [],
+  "balance": false,
+  "weights": {
+   "rivalry": 160
+  }
+ },
+ "MNE": {
+  "ambition": 15,
+  "boldness": 50,
+  "rivals": [
+   "OTT"
+  ],
+  "claims": [],
+  "protect": [],
+  "balance": false,
+  "weights": {
+   "rivalry": 120
+  }
  }
 }

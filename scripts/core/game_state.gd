@@ -2706,6 +2706,8 @@ func state_hash() -> int:
 		h = _mix(h, 1 if c.auto_front else 0)
 		h = _mix(h, c.overlord)
 		h = _mix(h, c.overlord_since)
+		h = _mix(h, c.last_income)
+		h = _mix(h, c.last_expense)
 		for v in c.laws:
 			h = _mix(h, int(v))
 		for v in c.law_cd:
@@ -2853,6 +2855,8 @@ func serialize_state() -> Dictionary:
 		"auto_front": _country_ints("auto_front"),
 		"overlord": _country_ints("overlord"),
 		"overlord_since": _country_ints("overlord_since"),
+		"last_income": _country_ints("last_income"),
+		"last_expense": _country_ints("last_expense"),
 		"laws": _law_lists("laws"),
 		"law_cd": _law_lists("law_cd"),
 		"barracks": barracks,
@@ -2985,6 +2989,11 @@ func load_state(d: Dictionary) -> bool:
 	for i in countries.size():
 		countries[i].overlord = int(ovl[i]) if i < ovl.size() else -1
 		countries[i].overlord_since = int(ovs[i]) if i < ovs.size() else 0
+	var lin: Array = d.get("last_income", [])
+	var lex: Array = d.get("last_expense", [])
+	for i in countries.size():
+		countries[i].last_income = int(lin[i]) if i < lin.size() else 0
+		countries[i].last_expense = int(lex[i]) if i < lex.size() else 0
 	var af: Array = d.get("auto_front", [])
 	for i in countries.size():
 		countries[i].auto_front = (int(af[i]) != 0) if i < af.size() else true

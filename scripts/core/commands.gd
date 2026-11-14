@@ -33,6 +33,8 @@ const DECLARE_WAR := "declare_war"
 const MAKE_PEACE := "make_peace"
 const RELEASE_VASSAL := "release_vassal"
 const ANNEX_VASSAL := "annex_vassal"
+const ACCEPT_PEACE := "accept_peace"
+const REJECT_PEACE := "reject_peace"
 const ENACT_LAW := "enact_law"
 const SET_AUTO_FRONT := "set_auto_front"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
@@ -140,3 +142,12 @@ static func move_fleet(fleet: int, to_cell: int) -> Dictionary:
 
 static func stop_fleet(fleet: int) -> Dictionary:
 	return {"type": STOP_FLEET, "fleet": fleet}
+
+
+## Aceita/recusa a proposta de paz feita por `from` (IA) ao emissor.
+static func accept_peace(from: int) -> Dictionary:
+	return {"type": ACCEPT_PEACE, "from": from}
+
+
+static func reject_peace(from: int) -> Dictionary:
+	return {"type": REJECT_PEACE, "from": from}

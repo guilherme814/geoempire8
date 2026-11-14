@@ -150,3 +150,11 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - **Termos de paz** (`Cmd.make_peace(alvo, termo)`): paz branca, indenização (≥15 pts), vassalizar (≥45) e anexar o país (≥75). IAs vencedoras ditam os termos nas guerras entre IAs (após 120 dias; empate longo vira paz branca).
 - **Vassalos:** pagam 25% da renda como tributo, seguem o suserano nas guerras, não declaram guerra nem fazem alianças e não podem ser atacados pelo suserano. O suserano pode **anexar** (após 360 dias, custo 60 por província) ou **libertar**. O vassalo se rebela se o suserano some ou cai abaixo de 15% de estabilidade. IAs anexam vassalos quando têm ouro.
 - **Janela Diplomacia** (ícone de bandeira na lateral ou botão "Diplomacia" no cartão da província): lista de países com situação e opinião, detalhes do país escolhido e ações (melhorar relações, aliança, embargo, guerra, termos de paz, anexar/libertar vassalo).
+
+## Negociação de paz com a IA (partes A+B)
+
+- `scripts/core/ai_diplomacy.gd`: calcula o **cansaço de guerra** da IA (placar, capital perdida, exércitos, tesouro/déficit, estabilidade, duração, núcleos ocupados).
+- Mensalmente a IA em guerra com um jogador pode **propor paz**: branca, indenização, vassalagem (ou ela mesma cobrando, se dominante). A proposta expira em 60 dias; recusar gera 90 dias de carência.
+- O jogador responde pelo painel no topo (Aceitar/Recusar) → comandos `accept_peace` / `reject_peace`. Ofertas e carências entram em salvar/carregar e no hash.
+- Propostas do jogador à IA são aceitas conforme o cansaço (branca 15, indenização 30, vassalo 55, anexação 70); a janela de Diplomacia mostra a "Disposição a negociar".
+- Parte C (personalidades diplomáticas) e contrapropostas: próximas etapas.

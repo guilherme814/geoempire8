@@ -125,6 +125,8 @@ var market_dem: Dictionary = {}
 var market_pop0: int = 1
 var relations: Dictionary = {}   # par -> opinião (-100..100)
 var alliances: Array = []        # pares aliados
+var peace_offers: Array = []       # propostas de paz pendentes (IA -> jogador): from, to, winner, term, tick
+var peace_cd: Dictionary = {}      # par -> tick até o qual a IA não oferece paz de novo
 var truces: Dictionary = {}      # par -> tick em que a trégua acaba
 
 var event_defs: Array = []         # definições de data/events.json (somente leitura)
@@ -438,6 +440,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	relations.clear()
 	alliances.clear()
 	truces.clear()
+	peace_offers.clear()
+	peace_cd.clear()
 	embargoes.clear()
 	next_army_id = 1
 	_load_sea_grid(dict)
@@ -879,12 +883,32 @@ func apply_command(cmd: Dictionary) -> void:
 			if issuer == player_country:
 				Events.notice.emit("Pontuação de guerra insuficiente para esses termos.")
 			return
-		if not is_human(target) and term == "white" and regiments_of(target) > regiments_of(issuer) \
-				and war_score(issuer, target) < SCORE_INDEMNITY:
+		if not is_human(target) and not AiDiplomacy.accepts(self, target, issuer, term):
 			if issuer == player_country:
-				Events.notice.emit("%s recusou a paz: ainda se sente mais forte." % countries[target].name)
+				Events.notice.emit("%s recusou esses termos (disposição a negociar: %s)." % [countries[target].name, AiDiplomacy.willingness(self, target, issuer)])
 			return
 		_apply_peace(issuer, target, term)
+
+	elif t == Cmd.ACCEPT_PEACE:
+		var idx := _offer_index(int(cmd.get("from", -1)), issuer)
+		if idx < 0:
+			return
+		var o: Dictionary = peace_offers[idx]
+		peace_offers.remove_at(idx)
+		var winner: int = int(o["winner"])
+		var loser: int = int(o["from"]) if winner == int(o["to"]) else int(o["to"])
+		if not can_peace_term(winner, loser, str(o["term"])):
+			Events.war_changed.emit()
+			return
+		_apply_peace(winner, loser, str(o["term"]))
+
+	elif t == Cmd.REJECT_PEACE:
+		var idx2 := _offer_index(int(cmd.get("from", -1)), issuer)
+		if idx2 < 0:
+			return
+		peace_offers.remove_at(idx2)
+		peace_cd[_pair(int(cmd.get("from", -1)), issuer)] = tick + AiDiplomacy.REFUSE_COOLDOWN
+		Events.war_changed.emit()
 
 	elif t == Cmd.RELEASE_VASSAL:
 		var target: int = int(cmd.get("target", -1))
@@ -1039,8 +1063,39 @@ func can_peace_term(issuer: int, target: int, term: String) -> bool:
 	return false
 
 
+func _offer_index(from: int, to: int) -> int:
+	for i in peace_offers.size():
+		if int(peace_offers[i]["from"]) == from and int(peace_offers[i]["to"]) == to:
+			return i
+	return -1
+
+
+func indemnity_amount(winner: int, loser: int) -> int:
+	return mini(countries[loser].treasury, 150 + war_score(winner, loser) * 10)
+
+
+## Texto de um termo de paz do ponto de vista de `viewer`.
+func peace_term_text(winner: int, loser: int, term: String, viewer: int) -> String:
+	var wn := countries[winner].name
+	var ln := countries[loser].name
+	match term:
+		"indemnity":
+			return "%s pagará %d de indenização a %s" % [ln if loser != viewer else "você", indemnity_amount(winner, loser), wn if winner != viewer else "você"]
+		"vassal":
+			if loser == viewer:
+				return "você se tornará vassalo de %s (tributo de %d%% da renda)" % [wn, VASSAL_TRIBUTE_PCT]
+			return "%s se tornará %s vassalo" % [ln, "seu" if winner == viewer else "vassalo de " + wn]
+		"annex":
+			return "%s será anexado por %s" % ["você" if loser == viewer else ln, "você" if winner == viewer else wn]
+	return "paz branca: ninguém perde nada"
+
+
 func _apply_peace(issuer: int, target: int, term: String) -> void:
 	var sc := war_score(issuer, target)
+	for i in range(peace_offers.size() - 1, -1, -1):
+		var of: Dictionary = peace_offers[i]
+		if _pair(int(of["from"]), int(of["to"])) == _pair(issuer, target):
+			peace_offers.remove_at(i)
 	_end_war(issuer, target)
 	truces[_pair(issuer, target)] = tick + TRUCE_DAYS
 	var involves_player := issuer == player_country or target == player_country
@@ -1625,6 +1680,20 @@ func _ai_peace() -> void:
 				break
 
 
+## Propostas de paz da IA aos jogadores: expiram em OFFER_DAYS; guerras acabadas as cancelam.
+func _ai_offers() -> void:
+	for i in range(peace_offers.size() - 1, -1, -1):
+		var o: Dictionary = peace_offers[i]
+		var a: int = int(o["from"])
+		var b: int = int(o["to"])
+		if not at_war(a, b) or tick - int(o["tick"]) >= AiDiplomacy.OFFER_DAYS:
+			peace_offers.remove_at(i)
+			peace_cd[_pair(a, b)] = tick + 30
+	for c in countries:
+		if c.is_alive() and not is_human(c.id):
+			AiDiplomacy.review(self, c)
+
+
 ## Ciclo da IA (ver AiBrain): só declara guerra se o plano do mês for "war"; em "pressure"
 ## ameaça o alvo e busca coalizão. Atacar um rival forte exige razão excepcional.
 func _ai_declare_war(c: Country, plan: Dictionary) -> void:
@@ -1856,6 +1925,7 @@ func _simulate_month() -> void:
 			c.treasury -= tribute
 			ov.treasury += tribute
 	_ai_peace()
+	_ai_offers()
 	for k in relations.keys():
 		var v: int = int(relations[k])
 		if at_war(int(k) / 1000, int(k) % 1000):
@@ -2551,6 +2621,16 @@ func state_hash() -> int:
 		h = _mix(h, int(relations[k]) + 1000)
 	for pr in alliances:
 		h = _mix(h, int(pr))
+	for o in peace_offers:
+		h = _mix(h, int(o["from"]) * 1000 + int(o["to"]))
+		h = _mix(h, int(o["winner"]))
+		h = _mix(h, str(o["term"]).length())
+		h = _mix(h, int(o["tick"]))
+	var pk: Array = peace_cd.keys()
+	pk.sort()
+	for k in pk:
+		h = _mix(h, int(k))
+		h = _mix(h, int(peace_cd[k]))
 	var tk: Array = truces.keys()
 	tk.sort()
 	for k in tk:
@@ -2737,6 +2817,8 @@ func serialize_state() -> Dictionary:
 		"embargoes": embargoes.duplicate(),
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
+		"peace_offers": peace_offers.duplicate(true),
+		"peace_cd": _dict_to_pairs(peace_cd),
 		"next_army_id": next_army_id,
 		"fleets": _fleets_to_list(),
 		"next_fleet_id": next_fleet_id,
@@ -2873,6 +2955,12 @@ func load_state(d: Dictionary) -> bool:
 	alliances.clear()
 	for pr in d.get("alliances", []):
 		alliances.append(int(pr))
+	peace_offers.clear()
+	for o in d.get("peace_offers", []):
+		peace_offers.append({"from": int(o["from"]), "to": int(o["to"]), "winner": int(o["winner"]), "term": str(o["term"]), "tick": int(o["tick"])})
+	peace_cd.clear()
+	for r in d.get("peace_cd", []):
+		peace_cd[int(r[0])] = int(r[1])
 	truces.clear()
 	for r in d.get("truces", []):
 		truces[int(r[0])] = int(r[1])

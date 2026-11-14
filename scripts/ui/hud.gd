@@ -169,12 +169,15 @@ func _ready() -> void:
 	_build_toast()
 	_build_windows()
 	_build_event_popup()
+	_build_offer_panel()
 
 	Events.game_event_changed.connect(_refresh_event)
 	Events.day_changed.connect(_on_day_changed)
 	Events.notice.connect(_show_toast)
 	Events.war_changed.connect(_refresh_top)
 	Events.war_changed.connect(_refresh_info)
+	Events.war_changed.connect(_refresh_offers)
+	Events.state_loaded.connect(_refresh_offers)
 	Events.month_changed.connect(_on_month_changed)
 	Events.treasury_changed.connect(_on_treasury_changed)
 	Events.speed_changed.connect(_on_speed_changed)
@@ -1343,6 +1346,72 @@ func _build_army_panel() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Propostas de paz da IA
+# ---------------------------------------------------------------------------
+var _offer_panel: PanelContainer
+var _offer_col: VBoxContainer
+
+
+func _build_offer_panel() -> void:
+	_offer_panel = PanelContainer.new()
+	_offer_panel.theme_type_variation = "CardPanel"
+	_offer_panel.anchor_left = 0.5
+	_offer_panel.anchor_right = 0.5
+	_offer_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_offer_panel.offset_top = 130
+	_offer_panel.custom_minimum_size = Vector2(560, 0)
+	_offer_panel.visible = false
+	_ui.add_child(_offer_panel)
+	_blockers.append(_offer_panel)
+	_offer_col = VBoxContainer.new()
+	_offer_col.add_theme_constant_override("separation", 10)
+	_offer_panel.add_child(_offer_col)
+
+
+func _refresh_offers() -> void:
+	if _offer_panel == null:
+		return
+	UIKit.clear(_offer_col)
+	var me: int = Game.player_country
+	var shown := 0
+	for o in Game.peace_offers:
+		if int(o["to"]) != me:
+			continue
+		shown += 1
+		var from: int = int(o["from"])
+		var winner: int = int(o["winner"])
+		var loser: int = from if winner == me else me
+		var head := UIKit.serif_label("%s propõe a paz" % Game.countries[from].name, 22)
+		_offer_col.add_child(head)
+		var term: String = str(o["term"])
+		_offer_col.add_child(UIKit.label(Game.peace_term_text(winner, loser, term, me), 18))
+		_offer_col.add_child(UIKit.kv_row("Pontuação de guerra",
+			"você %d  x  %d %s" % [Game.war_score(me, from), Game.war_score(from, me), Game.countries[from].name], UIKit.TEXT, 16))
+		var left: int = maxi(0, AiDiplomacy.OFFER_DAYS - (Game.tick - int(o["tick"])))
+		_offer_col.add_child(UIKit.label("A proposta expira em %d dias." % left, 15, UIKit.TEXT_DIM))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		_offer_col.add_child(row)
+		var yes := _make_button("Aceitar", Vector2(140, 46))
+		yes.pressed.connect(_on_offer_answer.bind(from, true))
+		row.add_child(yes)
+		var no := _make_button("Recusar", Vector2(140, 46))
+		no.pressed.connect(_on_offer_answer.bind(from, false))
+		row.add_child(no)
+		if shown >= 1:
+			break   # uma proposta por vez; as demais aparecem depois
+	_offer_panel.visible = shown > 0
+
+
+func _on_offer_answer(from: int, accept: bool) -> void:
+	if accept:
+		Game.submit_command(Cmd.accept_peace(from))
+	else:
+		Game.submit_command(Cmd.reject_peace(from))
+	_refresh_offers()
+
+
+# ---------------------------------------------------------------------------
 # Evento político
 # ---------------------------------------------------------------------------
 func _build_event_popup() -> void:
@@ -1687,6 +1756,7 @@ func _on_month_changed(_date: Dictionary) -> void:
 	_refresh_top()
 	_refresh_info()
 	_refresh_windows()
+	_refresh_offers()
 
 
 func _on_treasury_changed(cid: int) -> void:
@@ -1979,6 +2049,9 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 		var mine_sc := Game.war_score(me, t)
 		var their_sc := Game.war_score(t, me)
 		wc.add_child(UIKit.kv_row("Pontuação de guerra (você × eles)", "%d × %d" % [mine_sc, their_sc], UIKit.POS if mine_sc > their_sc else UIKit.NEG))
+		if not Game.is_human(t):
+			var wl: String = AiDiplomacy.willingness(Game, t, me)
+			wc.add_child(UIKit.kv_row("Disposição a negociar", wl.capitalize(), UIKit.POS if wl == "alta" else (UIKit.TEXT if wl == "média" else UIKit.NEG)))
 		var left_d := Game.WAR_MIN_DAYS - Game.war_days(me, t)
 		if left_d > 0:
 			wc.add_child(UIKit.label("Paz possível em %d dias." % left_d, 15, UIKit.TEXT_DIM))

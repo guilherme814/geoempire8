@@ -1176,7 +1176,19 @@ func _record_conquest(by: int, loser: int, pid: int) -> void:
 	var w: Dictionary = wars[i]
 	var by_a := by == int(w["a"])
 	var k := "ga" if by_a else "gb"
-	w[k] = int(w.get(k, 0)) + 1
+	var ko := "gb" if by_a else "ga"
+	var held: Dictionary = w.get("held", {})
+	w["held"] = held
+	if int(held.get(pid, -1)) == loser:
+		# retomada de uma província que o inimigo tinha conquistado nesta guerra:
+		# anula o ganho dele em vez de somar de novo ao meu (sem duplicar conquistas)
+		w[ko] = maxi(0, int(w.get(ko, 0)) - 1)
+		held.erase(pid)
+		if countries[by].capital == pid:
+			w["capb" if by_a else "capa"] = false   # recuperou a própria capital
+	else:
+		w[k] = int(w.get(k, 0)) + 1
+		held[pid] = by
 	if countries[loser].capital == pid:
 		w["capa" if by_a else "capb"] = true
 
@@ -1185,7 +1197,7 @@ func _new_war(x: int, y: int) -> Dictionary:
 	var lo := mini(x, y)
 	var hi := maxi(x, y)
 	return {"a": lo, "b": hi, "days": 0, "na": countries[lo].province_ids.size(), "nb": countries[hi].province_ids.size(),
-		"ga": 0, "gb": 0, "capa": false, "capb": false}
+		"ga": 0, "gb": 0, "capa": false, "capb": false, "held": {}}
 
 
 func allies_of(cid: int) -> Array:
@@ -2606,6 +2618,8 @@ func state_hash() -> int:
 	for w in wars:
 		h = _mix(h, int(w["a"]) * 1000 + int(w["b"]))
 		h = _mix(h, int(w["days"]))
+		h = _mix(h, int(w.get("ga", 0)) * 1000 + int(w.get("gb", 0)))
+		h = _mix(h, (1 if bool(w.get("capa", false)) else 0) + (2 if bool(w.get("capb", false)) else 0))
 	var sk: Array = sieges.keys()
 	sk.sort()
 	for pid in sk:
@@ -2895,7 +2909,12 @@ func load_state(d: Dictionary) -> bool:
 	next_fleet_id = int(d.get("next_fleet_id", 1))
 	wars.clear()
 	for w in d.get("wars", []):
-		wars.append({"a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"]),
+		var held_in: Dictionary = {}
+		var raw_held: Variant = w.get("held", {})
+		if typeof(raw_held) == TYPE_DICTIONARY:
+			for hk in raw_held:
+				held_in[int(hk)] = int(raw_held[hk])
+		wars.append({"held": held_in, "a": int(w["a"]), "b": int(w["b"]), "days": int(w["days"]),
 			"na": int(w.get("na", 1)), "nb": int(w.get("nb", 1)), "ga": int(w.get("ga", 0)), "gb": int(w.get("gb", 0)),
 			"capa": bool(w.get("capa", false)), "capb": bool(w.get("capb", false))})
 	if d.has("market"):

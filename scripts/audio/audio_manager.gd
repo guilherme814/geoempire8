@@ -9,6 +9,12 @@ extends Node
 const RATE_SFX := 22050
 const RATE_MUSIC := 16000
 const BPM := 70.0
+## Trilha própria do jogo (mp3 em assets/music), tocada em sequência e em loop.
+## Se não carregar (ou em modo headless), cai na música sintetizada.
+const TRACKS := [
+	"res://assets/music/empire_of_the_iron_dawn.mp3",
+	"res://assets/music/architect_of_empires.mp3",
+]
 
 static var instance: AudioManager
 static var music_on: bool = true
@@ -21,6 +27,8 @@ var _music_player: AudioStreamPlayer
 var _music_stream: AudioStreamWAV
 var _thread: Thread
 var _last_click_ms: int = 0
+var _playlist: Array = []
+var _track_i: int = 0
 
 
 func _ready() -> void:
@@ -43,9 +51,20 @@ func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 
 	if DisplayServer.get_name() != "headless":
-		_thread = Thread.new()
-		_thread.start(_render_music)
-		set_process(true)
+		for path in TRACKS:
+			if ResourceLoader.exists(path):
+				var st = load(path)
+				if st is AudioStream:
+					_playlist.append(st)
+		if not _playlist.is_empty():
+			_music_player.volume_db = -10.0
+			_music_player.finished.connect(_next_track)
+			_music_player.stream = _playlist[0]
+			set_process(true)
+		else:
+			_thread = Thread.new()
+			_thread.start(_render_music)
+			set_process(true)
 	else:
 		set_process(false)
 
@@ -55,7 +74,22 @@ func _exit_tree() -> void:
 		_thread.wait_to_finish()
 
 
+func _next_track() -> void:
+	if _playlist.is_empty():
+		return
+	_track_i = (_track_i + 1) % _playlist.size()
+	_music_player.stream = _playlist[_track_i]
+	if music_on:
+		_music_player.play()
+
+
 func _process(_delta: float) -> void:
+	if not _playlist.is_empty():
+		if music_on and not _music_player.playing:
+			_music_player.play()
+		elif not music_on and _music_player.playing:
+			_music_player.stop()
+		return
 	if _music_stream == null and _thread != null and _thread.is_started() and not _thread.is_alive():
 		_music_stream = _thread.wait_to_finish() as AudioStreamWAV
 		_music_player.stream = _music_stream

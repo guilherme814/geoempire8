@@ -70,6 +70,14 @@ jobs:
           exit 1
         fi
 
+    - name: Teste de aceitacao (ciclo central, determinismo, guerra/paz/vassalagem, salvar/carregar)
+      run: |
+        timeout 540 godot --headless --path . --script tools/acceptance_test.gd 2>&1 | tee acceptance.log || true
+        if grep -E "^FAIL|SCRIPT ERROR|Parse Error" acceptance.log || ! grep -q "^RESULT:" acceptance.log; then
+          echo "::error::Teste de aceitacao falhou (veja o log acima)"
+          exit 1
+        fi
+
     - name: Export APK
       run: |
         mkdir -p build

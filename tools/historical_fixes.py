@@ -25,7 +25,7 @@ def prov(name, owner_tag=None):
 
 def set_owner(name, from_tag, to_tag):
     p = prov(name, from_tag)
-    p['owner'] = tag_of[to_tag] if to_tag else None
+    p['owner'] = tag_of[to_tag] if to_tag else -1
 
 
 def provs_of(tag):
@@ -148,7 +148,7 @@ redistribute('OTT', total=25.4)   # inclui Constantina
 # pop_total de cada país = soma das províncias
 sums = {}
 for p in w['provinces']:
-    if p['owner'] is not None:
+    if p['owner'] >= 0:
         sums[p['owner']] = sums.get(p['owner'], 0) + p['pop']
 for c in w['countries']:
     if c['id'] in sums:

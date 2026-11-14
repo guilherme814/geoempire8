@@ -14,6 +14,7 @@ var tax_pct: int = 30
 var last_income: int = 0
 var last_expense: int = 0
 var literacy: int = 100       # alfabetização em décimos de % (100 = 10,0%)
+var research_pct: int = 0      # % da renda investido em pesquisa (0..RESEARCH_MAX_PCT)
 var tech_pts: int = 0         # pontos de tecnologia (nível = pontos / TECH_STEP)
 var lit_acc: int = 0          # resto fracionário do crescimento da alfabetização
 var sat: Array = [50, 50, 50, 50, 50, 50]   # satisfação (0-100) de cada classe social

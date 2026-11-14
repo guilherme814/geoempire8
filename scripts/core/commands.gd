@@ -36,6 +36,7 @@ const ANNEX_VASSAL := "annex_vassal"
 const ACCEPT_PEACE := "accept_peace"
 const REJECT_PEACE := "reject_peace"
 const ENACT_LAW := "enact_law"
+const SET_RESEARCH := "set_research"
 const SET_AUTO_FRONT := "set_auto_front"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
@@ -52,6 +53,11 @@ static func enact_law(group: int, option: int) -> Dictionary:
 ## Liga/desliga o avanço automático dos exércitos à linha de frente.
 static func set_auto_front(enabled: bool) -> Dictionary:
 	return {"type": SET_AUTO_FRONT, "enabled": enabled}
+
+
+## Define o investimento em pesquisa (% da renda, múltiplo de 5).
+static func set_research(pct: int) -> Dictionary:
+	return {"type": SET_RESEARCH, "pct": pct}
 
 
 static func set_tax(country: int, pct: int) -> Dictionary:

@@ -98,6 +98,27 @@ func run_all() -> void:
 	check("load_game le", g.load_game(path))
 	check("arquivo salvo preserva o hash", g.state_hash() == before)
 
+	# --- pesquisa tecnológica ---------------------------------------------
+	var rc = g.countries[g.player_country]
+	g.apply_command({"type": "set_research", "pct": 20, "issuer": g.player_country})
+	check("financiamento de pesquisa aplicado", rc.research_pct == 20)
+	g.apply_command({"type": "set_research", "pct": 99, "issuer": g.player_country})
+	check("financiamento limitado a 30%", rc.research_pct == g.RESEARCH_MAX_PCT)
+	g.apply_command({"type": "set_research", "pct": 0, "issuer": g.player_country})
+	var gain0: int = g.tech_gain(rc)
+	var cost0: int = int(g.estimate_monthly(rc)["upkeep_research"])
+	g.apply_command({"type": "set_research", "pct": 20, "issuer": g.player_country})
+	check("20% dobra os pontos de pesquisa", g.tech_gain(rc) == gain0 * 2, "%d -> %d" % [gain0, g.tech_gain(rc)])
+	check("pesquisa tem custo mensal", int(g.estimate_monthly(rc)["upkeep_research"]) > cost0)
+	rc.tech_pts = g.MAX_TECH * Country.TECH_STEP + Country.TECH_STEP - 5
+	g._simulate_month()
+	check("tecnologia respeita o nivel maximo", rc.tech_level() <= g.MAX_TECH, "nivel %d" % rc.tech_level())
+	var blob_r: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hr: int = g.state_hash()
+	g.load_state(blob_r)
+	check("pesquisa sobrevive ao salvar/carregar", g.countries[g.player_country].research_pct == 20 and g.state_hash() == hr)
+	g.apply_command({"type": "set_research", "pct": 0, "issuer": g.player_country})
+
 	# --- guerra, pontuação, vassalagem -----------------------------------
 	var pr := neighbors_pair()
 	check("achou par de vizinhos", pr.size() == 2)

@@ -24,6 +24,18 @@ const DEFAULT_PLAYER_TAG := "GBR"
 const EXPENSE_PER_PROVINCE := 1
 const REGIMENT_UPKEEP := 2
 const MIN_START_TREASURY := 300
+const MAX_TECH := 6                  # nível máximo de tecnologia
+const RESEARCH_MAX_PCT := 30         # teto do investimento em pesquisa (% da renda)
+## Eras tecnológicas: nome e o que cada nível libera além das construções (Province.BUILDINGS).
+const TECH_ERAS := [
+	{"name": "Manufatura artesanal", "extra": "Fragatas. Base do jogo."},
+	{"name": "Vapor estacionário", "extra": "Navios de linha. Universidades, ferrarias, hospitais e cais."},
+	{"name": "Vapor de transporte", "extra": "Vapores de guerra. Ferrovias."},
+	{"name": "Siderurgia moderna", "extra": "Siderúrgicas."},
+	{"name": "Telégrafo e burocracia", "extra": "+4% de imposto."},
+	{"name": "Fábricas mecanizadas", "extra": "+4% de imposto e exércitos 10% mais baratos."},
+	{"name": "Era industrial madura", "extra": "+4% de imposto e exércitos 20% mais baratos."},
+]
 # Nível de tecnologia inicial (x Country.TECH_STEP pontos) por país em 1836; o padrão é 0
 const TECH_START := {
 	"GBR": 4, "FRA": 3, "PRU": 3, "BEL": 3, "USA": 2, "NED": 2, "SUI": 2, "AUT": 2,
@@ -749,6 +761,12 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		countries[cid].tax_pct = clampi(int(cmd.get("pct", 30)), 0, 100)
 		Events.treasury_changed.emit(cid)
+
+	elif t == Cmd.SET_RESEARCH:
+		if issuer < 0 or issuer >= countries.size():
+			return
+		countries[issuer].research_pct = clampi(int(cmd.get("pct", 0)) / 5 * 5, 0, RESEARCH_MAX_PCT)
+		Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.SET_AUTO_FRONT:
 		if issuer >= 0 and issuer < countries.size():
@@ -1649,6 +1667,11 @@ const AI_INVEST_RESERVE_MONTHS := 8
 @warning_ignore("integer_division")
 func _ai_invest(c: Country) -> void:
 	var reserve: int = maxi(400, c.last_expense * AI_INVEST_RESERVE_MONTHS)
+	# pesquisa: só com folga de caixa e fora de guerra
+	if wars_of(c.id).is_empty() and c.treasury > reserve * 2:
+		c.research_pct = 15 if c.treasury > reserve * 6 else 10
+	else:
+		c.research_pct = 0
 	if not wars_of(c.id).is_empty():
 		reserve *= 2
 	var spare: int = c.treasury - reserve
@@ -1952,7 +1975,7 @@ func _simulate_month() -> void:
 			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"])) / 100)
 			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 			c.lit_acc = c.lit_acc % 100
-			c.tech_pts += maxi(0, 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"]))
+			c.tech_pts = mini(MAX_TECH * Country.TECH_STEP + Country.TECH_STEP - 1, c.tech_pts + tech_gain(c))
 			for gi in c.law_cd.size():
 				if int(c.law_cd[gi]) > 0:
 					c.law_cd[gi] = int(c.law_cd[gi]) - 1
@@ -2240,6 +2263,28 @@ func edu_levels(c: Country) -> Vector2i:
 	return Vector2i(sc, un)
 
 
+## Bônus por tecnologia: imposto (+4% por nível acima de 3) e manutenção do exército (-10% por nível acima de 4).
+func tech_tax_bonus(c: Country) -> int:
+	return 4 * maxi(0, mini(c.tech_level(), MAX_TECH) - 3)
+
+
+func tech_army_discount(c: Country) -> int:
+	return 10 * maxi(0, mini(c.tech_level(), MAX_TECH) - 4)
+
+
+## Pontos de tecnologia por mês SEM financiamento: base + alfabetização + escolas + universidades + leis.
+func tech_gain_base(c: Country) -> int:
+	var edu := edu_levels(c)
+	var lmod := law_mods(c)
+	return maxi(0, 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"]))
+
+
+## Pontos por mês com o financiamento atual (cada 20% da renda dobram a pesquisa).
+func tech_gain(c: Country) -> int:
+	var b := tech_gain_base(c)
+	return b + b * c.research_pct / 20
+
+
 func estimate_monthly(c: Country) -> Dictionary:
 	var tax := 0
 	var flat := 0
@@ -2270,22 +2315,24 @@ func estimate_monthly(c: Country) -> Dictionary:
 		prod += p.production()
 	var lm := law_mods(c)
 	tax = tax * (1000 + c.literacy / 5) / 1000      # alfabetização: até ~+19% de imposto
-	tax = tax * (100 + int(lm["tax"])) / 100
+	tax = tax * (100 + int(lm["tax"]) + tech_tax_bonus(c)) / 100
 	if c.stability < UNREST_TAX_STABILITY:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
-	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100
+	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100 * (100 - tech_army_discount(c)) / 100
 	var up_navy: int = c.ships * SHIP_UPKEEP
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
 	trade = trade * (100 + int(lm["trade"])) / 100
+	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
 	return {
+		"upkeep_research": up_research,
 		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
-		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -2699,6 +2746,7 @@ func state_hash() -> int:
 		h = _mix(h, c.ships)
 		h = _mix(h, c.literacy)
 		h = _mix(h, c.tech_pts)
+		h = _mix(h, c.research_pct)
 		h = _mix(h, c.lit_acc)
 		h = _mix(h, c.stability)
 		for v in c.sat:
@@ -2855,6 +2903,7 @@ func serialize_state() -> Dictionary:
 		"auto_front": _country_ints("auto_front"),
 		"overlord": _country_ints("overlord"),
 		"overlord_since": _country_ints("overlord_since"),
+		"research_pct": _country_ints("research_pct"),
 		"last_income": _country_ints("last_income"),
 		"last_expense": _country_ints("last_expense"),
 		"laws": _law_lists("laws"),
@@ -2989,6 +3038,9 @@ func load_state(d: Dictionary) -> bool:
 	for i in countries.size():
 		countries[i].overlord = int(ovl[i]) if i < ovl.size() else -1
 		countries[i].overlord_since = int(ovs[i]) if i < ovs.size() else 0
+	var rsp: Array = d.get("research_pct", [])
+	for i in countries.size():
+		countries[i].research_pct = int(rsp[i]) if i < rsp.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

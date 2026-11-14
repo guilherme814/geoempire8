@@ -1347,6 +1347,9 @@ func is_human(cid: int) -> bool:
 func _advance_ai() -> void:
 	if tick % 5 != 0:
 		return
+	var heg := -1
+	if tick % 30 == 0:
+		heg = AiBrain.hegemon(self)
 	for c in countries:
 		if not c.is_alive():
 			continue
@@ -1357,7 +1360,8 @@ func _advance_ai() -> void:
 				_auto_fleets(c)
 			continue
 		if tick % 30 == 0:
-			var plan := AiBrain.plan(self, c)
+			AiBrain.balance_drift(self, c, heg)
+			var plan := AiBrain.plan(self, c, heg)
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
 			_ai_declare_war(c, plan)
@@ -1389,12 +1393,18 @@ func _ai_declare_war(c: Country, plan: Dictionary) -> void:
 	if stage == "pressure":
 		AiBrain.apply_pressure(self, c, plan)
 		return
+	if stage == "defend":
+		AiBrain.court_allies(self, c, int(plan["target"]), false)
+		return
 	if stage != "war":
 		return
 	var chance: int = AI_WAR_CHANCE if int(plan["motive"]) < 30 else 4
 	if rng.randi_range(0, chance - 1) != 0:
 		return
-	_start_war(c.id, int(plan["target"]))
+	var tgt: int = int(plan["target"])
+	if is_human(tgt):
+		Events.notice.emit("%s declara guerra para %s." % [c.name, AiBrain.goal_label(str(plan["goal"]))])
+	_start_war(c.id, tgt)
 
 
 func _ai_build_ship(c: Country) -> void:
@@ -1459,7 +1469,17 @@ func _ai_pick_target(a: Army, c: Country, enemies: Array) -> int:
 	var cands: Array = []
 	for p in provinces:
 		if enemies.has(p.owner_id):
-			cands.append({"id": p.id, "d": origin.distance_squared_to(p.center)})
+			# Objetivos de campanha: núcleos próprios, capitais, portos e recursos raros pesam mais.
+			var f := 1.0
+			if p.core_owner == c.id:
+				f = 0.25
+			elif countries[p.owner_id].capital == p.id:
+				f = 0.36
+			elif p.port >= 0:
+				f = 0.7
+			elif AiBrain.RARE.has(str(p.resource_type)):
+				f = 0.8
+			cands.append({"id": p.id, "d": origin.distance_squared_to(p.center) * f})
 	cands.sort_custom(func(x, y): return x["d"] < y["d"] or (x["d"] == y["d"] and x["id"] < y["id"]))
 	for i in mini(cands.size(), 4):
 		var pid: int = int(cands[i]["id"])

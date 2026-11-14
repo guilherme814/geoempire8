@@ -20,6 +20,11 @@ func _initialize() -> void:
 			g.step()
 		var s := _snapshot()
 		print("ANO %2d | " % year, _fmt(s))
+		var vas := 0
+		for c in g.countries:
+			if c.is_alive() and c.overlord >= 0:
+				vas += 1
+		print("GUERRA ano %2d | guerras ativas %d | vassalos %d | propostas de paz pendentes %d | exercitos %d" % [year, g.wars.size(), vas, g.peace_offers.size(), g.armies.size()])
 		_check(year, s, start)
 	print("--- alertas ---")
 	for a in alerts:

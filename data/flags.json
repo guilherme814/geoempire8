@@ -1,1 +1,421 @@
-{"GBR": {"t": "uj"}, "FRA": {"t": "v", "c": ["#0055a4", "#ffffff", "#ef4135"]}, "RUS": {"t": "h", "c": ["#ffffff", "#0039a6", "#d52b1e"]}, "PRU": {"t": "h", "c": ["#111111", "#ffffff"]}, "AUT": {"t": "h", "c": ["#111111", "#fcd116"]}, "OTT": {"t": "plain", "c": "#c8102e"}, "ESP": {"t": "h", "c": ["#aa151b", "#f1bf00", "#f1bf00", "#aa151b"]}, "POR": {"t": "v", "c": ["#1d3f94", "#ffffff"]}, "NED": {"t": "h", "c": ["#ae1c28", "#ffffff", "#21468b"]}, "BEL": {"t": "v", "c": ["#111111", "#fcd116", "#ef3340"]}, "SWE": {"t": "nordic", "bg": "#006aa7", "fg": "#fecc00"}, "DEN": {"t": "nordic", "bg": "#c8102e", "fg": "#ffffff"}, "SAR": {"t": "cross", "bg": "#c8102e", "fg": "#ffffff"}, "SIC": {"t": "plain", "c": "#f4f1e6"}, "PAP": {"t": "v", "c": ["#fcd116", "#ffffff"]}, "TUS": {"t": "h", "c": ["#ffffff", "#c8102e"]}, "BAV": {"t": "h", "c": ["#ffffff", "#2a7fd0"]}, "SAX": {"t": "h", "c": ["#ffffff", "#2e8b3d"]}, "HAN": {"t": "h", "c": ["#fcd116", "#ffffff"]}, "WUR": {"t": "h", "c": ["#111111", "#c8102e"]}, "HES": {"t": "h", "c": ["#c8102e", "#ffffff"]}, "MEC": {"t": "h", "c": ["#2255aa", "#fcd116", "#c8102e"]}, "THU": {"t": "h", "c": ["#ffffff", "#2e8b3d"]}, "SUI": {"t": "cross", "bg": "#d52b1e", "fg": "#ffffff"}, "GRE": {"t": "cross", "bg": "#0d5eaf", "fg": "#ffffff"}, "SER": {"t": "h", "c": ["#c8102e", "#0c4076", "#ffffff"]}, "VAL": {"t": "v", "c": ["#0033a0", "#fcd116", "#c8102e"]}, "USA": {"t": "us"}, "MEX": {"t": "v", "c": ["#006847", "#ffffff", "#ce1126"]}, "CAM": {"t": "h", "c": ["#4a90d9", "#ffffff", "#4a90d9"]}, "HAI": {"t": "h", "c": ["#00209f", "#d21034"]}, "NGR": {"t": "h", "c": ["#fcd116", "#003893", "#ce1126"]}, "VEN": {"t": "h", "c": ["#fcd116", "#00247d", "#cf142b"]}, "ECU": {"t": "h", "c": ["#fcd116", "#0072ce", "#ef3340"]}, "PER": {"t": "v", "c": ["#d91023", "#ffffff", "#d91023"]}, "BOL": {"t": "h", "c": ["#d52b1e", "#f9e300", "#007a3d"]}, "BRZ": {"t": "rhomb", "bg": "#009b3a", "fg": "#ffdf00"}, "ARG": {"t": "h", "c": ["#74acdf", "#ffffff", "#74acdf"]}, "URU": {"t": "h", "c": ["#ffffff", "#2a5caa", "#ffffff", "#2a5caa"]}, "PAR": {"t": "h", "c": ["#d52b1e", "#ffffff", "#0038a8"]}, "CHL": {"t": "hc", "c": ["#ffffff", "#d52b1e"], "canton": "#0039a6"}, "HAW": {"t": "h", "c": ["#ffffff", "#c8102e", "#1f3f94", "#ffffff", "#c8102e", "#1f3f94"]}, "QNG": {"t": "plain", "c": "#f4c20d"}, "JAP": {"t": "disc", "bg": "#ffffff", "fg": "#bc002d"}, "KOR": {"t": "plain", "c": "#f4f1e6"}, "VNM": {"t": "plain", "c": "#f2c40a"}, "SIA": {"t": "plain", "c": "#a51931"}, "BUR": {"t": "plain", "c": "#b22234"}, "IRN": {"t": "h", "c": ["#239f40", "#ffffff", "#da0000"]}, "AFG": {"t": "plain", "c": "#1a1a1a"}, "NEP": {"t": "plain", "c": "#dc143c"}, "BIC": {"t": "hc", "c": ["#c8102e", "#ffffff", "#c8102e", "#ffffff", "#c8102e", "#ffffff"], "canton": "#1f3f94"}, "SIK": {"t": "plain", "c": "#f2a900"}, "EGY": {"t": "plain", "c": "#c8102e"}, "MOR": {"t": "plain", "c": "#c1272d"}, "TUN": {"t": "plain", "c": "#d52b1e"}, "OMA": {"t": "plain", "c": "#c8102e"}, "ETH": {"t": "h", "c": ["#078930", "#fcdd09", "#da121a"]}, "SOK": {"t": "h", "c": ["#ffffff", "#2e8b3d"]}, "MAD": {"t": "h", "c": ["#ffffff", "#c8102e", "#2e8b3d"]}, "HYD": {"t": "plain", "c": "#4a8a3a"}, "MYS": {"t": "h", "c": ["#c8102e", "#fcd116"]}, "TRV": {"t": "plain", "c": "#c8102e"}, "RAJ": {"t": "plain", "c": "#e07a1f"}, "MAR": {"t": "plain", "c": "#e8731a"}}
+{
+ "GBR": {
+  "t": "uj"
+ },
+ "FRA": {
+  "t": "v",
+  "c": [
+   "#0055a4",
+   "#ffffff",
+   "#ef4135"
+  ]
+ },
+ "RUS": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#0039a6",
+   "#d52b1e"
+  ]
+ },
+ "PRU": {
+  "t": "h",
+  "c": [
+   "#111111",
+   "#ffffff"
+  ]
+ },
+ "AUT": {
+  "t": "h",
+  "c": [
+   "#111111",
+   "#fcd116"
+  ]
+ },
+ "OTT": {
+  "t": "plain",
+  "c": "#c8102e"
+ },
+ "ESP": {
+  "t": "h",
+  "c": [
+   "#aa151b",
+   "#f1bf00",
+   "#f1bf00",
+   "#aa151b"
+  ]
+ },
+ "POR": {
+  "t": "v",
+  "c": [
+   "#1d3f94",
+   "#ffffff"
+  ]
+ },
+ "NED": {
+  "t": "h",
+  "c": [
+   "#ae1c28",
+   "#ffffff",
+   "#21468b"
+  ]
+ },
+ "BEL": {
+  "t": "v",
+  "c": [
+   "#111111",
+   "#fcd116",
+   "#ef3340"
+  ]
+ },
+ "SWE": {
+  "t": "nordic",
+  "bg": "#006aa7",
+  "fg": "#fecc00"
+ },
+ "DEN": {
+  "t": "nordic",
+  "bg": "#c8102e",
+  "fg": "#ffffff"
+ },
+ "SAR": {
+  "t": "cross",
+  "bg": "#c8102e",
+  "fg": "#ffffff"
+ },
+ "SIC": {
+  "t": "plain",
+  "c": "#f4f1e6"
+ },
+ "PAP": {
+  "t": "v",
+  "c": [
+   "#fcd116",
+   "#ffffff"
+  ]
+ },
+ "TUS": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#c8102e"
+  ]
+ },
+ "BAV": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#2a7fd0"
+  ]
+ },
+ "SAX": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#2e8b3d"
+  ]
+ },
+ "HAN": {
+  "t": "h",
+  "c": [
+   "#fcd116",
+   "#ffffff"
+  ]
+ },
+ "WUR": {
+  "t": "h",
+  "c": [
+   "#111111",
+   "#c8102e"
+  ]
+ },
+ "HES": {
+  "t": "h",
+  "c": [
+   "#c8102e",
+   "#ffffff"
+  ]
+ },
+ "MEC": {
+  "t": "h",
+  "c": [
+   "#2255aa",
+   "#fcd116",
+   "#c8102e"
+  ]
+ },
+ "THU": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#2e8b3d"
+  ]
+ },
+ "SUI": {
+  "t": "cross",
+  "bg": "#d52b1e",
+  "fg": "#ffffff"
+ },
+ "GRE": {
+  "t": "cross",
+  "bg": "#0d5eaf",
+  "fg": "#ffffff"
+ },
+ "SER": {
+  "t": "h",
+  "c": [
+   "#c8102e",
+   "#0c4076",
+   "#ffffff"
+  ]
+ },
+ "VAL": {
+  "t": "v",
+  "c": [
+   "#0033a0",
+   "#fcd116",
+   "#c8102e"
+  ]
+ },
+ "USA": {
+  "t": "us"
+ },
+ "MEX": {
+  "t": "v",
+  "c": [
+   "#006847",
+   "#ffffff",
+   "#ce1126"
+  ]
+ },
+ "CAM": {
+  "t": "h",
+  "c": [
+   "#4a90d9",
+   "#ffffff",
+   "#4a90d9"
+  ]
+ },
+ "HAI": {
+  "t": "h",
+  "c": [
+   "#00209f",
+   "#d21034"
+  ]
+ },
+ "NGR": {
+  "t": "h",
+  "c": [
+   "#fcd116",
+   "#003893",
+   "#ce1126"
+  ]
+ },
+ "VEN": {
+  "t": "h",
+  "c": [
+   "#fcd116",
+   "#00247d",
+   "#cf142b"
+  ]
+ },
+ "ECU": {
+  "t": "h",
+  "c": [
+   "#fcd116",
+   "#0072ce",
+   "#ef3340"
+  ]
+ },
+ "PER": {
+  "t": "v",
+  "c": [
+   "#d91023",
+   "#ffffff",
+   "#d91023"
+  ]
+ },
+ "BOL": {
+  "t": "h",
+  "c": [
+   "#d52b1e",
+   "#f9e300",
+   "#007a3d"
+  ]
+ },
+ "BRZ": {
+  "t": "rhomb",
+  "bg": "#009b3a",
+  "fg": "#ffdf00"
+ },
+ "ARG": {
+  "t": "h",
+  "c": [
+   "#74acdf",
+   "#ffffff",
+   "#74acdf"
+  ]
+ },
+ "URU": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#2a5caa",
+   "#ffffff",
+   "#2a5caa"
+  ]
+ },
+ "PAR": {
+  "t": "h",
+  "c": [
+   "#d52b1e",
+   "#ffffff",
+   "#0038a8"
+  ]
+ },
+ "CHL": {
+  "t": "hc",
+  "c": [
+   "#ffffff",
+   "#d52b1e"
+  ],
+  "canton": "#0039a6"
+ },
+ "HAW": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#c8102e",
+   "#1f3f94",
+   "#ffffff",
+   "#c8102e",
+   "#1f3f94"
+  ]
+ },
+ "QNG": {
+  "t": "plain",
+  "c": "#f4c20d"
+ },
+ "JAP": {
+  "t": "disc",
+  "bg": "#ffffff",
+  "fg": "#bc002d"
+ },
+ "KOR": {
+  "t": "plain",
+  "c": "#f4f1e6"
+ },
+ "VNM": {
+  "t": "plain",
+  "c": "#f2c40a"
+ },
+ "SIA": {
+  "t": "plain",
+  "c": "#a51931"
+ },
+ "BUR": {
+  "t": "plain",
+  "c": "#b22234"
+ },
+ "IRN": {
+  "t": "h",
+  "c": [
+   "#239f40",
+   "#ffffff",
+   "#da0000"
+  ]
+ },
+ "AFG": {
+  "t": "plain",
+  "c": "#1a1a1a"
+ },
+ "NEP": {
+  "t": "plain",
+  "c": "#dc143c"
+ },
+ "BIC": {
+  "t": "hc",
+  "c": [
+   "#c8102e",
+   "#ffffff",
+   "#c8102e",
+   "#ffffff",
+   "#c8102e",
+   "#ffffff"
+  ],
+  "canton": "#1f3f94"
+ },
+ "SIK": {
+  "t": "plain",
+  "c": "#f2a900"
+ },
+ "EGY": {
+  "t": "plain",
+  "c": "#c8102e"
+ },
+ "MOR": {
+  "t": "plain",
+  "c": "#c1272d"
+ },
+ "TUN": {
+  "t": "plain",
+  "c": "#d52b1e"
+ },
+ "OMA": {
+  "t": "plain",
+  "c": "#c8102e"
+ },
+ "ETH": {
+  "t": "h",
+  "c": [
+   "#078930",
+   "#fcdd09",
+   "#da121a"
+  ]
+ },
+ "SOK": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#2e8b3d"
+  ]
+ },
+ "MAD": {
+  "t": "h",
+  "c": [
+   "#ffffff",
+   "#c8102e",
+   "#2e8b3d"
+  ]
+ },
+ "HYD": {
+  "t": "plain",
+  "c": "#4a8a3a"
+ },
+ "MYS": {
+  "t": "h",
+  "c": [
+   "#c8102e",
+   "#fcd116"
+  ]
+ },
+ "TRV": {
+  "t": "plain",
+  "c": "#c8102e"
+ },
+ "RAJ": {
+  "t": "plain",
+  "c": "#e07a1f"
+ },
+ "MAR": {
+  "t": "plain",
+  "c": "#e8731a"
+ },
+ "ABD": {
+  "t": "h",
+  "c": [
+   "#2e7d4f",
+   "#ffffff"
+  ]
+ }
+}

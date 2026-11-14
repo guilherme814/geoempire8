@@ -178,7 +178,7 @@
   "ind": 2,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -193,7 +193,7 @@
   "ind": 3,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -208,7 +208,7 @@
   "ind": 2,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 2,
   "mil": 2
@@ -316,8 +316,8 @@
   "mil": 2
  },
  "MEX": {
-  "gov": "republica_federal_instavel",
-  "orient": "liberalismo_conservador_em_disputa",
+  "gov": "republica_centralista_instavel",
+  "orient": "centralismo_santannista",
   "stab": 1,
   "cent": 2,
   "cap": 2,
@@ -340,7 +340,7 @@
   "ind": 1,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -355,7 +355,7 @@
   "ind": 1,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -370,7 +370,7 @@
   "ind": 3,
   "urb": 3,
   "trade": 5,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 3,
   "mil": 2
@@ -385,7 +385,7 @@
   "ind": 2,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 3,
   "navy": 2,
   "mil": 2,
@@ -436,14 +436,14 @@
   "ind": 1,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
  },
  "PER": {
-  "gov": "confederacao",
-  "orient": "conservadorismo_protetoral",
+  "gov": "republica_em_guerra_civil",
+  "orient": "caudilhismo_pre_confederacao",
   "stab": 1,
   "cent": 2,
   "cap": 2,
@@ -451,7 +451,7 @@
   "ind": 1,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -466,7 +466,7 @@
   "ind": 2,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 2,
   "mil": 2
@@ -583,7 +583,7 @@
   "ind": 1,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -598,7 +598,7 @@
   "ind": 2,
   "urb": 1,
   "trade": 2,
-  "slavery": false,
+  "slavery": true,
   "army": 1,
   "navy": 1,
   "mil": 2
@@ -653,5 +653,20 @@
     "0": 2
    }
   }
+ },
+ "ABD": {
+  "gov": "emirado_de_resistencia",
+  "orient": "islamismo_sufi_anticolonial",
+  "stab": 3,
+  "cent": 2,
+  "cap": 1,
+  "tax": 1,
+  "ind": 1,
+  "urb": 1,
+  "trade": 1,
+  "slavery": true,
+  "army": 2,
+  "navy": 0,
+  "mil": 3
  }
 }

@@ -158,3 +158,10 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - O jogador responde pelo painel no topo (Aceitar/Recusar) → comandos `accept_peace` / `reject_peace`. Ofertas e carências entram em salvar/carregar e no hash.
 - Propostas do jogador à IA são aceitas conforme o cansaço (branca 15, indenização 30, vassalo 55, anexação 70); a janela de Diplomacia mostra a "Disposição a negociar".
 - Parte C (personalidades diplomáticas) e contrapropostas: próximas etapas.
+
+
+## Auditoria técnica (etapas 1 e 3)
+
+- `tools/acceptance_test.gd`: teste de aceitação headless (mundo, determinismo, salvar/carregar, guerra/paz/vassalagem). Roda no CI e falha o build.
+- `tools/economy_audit.gd`: simula 10 anos sem jogador e imprime estatísticas anuais (tesouro, saldo, preços, desemprego, PIB, população) e alertas. Informativo no CI.
+- Corrigidos: bônus de capital nunca aplicado, conquista contada em dobro, placar fora do hash, renda/despesa fora do save, erro de script ao fundir exércitos, IA que nunca investia.

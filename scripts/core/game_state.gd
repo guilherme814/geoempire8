@@ -1654,7 +1654,7 @@ func _ai_invest(c: Country) -> void:
 	var spare: int = c.treasury - reserve
 	if spare < 150:
 		return
-	var budget: int = clampi(spare / 800, 1, 5)
+	var budget: int = clampi(spare / 800, 1, 5) + clampi(spare / 100000, 0, 20)   # potências ricas investem mais por ciclo
 	for level in 3:
 		for kind in AI_BUILD_ORDER:
 			for pid in c.province_ids:

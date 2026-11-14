@@ -78,6 +78,11 @@ jobs:
           exit 1
         fi
 
+    - name: Auditoria de economia (10 anos sem jogador; informativo)
+      run: |
+        timeout 540 godot --headless --path . --script tools/economy_audit.gd 2>&1 | tee economy.log || true
+        grep -E "SCRIPT ERROR|Parse Error" economy.log && exit 1 || true
+
     - name: Export APK
       run: |
         mkdir -p build

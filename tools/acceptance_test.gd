@@ -82,14 +82,14 @@ func run_all() -> void:
 			game_tot += gg
 			rows.append([c.tag, rr, gg])
 	rows.sort_custom(func(x, y): return x[1] > y[1])
-	var worst := 1.0
+	var gdp_dev := 1.0
 	var worst_tag := ""
 	for i in 12:
 		var ratio: float = (rows[i][2] / game_tot) / (rows[i][1] / real_tot)
-		if absf(ratio - 1.0) > absf(worst - 1.0):
-			worst = ratio
+		if absf(ratio - 1.0) > absf(gdp_dev - 1.0):
+			gdp_dev = ratio
 			worst_tag = rows[i][0]
-	check("PIB dos 12 maiores segue a participacao historica (±35%)", worst > 0.65 and worst < 1.35, "pior %s x%.2f" % [worst_tag, worst])
+	check("PIB dos 12 maiores segue a participacao historica (±35%)", gdp_dev > 0.65 and gdp_dev < 1.35, "pior %s x%.2f" % [worst_tag, gdp_dev])
 	check("usd_per_gold calibrado", g.usd_per_gold > 0.0, "%.2f" % g.usd_per_gold)
 
 	# --- simulação + desempenho ------------------------------------------

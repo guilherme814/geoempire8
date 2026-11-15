@@ -256,6 +256,46 @@ func run_all() -> void:
 	check("tecnologia de producao aumenta a renda", inc_b > inc_a or inc_a < 200, "%d -> %d" % [inc_a, inc_b])
 	rc.techs = saved_techs
 	rc.fx_dirty = true
+	# novas construções liberadas por tecnologia
+	var bp: Province = g.provinces[int(rc.province_ids[0])]
+	var req_ok: bool = true
+	var n_req: int = 0
+	for bk in Province.BUILDINGS.keys():
+		var rq: int = int(Province.BUILDINGS[bk].get("req", -1))
+		if rq >= 0:
+			n_req += 1
+			if rq >= Techs.ALL.size() or not Province.EXTRA_KINDS.has(bk):
+				req_ok = false
+	check("10 construcoes por tecnologia com req valido e persistente", req_ok and n_req == 10, "%d" % n_req)
+	var gate_saved: Array = rc.techs.duplicate()
+	var treas_saved: int = rc.treasury
+	var lv_bank: int = bp.building_level("bank")
+	var lv_acad: int = bp.building_level("academy")
+	var lv_lab: int = bp.building_level("lab")
+	rc.treasury = 100000000
+	rc.techs.erase(7)
+	rc.fx_dirty = true
+	check("banco bloqueado sem a tecnologia", not g.can_build(bp.id, g.player_country, "bank"))
+	rc.techs.append(7)
+	check("banco liberado com Bancos comerciais", g.can_build(bp.id, g.player_country, "bank"))
+	bp.set_building_level("bank", 0)
+	var tax0: int = bp.monthly_tax(30)
+	bp.set_building_level("bank", 2)
+	check("banco aumenta o imposto da provincia", bp.monthly_tax(30) > tax0 or bp.production() < 20, "%d -> %d" % [tax0, bp.monthly_tax(30)])
+	bp.set_building_level("academy", 0)
+	var mp0: int = bp.manpower_max()
+	bp.set_building_level("academy", 3)
+	check("academia aumenta a mao de obra", bp.manpower_max() > mp0 or bp.population < 3000)
+	bp.set_building_level("lab", 0)
+	var lab0: int = g.tech_gain_base(rc)
+	bp.set_building_level("lab", 2)
+	check("laboratorio aumenta pontos de pesquisa", g.tech_gain_base(rc) >= lab0 + 12, "%d -> %d" % [lab0, g.tech_gain_base(rc)])
+	bp.set_building_level("bank", lv_bank)
+	bp.set_building_level("academy", lv_acad)
+	bp.set_building_level("lab", lv_lab)
+	rc.techs = gate_saved
+	rc.treasury = treas_saved
+	rc.fx_dirty = true
 	var ai_res: int = 0
 	for cc in g.countries:
 		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:

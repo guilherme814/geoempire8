@@ -1464,6 +1464,9 @@ func can_build(pid: int, issuer: int, kind: String) -> bool:
 		return false
 	if countries[issuer].tech_level() < int(Province.BUILDINGS[kind]["tech"]):
 		return false
+	var req: int = int(Province.BUILDINGS[kind].get("req", -1))
+	if req >= 0 and not countries[issuer].techs.has(req):
+		return false
 	if Province.FACTORIES.has(kind) and p.factory != "" and p.factory != kind:
 		return false   # uma fábrica por província
 	return countries[issuer].treasury >= build_total_cost(p, kind)
@@ -1670,7 +1673,8 @@ func _advance_ai() -> void:
 			_auto_fleets(c)
 
 
-const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university"]
+const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university",
+	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant"]
 const AI_INVEST_RESERVE_MONTHS := 8
 
 
@@ -1981,7 +1985,7 @@ func _simulate_month() -> void:
 		# Crescimento demográfico: +0,1% ao mês.
 		var own: int = p.owner_id
 		var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
-		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000
+		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
 		# Recuperação de mão de obra.
 		var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 		if p.manpower < mx:
@@ -1991,7 +1995,7 @@ func _simulate_month() -> void:
 		if c.is_alive():
 			var edu := edu_levels(c)
 			var lmod := law_mods(c)
-			var lit_base: int = 100 + (edu.x + 2 * edu.y) * 400 / maxi(1, c.province_ids.size())
+			var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
 			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
 			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 			c.lit_acc = c.lit_acc % 100
@@ -2332,6 +2336,14 @@ func _update_politics(c: Country) -> void:
 				Events.notice.emit("Revolta em %s! O país está instável." % p.name)
 
 
+## Soma dos níveis de um tipo de construção em todas as províncias do país.
+func bld_total(c: Country, kind: String) -> int:
+	var n := 0
+	for pid in c.province_ids:
+		n += int(provinces[pid].bld.get(kind, 0))
+	return n
+
+
 ## Soma dos níveis de escolas (x) e universidades (y) do país.
 func edu_levels(c: Country) -> Vector2i:
 	var sc := 0
@@ -2422,7 +2434,7 @@ func _research_step(c: Country) -> void:
 func tech_gain_base(c: Country) -> int:
 	var edu := edu_levels(c)
 	var lmod := law_mods(c)
-	return maxi(0, (6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"])) * (100 + int(tech_fx(c)["tech"])) / 100)
+	return maxi(0, (6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + 6 * bld_total(c, "lab") + int(lmod["tech"])) * (100 + int(tech_fx(c)["tech"])) / 100)
 
 
 ## Pontos por mês com o financiamento atual (cada 20% da renda dobram a pesquisa).
@@ -2445,7 +2457,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_infra := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
-		for ik in ["hospital", "market", "dock"]:
+		for ik in ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph"]:
 			up_infra += int(p.bld.get(ik, 0)) * int(Province.GOV_UPKEEP[ik])
 		tax += p.monthly_tax(c.tax_pct)
 		industry += p.factory_profit()
@@ -2471,12 +2483,13 @@ func estimate_monthly(c: Country) -> Dictionary:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
-	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100 * (100 - tech_army_discount(c)) / 100
-	var up_navy: int = c.ships * SHIP_UPKEEP
+	var arsenal_pct: int = mini(20, 2 * bld_total(c, "arsenal"))
+	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100 * (100 - mini(80, tech_army_discount(c) + arsenal_pct)) / 100
+	var up_navy: int = c.ships * SHIP_UPKEEP * (100 - mini(50, 10 * bld_total(c, "shipyard"))) / 100
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"])) / 100
+	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
 	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
 	return {
 		"upkeep_research": up_research,

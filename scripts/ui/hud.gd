@@ -50,6 +50,8 @@ const BUILD_ICON := {
 	"mine": "pick", "farm": "wheat", "logging": "tree", "workshop": "hammer",
 	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot",
 	"market": "stall", "railway": "rail", "dock": "anchor",
+	"library": "book", "sanitation": "cross", "academy": "shield", "arsenal": "anvil", "lab": "bulb",
+	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars",
 }
 const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory", "inf": "rail"}
 const TAB_ORDER := ["gov", "res", "ind", "inf"]
@@ -583,6 +585,9 @@ func _refresh_build_panel() -> void:
 		elif tech < int(b["tech"]):
 			btn.text = "Tecnologia %d" % int(b["tech"])
 			btn.disabled = true
+		elif int(b.get("req", -1)) >= 0 and not Game.countries[me].techs.has(int(b["req"])):
+			btn.text = "Requer:\n%s" % str(Techs.ALL[int(b["req"])]["name"])
+			btn.disabled = true
 		elif Province.FACTORIES.has(k) and p.factory != "" and p.factory != k:
 			btn.text = "Outra fábrica"
 			btn.disabled = true
@@ -902,6 +907,15 @@ func _tech_cell(parent: Control, c: Country, tid: int, era_open: bool) -> void:
 	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fx.custom_minimum_size.x = 120
 	tv.add_child(fx)
+	var opens: Array = []
+	for bk in Province.BUILDINGS.keys():
+		if int(Province.BUILDINGS[bk].get("req", -1)) == tid:
+			opens.append(str(Province.BUILDINGS[bk]["name"]))
+	if not opens.is_empty():
+		var ol := UIKit.label("Libera: %s" % ", ".join(opens), 13, UIKit.GOLD)
+		ol.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ol.custom_minimum_size.x = 120
+		tv.add_child(ol)
 	if owned:
 		tv.add_child(UIKit.label("Dominada", 13, UIKit.POS))
 	elif active:

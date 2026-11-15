@@ -182,3 +182,8 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - Efeitos reais: produção, lucro industrial, comércio, imposto, custo do exército, mão de obra, ataque e defesa em batalha terrestre, força naval, alfabetização, velocidade de pesquisa, estabilidade e crescimento populacional.
 - Janela de pesquisa: uma linha por era e três colunas por categoria, com efeito, custo e botão "Pesquisar". Comando de rede: `set_research_target`.
 - Salvamentos antigos são convertidos (nível = pontos ÷ 400).
+
+## Construções por tecnologia
+Dez construções novas só podem ser erguidas depois de dominar uma tecnologia específica (o cartão da tecnologia mostra "Libera: …" e o botão de construir mostra "Requer: …"):
+Biblioteca pública (Alfabetização paroquial), Academia militar (Escola de oficiais), Esgoto e água encanada (Sanidade pública), Arsenal nacional (Fuzil raiado), Laboratório de pesquisa (Universidade de pesquisa), Irrigação (Fertilizantes químicos), Usina elétrica (Eletricidade industrial), Banco (Bancos comerciais), Estaleiro naval (Casco a vapor e hélice) e Central telegráfica (Telégrafo elétrico).
+Efeitos: imposto provincial, produção, mão de obra, crescimento populacional, alfabetização, pontos de pesquisa, custo do exército, custo da frota e comércio. A IA também constrói.

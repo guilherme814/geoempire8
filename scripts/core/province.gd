@@ -53,8 +53,20 @@ const BUILDINGS := {
 	"market": {"tab": "inf", "name": "Mercado", "cost": 160, "tech": 0, "desc": "+8% de imposto da província por nível"},
 	"railway": {"tab": "inf", "name": "Ferrovia", "cost": 220, "tech": 2, "desc": "+12% de produção do recurso por nível"},
 	"dock": {"tab": "inf", "name": "Cais comercial", "cost": 200, "tech": 1, "desc": "+60 de comércio marítimo (só litoral)"},
+	# Construções liberadas por uma tecnologia específica ("req" = id em Techs.ALL).
+	"library": {"tab": "gov", "name": "Biblioteca pública", "cost": 130, "tech": 0, "req": 4, "desc": "Conta como +1 escola na alfabetização"},
+	"sanitation": {"tab": "gov", "name": "Esgoto e água encanada", "cost": 200, "tech": 0, "req": 11, "desc": "Crescimento populacional +0,04%/mês por nível"},
+	"academy": {"tab": "gov", "name": "Academia militar", "cost": 190, "tech": 0, "req": 3, "desc": "Mão de obra militar +0,3% da população por nível"},
+	"arsenal": {"tab": "gov", "name": "Arsenal nacional", "cost": 260, "tech": 0, "req": 14, "desc": "Manutenção do exército -2% por nível (máx. -20%)"},
+	"lab": {"tab": "gov", "name": "Laboratório de pesquisa", "cost": 340, "tech": 0, "req": 22, "desc": "+6 pontos de pesquisa por mês por nível"},
+	"irrigation": {"tab": "res", "name": "Irrigação", "cost": 150, "tech": 0, "req": 13, "desc": "+25% produção agrícola por nível"},
+	"power_plant": {"tab": "ind", "name": "Usina elétrica", "cost": 380, "tech": 0, "req": 30, "desc": "+20% produção de recursos por nível"},
+	"bank": {"tab": "inf", "name": "Banco", "cost": 240, "tech": 0, "req": 7, "desc": "+6% de imposto da província por nível"},
+	"shipyard": {"tab": "inf", "name": "Estaleiro naval", "cost": 280, "tech": 0, "req": 15, "desc": "Manutenção da frota -10% por nível (só litoral)"},
+	"telegraph": {"tab": "inf", "name": "Central telegráfica", "cost": 220, "tech": 0, "req": 19, "desc": "+5% de comércio nacional por nível (máx. +30%)"},
 }
-const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging", "hospital", "market", "railway", "dock"]
+const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging", "hospital", "market", "railway", "dock",
+	"library", "sanitation", "academy", "arsenal", "lab", "irrigation", "power_plant", "bank", "shipyard", "telegraph"]
 const MINE_RES := ["coal", "iron", "salt", "gold"]
 
 ## ECONOMIA DOS EDIFÍCIOS (salários, impostos e materiais de obra).
@@ -66,15 +78,19 @@ const FACTORIES_PRIVATE := true
 const WAGE_PCT := {
 	"mine": 35, "farm": 28, "logging": 30, "workshop": 25,
 	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38, "railway": 28,
+	"irrigation": 26, "power_plant": 30,
 }
 ## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
 ## SCHOOL_UPKEEP / UNIVERSITY_UPKEEP do game_state; o quartel passa a ter soldo de instrutores).
-const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3, "market": 2, "dock": 3}
+const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3, "market": 2, "dock": 3,
+	"library": 1, "sanitation": 3, "academy": 4, "arsenal": 4, "lab": 6, "bank": 3, "shipyard": 4, "telegraph": 3}
 ## Empregos criados por nível (informativo: aparece na interface).
 const JOBS_PER_LEVEL := {
 	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
 	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340,
 	"hospital": 40, "market": 90, "railway": 200, "dock": 150,
+	"library": 10, "sanitation": 50, "academy": 25, "arsenal": 60, "lab": 35, "irrigation": 120,
+	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40,
 }
 ## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
 ## de mercado do país, junto com o custo base (não há estoque no jogo).
@@ -94,6 +110,16 @@ const BUILD_MATERIALS := {
 	"market": {"timber": 180, "tools": 30},
 	"railway": {"iron": 250, "timber": 150, "tools": 60},
 	"dock": {"timber": 250, "iron": 80, "tools": 40},
+	"library": {"timber": 120},
+	"sanitation": {"timber": 100, "iron": 120, "tools": 40},
+	"academy": {"timber": 200, "iron": 60},
+	"arsenal": {"iron": 250, "timber": 150, "tools": 60},
+	"lab": {"timber": 200, "tools": 120, "iron": 40},
+	"irrigation": {"timber": 100, "tools": 60},
+	"power_plant": {"iron": 300, "coal": 200, "tools": 100},
+	"bank": {"timber": 150, "tools": 30},
+	"shipyard": {"timber": 350, "iron": 150, "tools": 60},
+	"telegraph": {"iron": 120, "tools": 60},
 }
 
 var id: int = 0
@@ -212,7 +238,8 @@ func _extraction_levels() -> Dictionary:
 	return {
 		"workshop": workshop, "mine": int(bld.get("mine", 0)),
 		"farm": int(bld.get("farm", 0)), "logging": int(bld.get("logging", 0)),
-		"railway": int(bld.get("railway", 0)),
+		"railway": int(bld.get("railway", 0)), "irrigation": int(bld.get("irrigation", 0)),
+		"power_plant": int(bld.get("power_plant", 0)),
 	}
 
 
@@ -221,6 +248,9 @@ func _units_for(lv: Dictionary) -> int:
 	var boost: int = 25 * int(lv["workshop"]) + 35 * (int(lv["mine"]) + int(lv["farm"])) + 12 * int(lv["railway"])
 	if resource_type == "timber":
 		boost += 35 * int(lv["logging"])
+	if resource_type != "timber" and not (resource_type in MINE_RES):
+		boost += 25 * int(lv["irrigation"])
+	boost += 20 * int(lv["power_plant"])
 	return base_units() * (100 + boost) / 100
 
 
@@ -262,8 +292,10 @@ func can_host(kind: String) -> bool:
 		return resource_type != "timber" and not (resource_type in MINE_RES)
 	if kind == "logging":
 		return resource_type == "timber" or terrain == "forest" or terrain == "jungle"
-	if kind == "dock":
+	if kind == "dock" or kind == "shipyard":
 		return port >= 0
+	if kind == "irrigation":
+		return resource_type != "timber" and not (resource_type in MINE_RES)
 	return BUILDINGS.has(kind)
 
 
@@ -276,13 +308,13 @@ func production() -> int:
 @warning_ignore("integer_division")
 func monthly_tax(tax_pct: int) -> int:
 	var base_tax: int = production() * tax_pct / 100
-	return FLAT_TAX + base_tax * (100 + 8 * int(bld.get("market", 0))) / 100
+	return FLAT_TAX + base_tax * (100 + 8 * int(bld.get("market", 0)) + 6 * int(bld.get("bank", 0))) / 100
 
 
 ## Mão de obra máxima: 2% da população (+1% por nível de quartel).
 @warning_ignore("integer_division")
 func manpower_max() -> int:
-	return population * (200 + 100 * barracks) / 10000
+	return population * (200 + 100 * barracks + 30 * int(bld.get("academy", 0))) / 10000
 
 
 static func base_price(good: String) -> int:
@@ -360,8 +392,8 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 		r["wages"] = w
 		r["operating"] = -w
 		r["net"] = -w
-		if kind == "market":
-			r["revenue"] = production() * tax_pct / 100 * 8 * level / 100
+		if kind == "market" or kind == "bank":
+			r["revenue"] = production() * tax_pct / 100 * (8 if kind == "market" else 6) * level / 100
 			r["net"] = int(r["revenue"]) - w
 	return r
 

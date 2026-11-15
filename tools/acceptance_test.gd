@@ -144,8 +144,7 @@ func run_all() -> void:
 	check("aparencia dos governantes valida", bad_look.is_empty(), str(bad_look))
 	check("maioria dos paises com 4+ sucessores", rich >= 50, "%d paises" % rich)
 	var all_brief: bool = true
-	for cid_b in g.countries.keys():
-		var cb: Country = g.countries[cid_b]
+	for cb in g.countries:
 		if cb.province_ids.is_empty():
 			continue
 		var bb: Dictionary = Leaders.briefing(cb.tag)

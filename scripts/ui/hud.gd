@@ -123,6 +123,8 @@ var _btn_army_disband: Button
 var _toast_panel: PanelContainer
 var _toast: Label
 var _toast_seq: int = 0
+var _leader_tag: String = ""
+var _leader_idx: int = -1
 var _event_panel: PanelContainer
 var _event_title: Label
 var _event_text: Label
@@ -348,6 +350,7 @@ func _build_sidebar() -> void:
 	panel.add_child(col)
 	var defs: Array = [
 		["politics", "scales", "Política: classes sociais e ideologias"],
+		["leaders", "crown", "Governantes: líder atual e sucessores"],
 		["laws", "scroll", "Leis: estrutura de poder, economia e direitos"],
 		["diplo", "flag", "Diplomacia: relações, alianças, guerra, paz e vassalos"],
 		["tech", "bulb", "Pesquisa: tecnologia, financiamento e desbloqueios"],
@@ -668,6 +671,7 @@ func _fit_windows() -> void:
 func _build_windows() -> void:
 	_body.resized.connect(_fit_windows)
 	_make_window("politics", "Política interna", Vector2(900, 540), "scales")
+	_make_window("leaders", "Governantes", Vector2(1000, 640), "crown")
 	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
 	_make_window("diplo", "Diplomacia", Vector2(980, 600), "flag")
 	_make_window("tech", "Pesquisa tecnológica", Vector2(900, 580), "bulb")
@@ -716,6 +720,8 @@ func _refresh_windows() -> void:
 		_refresh_market()
 	if _windows["politics"].visible:
 		_refresh_politics()
+	if _windows["leaders"].visible:
+		_refresh_leaders()
 	if _windows["laws"].visible:
 		_refresh_laws()
 	if _windows["diplo"].visible:
@@ -1027,6 +1033,72 @@ func _big_number(parent: Control, title: String, value: String, color: Color) ->
 	var v := UIKit.serif_label(value, 28, color)
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(v)
+
+
+func _leader_label(text: String, size: int, color: Color, width: float) -> Label:
+	var l := UIKit.label(text, size, color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = width
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return l
+
+
+func _refresh_leaders() -> void:
+	var body: VBoxContainer = _win_bodies["leaders"]
+	UIKit.clear(body)
+	var c := Game.countries[Game.player_country]
+	var y: int = Game.clock.year
+	var m: int = Game.clock.month
+	var cur: Dictionary = Leaders.current(c.tag, y, m)
+	if cur.is_empty():
+		body.add_child(UIKit.label("Não há governantes registrados para este país.", 18, UIKit.TEXT_DIM))
+		return
+	var info: Dictionary = Leaders.info(c.tag)
+	var idx: int = Leaders.index_at(c.tag, y, m)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	body.add_child(row)
+
+	var left := _card(row, "Governante atual", "crown")
+	(left.get_parent() as Control).size_flags_stretch_ratio = 1.0
+	left.add_child(LeaderPortrait.make(200.0, c.color, info, cur))
+	var nm := UIKit.serif_label(str(cur["name"]), 26, UIKit.GOLD_BRIGHT)
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size.x = 250
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	left.add_child(nm)
+	left.add_child(_leader_label(str(cur["title"]), 17, UIKit.TEXT, 250))
+	left.add_child(_leader_label("No poder desde %d" % int(cur["from"]), 15, UIKit.TEXT_DIM, 250))
+	var end_y: int = Leaders.end_year(c.tag, idx)
+	if end_y > 0:
+		left.add_child(_leader_label("Até %d" % end_y, 15, UIKit.TEXT_DIM, 250))
+	if idx > 0:
+		var prev: Dictionary = Leaders.list(c.tag)[idx - 1]
+		left.add_child(HSeparator.new())
+		left.add_child(_leader_label("Antecessor: %s" % str(prev["name"]), 15, UIKit.TEXT_DIM, 250))
+
+	var right := _card(row, "Sucessores históricos", "scroll")
+	(right.get_parent() as Control).size_flags_stretch_ratio = 2.6
+	var succ: Array = Leaders.successors(c.tag, y, m, 6)
+	if succ.is_empty():
+		right.add_child(UIKit.label("Não há sucessores registrados no período histórico do jogo.", 16, UIKit.TEXT_DIM))
+	else:
+		var grid := GridContainer.new()
+		grid.columns = 3
+		grid.add_theme_constant_override("h_separation", 12)
+		grid.add_theme_constant_override("v_separation", 12)
+		right.add_child(grid)
+		for e in succ:
+			var ent: Dictionary = e
+			var cell := VBoxContainer.new()
+			cell.add_theme_constant_override("separation", 2)
+			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			grid.add_child(cell)
+			cell.add_child(LeaderPortrait.make(104.0, c.color, info, ent))
+			cell.add_child(_leader_label(str(ent["name"]), 16, UIKit.GOLD_BRIGHT, 150))
+			cell.add_child(_leader_label(str(ent["title"]), 13, UIKit.TEXT_DIM, 150))
+			cell.add_child(_leader_label("Assume em %d" % int(ent["from"]), 14, UIKit.TEXT, 150))
+	right.add_child(UIKit.label("Os governantes seguem a história real; o rumo do seu país pode divergir dela.", 14, UIKit.TEXT_DIM))
 
 
 func _refresh_market() -> void:
@@ -1835,10 +1907,29 @@ func _input(event: InputEvent) -> void:
 func _on_month_changed(_date: Dictionary) -> void:
 	if int(_date.get("month", 0)) == 1 and not Net.is_online() and _root.visible:
 		Game.save_game("user://autosave.json")   # autosave anual (só local)
+	_check_succession()
 	_refresh_top()
 	_refresh_info()
 	_refresh_windows()
 	_refresh_offers()
+
+
+## Avisa quando o governante do país do jogador muda (dado histórico, só apresentação).
+func _check_succession() -> void:
+	if Game.player_country < 0 or Game.player_country >= Game.countries.size():
+		return
+	var c := Game.countries[Game.player_country]
+	var idx: int = Leaders.index_at(c.tag, Game.clock.year, Game.clock.month)
+	if _leader_tag != c.tag:
+		_leader_tag = c.tag
+		_leader_idx = idx
+		return
+	if idx == _leader_idx:
+		return
+	_leader_idx = idx
+	var cur: Dictionary = Leaders.current(c.tag, Game.clock.year, Game.clock.month)
+	if not cur.is_empty():
+		_show_toast("Sucessão em %s: %s (%s) assume o poder." % [c.name, str(cur["name"]), str(cur["title"])])
 
 
 func _on_treasury_changed(cid: int) -> void:

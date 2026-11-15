@@ -169,3 +169,9 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 ## Navegação por toque
 
 - `scripts/ui/touch_scroll.gd` (`TouchScroll`): todas as listas e janelas rolam arrastando o dedo em qualquer ponto (inclusive sobre botões e cartões), com inércia. Toque curto continua acionando botões; ao arrastar, o botão pressionado é cancelado.
+
+## Governantes e nomes de época (passo 1 da imersão)
+- **Governantes**: `data/leaders_1836.json` (gerado por `tools/gen_leaders.py`) traz, para os 78 países, o governante de 1836 e seus sucessores históricos (nome, título, ano). A janela **Governantes** (botão de coroa na barra lateral) mostra o líder atual e os **6 próximos sucessores**, no estilo de Age of History 2. Quando o governante do seu país muda na linha do tempo, aparece um aviso de sucessão.
+- **Retratos**: `scripts/ui/leader_portrait.gd` desenha cada retrato em código (arte original, sem fotos): ombros com a indumentária do país, rosto, cabelo, barba e coroa/chapéu. O cartão de seleção de país também mostra o governante de 1836.
+- **Nomes de época**: `tools/period_names.py` troca nomes modernos de províncias e cidades por nomes de 1836 (Constantinopla, Edo, Pequim, Bombaim, Batávia…) e ajusta cidades-capitais. Só altera texto exibido.
+- Os governantes são só apresentação (não entram no estado da simulação nem no hash).

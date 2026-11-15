@@ -108,6 +108,10 @@ func _draw() -> void:
 			_line(Vector2(0.86, 0.28), Vector2(0.92, 0.44), 0.03, color)
 			draw_arc(_p(0.22, 0.44), 0.14 * _s, 0.0, PI, 10, color, maxf(1.0, 0.06 * _s), true)
 			draw_arc(_p(0.78, 0.44), 0.14 * _s, 0.0, PI, 10, color, maxf(1.0, 0.06 * _s), true)
+		"crown":
+			_poly([Vector2(0.1, 0.78), Vector2(0.06, 0.3), Vector2(0.3, 0.52), Vector2(0.5, 0.2), Vector2(0.7, 0.52), Vector2(0.94, 0.3), Vector2(0.9, 0.78)], color)
+			draw_rect(Rect2(_p(0.1, 0.8), Vector2(0.8, 0.1) * _s), dark)
+			draw_circle(_p(0.5, 0.56), 0.05 * _s, dark)
 		"bars":
 			draw_rect(Rect2(_p(0.12, 0.56), Vector2(0.22, 0.3) * _s), color)
 			draw_rect(Rect2(_p(0.39, 0.38), Vector2(0.22, 0.48) * _s), color)

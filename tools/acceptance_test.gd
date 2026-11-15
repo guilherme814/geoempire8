@@ -110,6 +110,54 @@ func run_all() -> void:
 	check("Money: negativo e sinal", Money.fmt(-3) == "-£21 mil" and Money.signed(5) == "+£35 mil", Money.signed(5))
 	check("Money: bilhoes", Money.fmt(1237731).ends_with(" bi"), Money.fmt(1237731))
 
+	# --- governantes e nomes de época --------------------------------------
+	var hair_ok: String = "bkgwryn"
+	var beards_ok: Array = ["none", "stache", "chops", "full", "goatee", "long", "f"]
+	var hats_ok: Array = ["none", "crown", "bicorne", "tophat", "turban", "fez", "qing", "eboshi", "gat", "mitre",
+		"ghutra", "helmet", "tiara", "kepi", "papakha", "laurel"]
+	var no_leaders: Array = []
+	var bad_order: Array = []
+	var bad_look: Array = []
+	var rich: int = 0
+	for c in g.countries:
+		if not c.is_alive():
+			continue
+		var ll: Array = Leaders.list(c.tag)
+		if ll.is_empty():
+			no_leaders.append(c.tag)
+			continue
+		var prev_key: int = -1
+		for e in ll:
+			var ed: Dictionary = e
+			var key: int = int(ed["from"]) * 12 + int(ed["m"])
+			if key < prev_key:
+				bad_order.append(c.tag)
+			prev_key = key
+			if not hair_ok.contains(str(ed["hair"])) or not beards_ok.has(str(ed["beard"])) or not hats_ok.has(str(ed["hat"])):
+				bad_look.append(c.tag)
+		if int(ll[0]["from"]) > 1836:
+			bad_order.append(c.tag)
+		if Leaders.successors(c.tag, 1836, 1, 6).size() >= 4:
+			rich += 1
+	check("todo pais vivo tem governantes", no_leaders.is_empty(), str(no_leaders))
+	check("governantes em ordem cronologica", bad_order.is_empty(), str(bad_order))
+	check("aparencia dos governantes valida", bad_look.is_empty(), str(bad_look))
+	check("maioria dos paises com 4+ sucessores", rich >= 50, "%d paises" % rich)
+	check("GBR 1836: Guilherme IV", str(Leaders.current("GBR", 1836, 1)["name"]) == "Guilherme IV")
+	check("GBR 1837/6: Vitoria", str(Leaders.current("GBR", 1837, 6)["name"]) == "Vitória")
+	check("GBR 1836: 6 sucessores", Leaders.successors("GBR", 1836, 1, 6).size() == 6)
+	check("USA 1841/4: Tyler", str(Leaders.current("USA", 1841, 4)["name"]) == "John Tyler")
+	var capital_bad: int = 0
+	for c in g.countries:
+		if c.is_alive() and c.capital >= 0 and g.provinces[c.capital].city == "":
+			capital_bad += 1
+	check("capitais com nome de cidade", capital_bad <= 2, "%d sem cidade" % capital_bad)
+	var modern: int = 0
+	for p in g.provinces:
+		if p.name == "Istanbul" or p.name == "Beijing" or p.name == "Tokyo" or p.city == "Mumbai" or p.city == "Kolkata":
+			modern += 1
+	check("nomes modernos substituidos por nomes de epoca", modern == 0, "%d restantes" % modern)
+
 	# --- simulação + desempenho ------------------------------------------
 	g.speed = 1
 	var snap0: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))

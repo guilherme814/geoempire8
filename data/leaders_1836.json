@@ -1,0 +1,4565 @@
+{
+ "GBR": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Guilherme IV",
+    "title": "Rei",
+    "from": 1830,
+    "m": 6,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "crown"
+   },
+   {
+    "name": "Vitória",
+    "title": "Rainha",
+    "from": 1837,
+    "m": 6,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Eduardo VII",
+    "title": "Rei",
+    "from": 1901,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "crown"
+   },
+   {
+    "name": "Jorge V",
+    "title": "Rei",
+    "from": 1910,
+    "m": 5,
+    "hair": "g",
+    "beard": "full",
+    "hat": "crown"
+   },
+   {
+    "name": "Eduardo VIII",
+    "title": "Rei",
+    "from": 1936,
+    "m": 1,
+    "hair": "y",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Jorge VI",
+    "title": "Rei",
+    "from": 1936,
+    "m": 12,
+    "hair": "b",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Elizabeth II",
+    "title": "Rainha",
+    "from": 1952,
+    "m": 2,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   }
+  ]
+ },
+ "FRA": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Luís Filipe I",
+    "title": "Rei dos Franceses",
+    "from": 1830,
+    "m": 8,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Luís Napoleão Bonaparte",
+    "title": "Presidente da República",
+    "from": 1848,
+    "m": 12,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Napoleão III",
+    "title": "Imperador",
+    "from": 1852,
+    "m": 12,
+    "hair": "b",
+    "beard": "goatee",
+    "hat": "none"
+   },
+   {
+    "name": "Adolphe Thiers",
+    "title": "Presidente da República",
+    "from": 1871,
+    "m": 8,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Patrice de MacMahon",
+    "title": "Presidente da República",
+    "from": 1873,
+    "m": 5,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "kepi"
+   },
+   {
+    "name": "Jules Grévy",
+    "title": "Presidente da República",
+    "from": 1879,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Sadi Carnot",
+    "title": "Presidente da República",
+    "from": 1887,
+    "m": 12,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "RUS": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Nicolau I",
+    "title": "Imperador",
+    "from": 1825,
+    "m": 12,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "helmet"
+   },
+   {
+    "name": "Alexandre II",
+    "title": "Imperador",
+    "from": 1855,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Alexandre III",
+    "title": "Imperador",
+    "from": 1881,
+    "m": 3,
+    "hair": "b",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Nicolau II",
+    "title": "Imperador",
+    "from": 1894,
+    "m": 11,
+    "hair": "b",
+    "beard": "goatee",
+    "hat": "helmet"
+   },
+   {
+    "name": "Gueórgui Lvov",
+    "title": "Chefe do Governo Provisório",
+    "from": 1917,
+    "m": 3,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Alexander Kerensky",
+    "title": "Chefe do Governo Provisório",
+    "from": 1917,
+    "m": 7,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Vladimir Lênin",
+    "title": "Presidente do Conselho",
+    "from": 1917,
+    "m": 11,
+    "hair": "n",
+    "beard": "goatee",
+    "hat": "none"
+   }
+  ]
+ },
+ "PRU": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Frederico Guilherme III",
+    "title": "Rei",
+    "from": 1797,
+    "m": 11,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Frederico Guilherme IV",
+    "title": "Rei",
+    "from": 1840,
+    "m": 6,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Guilherme I",
+    "title": "Rei (Imperador Alemão em 1871)",
+    "from": 1861,
+    "m": 1,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Frederico III",
+    "title": "Rei e Imperador",
+    "from": 1888,
+    "m": 3,
+    "hair": "b",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Guilherme II",
+    "title": "Rei e Imperador",
+    "from": 1888,
+    "m": 6,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "helmet"
+   },
+   {
+    "name": "Friedrich Ebert",
+    "title": "Presidente",
+    "from": 1919,
+    "m": 2,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Paul von Hindenburg",
+    "title": "Presidente",
+    "from": 1925,
+    "m": 5,
+    "hair": "w",
+    "beard": "stache",
+    "hat": "helmet"
+   }
+  ]
+ },
+ "AUT": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Fernando I",
+    "title": "Imperador",
+    "from": 1835,
+    "m": 3,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Francisco José I",
+    "title": "Imperador",
+    "from": 1848,
+    "m": 12,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Carlos I",
+    "title": "Imperador",
+    "from": 1916,
+    "m": 11,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "helmet"
+   },
+   {
+    "name": "Michael Hainisch",
+    "title": "Presidente",
+    "from": 1920,
+    "m": 12,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Wilhelm Miklas",
+    "title": "Presidente",
+    "from": 1928,
+    "m": 12,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "OTT": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Mahmude II",
+    "title": "Sultão",
+    "from": 1808,
+    "m": 7,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Abdulmecide I",
+    "title": "Sultão",
+    "from": 1839,
+    "m": 7,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Abdulaziz",
+    "title": "Sultão",
+    "from": 1861,
+    "m": 6,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Murade V",
+    "title": "Sultão",
+    "from": 1876,
+    "m": 5,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Abdulhamide II",
+    "title": "Sultão",
+    "from": 1876,
+    "m": 8,
+    "hair": "g",
+    "beard": "long",
+    "hat": "fez"
+   },
+   {
+    "name": "Maomé V",
+    "title": "Sultão",
+    "from": 1909,
+    "m": 4,
+    "hair": "w",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Maomé VI",
+    "title": "Sultão",
+    "from": 1918,
+    "m": 7,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "fez"
+   }
+  ]
+ },
+ "ESP": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Isabel II",
+    "title": "Rainha",
+    "from": 1833,
+    "m": 9,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Amadeu I",
+    "title": "Rei",
+    "from": 1870,
+    "m": 11,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Estanislao Figueras",
+    "title": "Presidente da I República",
+    "from": 1873,
+    "m": 2,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Afonso XII",
+    "title": "Rei",
+    "from": 1874,
+    "m": 12,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Maria Cristina de Habsburgo",
+    "title": "Rainha-regente",
+    "from": 1885,
+    "m": 11,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Afonso XIII",
+    "title": "Rei",
+    "from": 1902,
+    "m": 5,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "POR": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Maria II",
+    "title": "Rainha",
+    "from": 1834,
+    "m": 5,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Pedro V",
+    "title": "Rei",
+    "from": 1853,
+    "m": 11,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Luís I",
+    "title": "Rei",
+    "from": 1861,
+    "m": 11,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos I",
+    "title": "Rei",
+    "from": 1889,
+    "m": 10,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Manuel II",
+    "title": "Rei",
+    "from": 1908,
+    "m": 2,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Manuel de Arriaga",
+    "title": "Presidente",
+    "from": 1911,
+    "m": 8,
+    "hair": "w",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "NED": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Guilherme I",
+    "title": "Rei",
+    "from": 1815,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Guilherme II",
+    "title": "Rei",
+    "from": 1840,
+    "m": 10,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Guilherme III",
+    "title": "Rei",
+    "from": 1849,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Guilhermina",
+    "title": "Rainha",
+    "from": 1890,
+    "m": 11,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Juliana",
+    "title": "Rainha",
+    "from": 1948,
+    "m": 9,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Beatriz",
+    "title": "Rainha",
+    "from": 1980,
+    "m": 4,
+    "hair": "b",
+    "beard": "f",
+    "hat": "tiara"
+   }
+  ]
+ },
+ "BEL": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Leopoldo I",
+    "title": "Rei",
+    "from": 1831,
+    "m": 7,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Leopoldo II",
+    "title": "Rei",
+    "from": 1865,
+    "m": 12,
+    "hair": "g",
+    "beard": "long",
+    "hat": "none"
+   },
+   {
+    "name": "Alberto I",
+    "title": "Rei",
+    "from": 1909,
+    "m": 12,
+    "hair": "y",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Leopoldo III",
+    "title": "Rei",
+    "from": 1934,
+    "m": 2,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Balduíno",
+    "title": "Rei",
+    "from": 1951,
+    "m": 7,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Alberto II",
+    "title": "Rei",
+    "from": 1993,
+    "m": 8,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "SWE": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Carlos XIV João",
+    "title": "Rei",
+    "from": 1818,
+    "m": 2,
+    "hair": "w",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Óscar I",
+    "title": "Rei",
+    "from": 1844,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos XV",
+    "title": "Rei",
+    "from": 1859,
+    "m": 7,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Óscar II",
+    "title": "Rei",
+    "from": 1872,
+    "m": 9,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Gustavo V",
+    "title": "Rei",
+    "from": 1907,
+    "m": 12,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Gustavo VI Adolfo",
+    "title": "Rei",
+    "from": 1950,
+    "m": 10,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos XVI Gustavo",
+    "title": "Rei",
+    "from": 1973,
+    "m": 9,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "DEN": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Frederico VI",
+    "title": "Rei",
+    "from": 1808,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Cristiano VIII",
+    "title": "Rei",
+    "from": 1839,
+    "m": 12,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico VII",
+    "title": "Rei",
+    "from": 1848,
+    "m": 1,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Cristiano IX",
+    "title": "Rei",
+    "from": 1863,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico VIII",
+    "title": "Rei",
+    "from": 1906,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Cristiano X",
+    "title": "Rei",
+    "from": 1912,
+    "m": 5,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico IX",
+    "title": "Rei",
+    "from": 1947,
+    "m": 4,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "SAR": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Carlos Alberto",
+    "title": "Rei",
+    "from": 1831,
+    "m": 4,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel II",
+    "title": "Rei (Rei da Itália em 1861)",
+    "from": 1849,
+    "m": 3,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Humberto I",
+    "title": "Rei da Itália",
+    "from": 1878,
+    "m": 1,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel III",
+    "title": "Rei da Itália",
+    "from": 1900,
+    "m": 7,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Humberto II",
+    "title": "Rei da Itália",
+    "from": 1946,
+    "m": 5,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "SIC": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Fernando II",
+    "title": "Rei das Duas Sicílias",
+    "from": 1830,
+    "m": 11,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Francisco II",
+    "title": "Rei das Duas Sicílias",
+    "from": 1859,
+    "m": 5,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel II",
+    "title": "Rei da Itália",
+    "from": 1861,
+    "m": 3,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Humberto I",
+    "title": "Rei da Itália",
+    "from": 1878,
+    "m": 1,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel III",
+    "title": "Rei da Itália",
+    "from": 1900,
+    "m": 7,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "PAP": {
+  "skin": "light",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Gregório XVI",
+    "title": "Papa",
+    "from": 1831,
+    "m": 2,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Pio IX",
+    "title": "Papa",
+    "from": 1846,
+    "m": 6,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Leão XIII",
+    "title": "Papa",
+    "from": 1878,
+    "m": 2,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Pio X",
+    "title": "Papa",
+    "from": 1903,
+    "m": 8,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Bento XV",
+    "title": "Papa",
+    "from": 1914,
+    "m": 9,
+    "hair": "g",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Pio XI",
+    "title": "Papa",
+    "from": 1922,
+    "m": 2,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   },
+   {
+    "name": "Pio XII",
+    "title": "Papa",
+    "from": 1939,
+    "m": 3,
+    "hair": "w",
+    "beard": "none",
+    "hat": "mitre"
+   }
+  ]
+ },
+ "TUS": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Leopoldo II da Toscana",
+    "title": "Grão-Duque",
+    "from": 1824,
+    "m": 7,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Fernando IV da Toscana",
+    "title": "Grão-Duque",
+    "from": 1859,
+    "m": 7,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel II",
+    "title": "Rei da Itália",
+    "from": 1861,
+    "m": 3,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Humberto I",
+    "title": "Rei da Itália",
+    "from": 1878,
+    "m": 1,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Vítor Emanuel III",
+    "title": "Rei da Itália",
+    "from": 1900,
+    "m": 7,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "BAV": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Luís I da Baviera",
+    "title": "Rei",
+    "from": 1825,
+    "m": 10,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Maximiliano II",
+    "title": "Rei",
+    "from": 1848,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Luís II",
+    "title": "Rei",
+    "from": 1864,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Luitpoldo",
+    "title": "Príncipe-regente",
+    "from": 1886,
+    "m": 6,
+    "hair": "g",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Luís III",
+    "title": "Rei",
+    "from": 1913,
+    "m": 11,
+    "hair": "w",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Kurt Eisner",
+    "title": "Presidente do Conselho",
+    "from": 1918,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "SAX": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Antônio da Saxônia",
+    "title": "Rei",
+    "from": 1827,
+    "m": 5,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico Augusto II",
+    "title": "Rei",
+    "from": 1836,
+    "m": 6,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "João da Saxônia",
+    "title": "Rei",
+    "from": 1854,
+    "m": 8,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Alberto da Saxônia",
+    "title": "Rei",
+    "from": 1873,
+    "m": 10,
+    "hair": "g",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Jorge da Saxônia",
+    "title": "Rei",
+    "from": 1902,
+    "m": 10,
+    "hair": "w",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico Augusto III",
+    "title": "Rei",
+    "from": 1904,
+    "m": 10,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "HAN": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Guilherme IV",
+    "title": "Rei de Hanôver",
+    "from": 1830,
+    "m": 6,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Ernesto Augusto I",
+    "title": "Rei de Hanôver",
+    "from": 1837,
+    "m": 6,
+    "hair": "w",
+    "beard": "stache",
+    "hat": "helmet"
+   },
+   {
+    "name": "Jorge V de Hanôver",
+    "title": "Rei de Hanôver",
+    "from": 1851,
+    "m": 11,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Guilherme I",
+    "title": "Rei da Prússia",
+    "from": 1866,
+    "m": 10,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "helmet"
+   },
+   {
+    "name": "Frederico III",
+    "title": "Rei da Prússia",
+    "from": 1888,
+    "m": 3,
+    "hair": "b",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Guilherme II",
+    "title": "Imperador Alemão",
+    "from": 1888,
+    "m": 6,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "helmet"
+   }
+  ]
+ },
+ "WUR": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Guilherme I de Württemberg",
+    "title": "Rei",
+    "from": 1816,
+    "m": 10,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos I",
+    "title": "Rei",
+    "from": 1864,
+    "m": 6,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Guilherme II de Württemberg",
+    "title": "Rei",
+    "from": 1891,
+    "m": 10,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Wilhelm Blos",
+    "title": "Presidente",
+    "from": 1918,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "HES": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Luís II de Hesse",
+    "title": "Grão-Duque",
+    "from": 1830,
+    "m": 4,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Luís III de Hesse",
+    "title": "Grão-Duque",
+    "from": 1848,
+    "m": 6,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Luís IV de Hesse",
+    "title": "Grão-Duque",
+    "from": 1877,
+    "m": 6,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Ernesto Luís de Hesse",
+    "title": "Grão-Duque",
+    "from": 1892,
+    "m": 3,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "MEC": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Frederico Francisco I",
+    "title": "Grão-Duque",
+    "from": 1785,
+    "m": 4,
+    "hair": "w",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Paulo Frederico",
+    "title": "Grão-Duque",
+    "from": 1837,
+    "m": 2,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico Francisco II",
+    "title": "Grão-Duque",
+    "from": 1842,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico Francisco III",
+    "title": "Grão-Duque",
+    "from": 1883,
+    "m": 4,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Frederico Francisco IV",
+    "title": "Grão-Duque",
+    "from": 1897,
+    "m": 4,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "THU": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Carlos Frederico de Saxe-Weimar",
+    "title": "Grão-Duque",
+    "from": 1828,
+    "m": 7,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos Alexandre",
+    "title": "Grão-Duque",
+    "from": 1853,
+    "m": 7,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Guilherme Ernesto",
+    "title": "Grão-Duque",
+    "from": 1901,
+    "m": 1,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "SUI": {
+  "skin": "light",
+  "garb": "suit",
+  "leaders": [
+   {
+    "name": "Dieta Federal (Tagsatzung)",
+    "title": "Presidência rotativa dos cantões",
+    "from": 1815,
+    "m": 9,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Jonas Furrer",
+    "title": "Presidente da Confederação",
+    "from": 1848,
+    "m": 11,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Ulrich Ochsenbein",
+    "title": "Presidente da Confederação",
+    "from": 1849,
+    "m": 1,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Henri Druey",
+    "title": "Presidente da Confederação",
+    "from": 1850,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Josef Munzinger",
+    "title": "Presidente da Confederação",
+    "from": 1851,
+    "m": 1,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Jonas Furrer",
+    "title": "Presidente da Confederação",
+    "from": 1852,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Friedrich Frey-Herosé",
+    "title": "Presidente da Confederação",
+    "from": 1853,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "GRE": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Otão I",
+    "title": "Rei",
+    "from": 1832,
+    "m": 8,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Jorge I",
+    "title": "Rei dos Helenos",
+    "from": 1863,
+    "m": 10,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Constantino I",
+    "title": "Rei",
+    "from": 1913,
+    "m": 3,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Alexandre da Grécia",
+    "title": "Rei",
+    "from": 1917,
+    "m": 6,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Jorge II",
+    "title": "Rei",
+    "from": 1922,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Pavlos Kountouriotis",
+    "title": "Presidente",
+    "from": 1924,
+    "m": 3,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "SER": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Miloš Obrenović",
+    "title": "Príncipe",
+    "from": 1815,
+    "m": 11,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Milan Obrenović II",
+    "title": "Príncipe",
+    "from": 1839,
+    "m": 6,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Miguel Obrenović",
+    "title": "Príncipe",
+    "from": 1839,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Alexandre Karađorđević",
+    "title": "Príncipe",
+    "from": 1842,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Miloš Obrenović",
+    "title": "Príncipe (retorno)",
+    "from": 1858,
+    "m": 12,
+    "hair": "w",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Miguel Obrenović",
+    "title": "Príncipe (retorno)",
+    "from": 1860,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Milan IV Obrenović",
+    "title": "Príncipe e depois Rei",
+    "from": 1868,
+    "m": 7,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "VAL": {
+  "skin": "light",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Alexandru II Ghica",
+    "title": "Príncipe",
+    "from": 1834,
+    "m": 4,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Gheorghe Bibescu",
+    "title": "Príncipe",
+    "from": 1842,
+    "m": 10,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Barbu Știrbei",
+    "title": "Príncipe",
+    "from": 1849,
+    "m": 6,
+    "hair": "b",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Alexandru Ioan Cuza",
+    "title": "Príncipe dos Principados Unidos",
+    "from": 1859,
+    "m": 1,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos I da Romênia",
+    "title": "Príncipe e depois Rei",
+    "from": 1866,
+    "m": 5,
+    "hair": "b",
+    "beard": "full",
+    "hat": "helmet"
+   },
+   {
+    "name": "Fernando I da Romênia",
+    "title": "Rei",
+    "from": 1914,
+    "m": 10,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos II da Romênia",
+    "title": "Rei",
+    "from": 1930,
+    "m": 6,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "USA": {
+  "skin": "light",
+  "garb": "suit",
+  "leaders": [
+   {
+    "name": "Andrew Jackson",
+    "title": "Presidente",
+    "from": 1829,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Martin Van Buren",
+    "title": "Presidente",
+    "from": 1837,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "William H. Harrison",
+    "title": "Presidente",
+    "from": 1841,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "John Tyler",
+    "title": "Presidente",
+    "from": 1841,
+    "m": 4,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "James K. Polk",
+    "title": "Presidente",
+    "from": 1845,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Zachary Taylor",
+    "title": "Presidente",
+    "from": 1849,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Millard Fillmore",
+    "title": "Presidente",
+    "from": 1850,
+    "m": 7,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "MEX": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Miguel Barragán",
+    "title": "Presidente interino",
+    "from": 1835,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "José Justo Corro",
+    "title": "Presidente interino",
+    "from": 1836,
+    "m": 2,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Anastasio Bustamante",
+    "title": "Presidente",
+    "from": 1837,
+    "m": 4,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Antonio López de Santa Anna",
+    "title": "Presidente",
+    "from": 1841,
+    "m": 10,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "José Joaquín de Herrera",
+    "title": "Presidente",
+    "from": 1844,
+    "m": 12,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Mariano Paredes",
+    "title": "Presidente",
+    "from": 1846,
+    "m": 1,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Antonio López de Santa Anna",
+    "title": "Presidente (retorno)",
+    "from": 1846,
+    "m": 12,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "bicorne"
+   }
+  ]
+ },
+ "CAM": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Francisco Morazán",
+    "title": "Presidente da Federação",
+    "from": 1830,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Mariano Rivera Paz",
+    "title": "Chefe de Estado",
+    "from": 1839,
+    "m": 4,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Rafael Carrera",
+    "title": "Presidente",
+    "from": 1844,
+    "m": 12,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Vicente Cerna",
+    "title": "Presidente",
+    "from": 1865,
+    "m": 5,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Justo Rufino Barrios",
+    "title": "Presidente",
+    "from": 1873,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "kepi"
+   },
+   {
+    "name": "Manuel Lisandro Barillas",
+    "title": "Presidente",
+    "from": 1885,
+    "m": 6,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Manuel Estrada Cabrera",
+    "title": "Presidente",
+    "from": 1898,
+    "m": 2,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "HAI": {
+  "skin": "dark",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Jean-Pierre Boyer",
+    "title": "Presidente",
+    "from": 1818,
+    "m": 3,
+    "hair": "k",
+    "beard": "none",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Charles Rivière-Hérard",
+    "title": "Presidente",
+    "from": 1843,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Philippe Guerrier",
+    "title": "Presidente",
+    "from": 1844,
+    "m": 5,
+    "hair": "w",
+    "beard": "none",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Faustin Soulouque",
+    "title": "Presidente (Imperador Faustino I)",
+    "from": 1847,
+    "m": 3,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Fabre Geffrard",
+    "title": "Presidente",
+    "from": 1859,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Sylvain Salnave",
+    "title": "Presidente",
+    "from": 1867,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   }
+  ]
+ },
+ "NGR": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Francisco de Paula Santander",
+    "title": "Presidente",
+    "from": 1832,
+    "m": 10,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "José Ignacio de Márquez",
+    "title": "Presidente",
+    "from": 1837,
+    "m": 4,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Pedro Alcântara Herrán",
+    "title": "Presidente",
+    "from": 1841,
+    "m": 4,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Tomás Cipriano de Mosquera",
+    "title": "Presidente",
+    "from": 1845,
+    "m": 4,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "José Hilario López",
+    "title": "Presidente",
+    "from": 1849,
+    "m": 4,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "José María Obando",
+    "title": "Presidente",
+    "from": 1853,
+    "m": 4,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Manuel María Mallarino",
+    "title": "Presidente",
+    "from": 1855,
+    "m": 4,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "VEN": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "José María Vargas",
+    "title": "Presidente",
+    "from": 1835,
+    "m": 2,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Carlos Soublette",
+    "title": "Presidente",
+    "from": 1837,
+    "m": 1,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "José Antonio Páez",
+    "title": "Presidente",
+    "from": 1839,
+    "m": 3,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Carlos Soublette",
+    "title": "Presidente (retorno)",
+    "from": 1843,
+    "m": 1,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "José Tadeo Monagas",
+    "title": "Presidente",
+    "from": 1847,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "José Gregorio Monagas",
+    "title": "Presidente",
+    "from": 1851,
+    "m": 1,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Julián Castro",
+    "title": "Presidente",
+    "from": 1858,
+    "m": 3,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "ECU": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Vicente Rocafuerte",
+    "title": "Presidente",
+    "from": 1835,
+    "m": 8,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Juan José Flores",
+    "title": "Presidente",
+    "from": 1839,
+    "m": 1,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Vicente Ramón Roca",
+    "title": "Presidente",
+    "from": 1845,
+    "m": 12,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Diego Noboa",
+    "title": "Presidente",
+    "from": 1850,
+    "m": 2,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "José María Urvina",
+    "title": "Presidente",
+    "from": 1852,
+    "m": 7,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Francisco Robles",
+    "title": "Presidente",
+    "from": 1856,
+    "m": 9,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Gabriel García Moreno",
+    "title": "Presidente",
+    "from": 1861,
+    "m": 1,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "PER": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Luis José de Orbegoso",
+    "title": "Presidente",
+    "from": 1834,
+    "m": 12,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Andrés de Santa Cruz",
+    "title": "Protetor da Confederação",
+    "from": 1836,
+    "m": 10,
+    "hair": "k",
+    "beard": "none",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Agustín Gamarra",
+    "title": "Presidente",
+    "from": 1839,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Ramón Castilla",
+    "title": "Presidente",
+    "from": 1845,
+    "m": 4,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "José Rufino Echenique",
+    "title": "Presidente",
+    "from": 1851,
+    "m": 4,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Ramón Castilla",
+    "title": "Presidente (retorno)",
+    "from": 1855,
+    "m": 1,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "bicorne"
+   }
+  ]
+ },
+ "BOL": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Andrés de Santa Cruz",
+    "title": "Presidente",
+    "from": 1829,
+    "m": 5,
+    "hair": "k",
+    "beard": "none",
+    "hat": "bicorne"
+   },
+   {
+    "name": "José Miguel de Velasco",
+    "title": "Presidente",
+    "from": 1839,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Manuel Isidoro Belzu",
+    "title": "Presidente",
+    "from": 1848,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Jorge Córdova",
+    "title": "Presidente",
+    "from": 1855,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "José María Linares",
+    "title": "Presidente",
+    "from": 1857,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Mariano Melgarejo",
+    "title": "Presidente",
+    "from": 1864,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Agustín Morales",
+    "title": "Presidente",
+    "from": 1871,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "bicorne"
+   }
+  ]
+ },
+ "BRZ": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Diogo Feijó",
+    "title": "Regente Uno",
+    "from": 1835,
+    "m": 10,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Pedro de Araújo Lima",
+    "title": "Regente",
+    "from": 1837,
+    "m": 9,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Pedro II",
+    "title": "Imperador",
+    "from": 1840,
+    "m": 7,
+    "hair": "y",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Deodoro da Fonseca",
+    "title": "Presidente",
+    "from": 1889,
+    "m": 11,
+    "hair": "w",
+    "beard": "full",
+    "hat": "kepi"
+   },
+   {
+    "name": "Floriano Peixoto",
+    "title": "Presidente",
+    "from": 1891,
+    "m": 11,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "kepi"
+   },
+   {
+    "name": "Prudente de Morais",
+    "title": "Presidente",
+    "from": 1894,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Campos Sales",
+    "title": "Presidente",
+    "from": 1898,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "ARG": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Juan Manuel de Rosas",
+    "title": "Governador de Buenos Aires",
+    "from": 1835,
+    "m": 4,
+    "hair": "y",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Justo José de Urquiza",
+    "title": "Presidente da Confederação",
+    "from": 1854,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Santiago Derqui",
+    "title": "Presidente",
+    "from": 1860,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Bartolomé Mitre",
+    "title": "Presidente",
+    "from": 1862,
+    "m": 10,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Domingo Sarmiento",
+    "title": "Presidente",
+    "from": 1868,
+    "m": 10,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Nicolás Avellaneda",
+    "title": "Presidente",
+    "from": 1874,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Julio Argentino Roca",
+    "title": "Presidente",
+    "from": 1880,
+    "m": 10,
+    "hair": "b",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "URU": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Manuel Oribe",
+    "title": "Presidente",
+    "from": 1835,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Fructuoso Rivera",
+    "title": "Presidente",
+    "from": 1838,
+    "m": 10,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Joaquín Suárez",
+    "title": "Chefe de Governo",
+    "from": 1843,
+    "m": 2,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Juan Francisco Giró",
+    "title": "Presidente",
+    "from": 1852,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Venancio Flores",
+    "title": "Governador provisório",
+    "from": 1854,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Gabriel Pereira",
+    "title": "Presidente",
+    "from": 1856,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Bernardo Berro",
+    "title": "Presidente",
+    "from": 1860,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "PAR": {
+  "skin": "tan",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "José Gaspar Rodríguez de Francia",
+    "title": "Ditador Perpétuo",
+    "from": 1814,
+    "m": 6,
+    "hair": "g",
+    "beard": "none",
+    "hat": "tophat"
+   },
+   {
+    "name": "Carlos Antonio López",
+    "title": "Presidente",
+    "from": 1844,
+    "m": 3,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Francisco Solano López",
+    "title": "Presidente",
+    "from": 1862,
+    "m": 9,
+    "hair": "k",
+    "beard": "full",
+    "hat": "kepi"
+   },
+   {
+    "name": "Cirilo Antonio Rivarola",
+    "title": "Presidente",
+    "from": 1870,
+    "m": 8,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Salvador Jovellanos",
+    "title": "Presidente",
+    "from": 1871,
+    "m": 12,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Juan Bautista Gill",
+    "title": "Presidente",
+    "from": 1874,
+    "m": 11,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Cándido Bareiro",
+    "title": "Presidente",
+    "from": 1878,
+    "m": 11,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "CHL": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Joaquín Prieto",
+    "title": "Presidente",
+    "from": 1831,
+    "m": 9,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Manuel Bulnes",
+    "title": "Presidente",
+    "from": 1841,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Manuel Montt",
+    "title": "Presidente",
+    "from": 1851,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "José Joaquín Pérez",
+    "title": "Presidente",
+    "from": 1861,
+    "m": 9,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Federico Errázuriz Zañartu",
+    "title": "Presidente",
+    "from": 1871,
+    "m": 9,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Aníbal Pinto",
+    "title": "Presidente",
+    "from": 1876,
+    "m": 9,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Domingo Santa María",
+    "title": "Presidente",
+    "from": 1881,
+    "m": 9,
+    "hair": "g",
+    "beard": "full",
+    "hat": "none"
+   }
+  ]
+ },
+ "HAW": {
+  "skin": "brown",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Kamehameha III",
+    "title": "Rei",
+    "from": 1825,
+    "m": 6,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Kamehameha IV",
+    "title": "Rei",
+    "from": 1854,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Kamehameha V",
+    "title": "Rei",
+    "from": 1863,
+    "m": 11,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Lunalilo",
+    "title": "Rei",
+    "from": 1873,
+    "m": 1,
+    "hair": "k",
+    "beard": "chops",
+    "hat": "crown"
+   },
+   {
+    "name": "Kalākaua",
+    "title": "Rei",
+    "from": 1874,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Liliʻuokalani",
+    "title": "Rainha",
+    "from": 1891,
+    "m": 1,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Sanford Dole",
+    "title": "Presidente da República",
+    "from": 1894,
+    "m": 7,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "QNG": {
+  "skin": "east",
+  "garb": "qing",
+  "leaders": [
+   {
+    "name": "Daoguang",
+    "title": "Imperador",
+    "from": 1820,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "qing"
+   },
+   {
+    "name": "Xianfeng",
+    "title": "Imperador",
+    "from": 1850,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "qing"
+   },
+   {
+    "name": "Tongzhi",
+    "title": "Imperador",
+    "from": 1861,
+    "m": 11,
+    "hair": "k",
+    "beard": "none",
+    "hat": "qing"
+   },
+   {
+    "name": "Guangxu",
+    "title": "Imperador",
+    "from": 1875,
+    "m": 2,
+    "hair": "k",
+    "beard": "none",
+    "hat": "qing"
+   },
+   {
+    "name": "Puyi (Xuantong)",
+    "title": "Imperador",
+    "from": 1908,
+    "m": 11,
+    "hair": "k",
+    "beard": "none",
+    "hat": "qing"
+   },
+   {
+    "name": "Sun Yat-sen",
+    "title": "Presidente Provisório",
+    "from": 1912,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Yuan Shikai",
+    "title": "Presidente",
+    "from": 1912,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "helmet"
+   }
+  ]
+ },
+ "JAP": {
+  "skin": "east",
+  "garb": "kimono",
+  "leaders": [
+   {
+    "name": "Tokugawa Ienari",
+    "title": "Xogum",
+    "from": 1787,
+    "m": 4,
+    "hair": "g",
+    "beard": "none",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Tokugawa Ieyoshi",
+    "title": "Xogum",
+    "from": 1837,
+    "m": 4,
+    "hair": "k",
+    "beard": "none",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Tokugawa Iesada",
+    "title": "Xogum",
+    "from": 1853,
+    "m": 11,
+    "hair": "k",
+    "beard": "none",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Tokugawa Iemochi",
+    "title": "Xogum",
+    "from": 1858,
+    "m": 10,
+    "hair": "k",
+    "beard": "none",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Tokugawa Yoshinobu",
+    "title": "Xogum",
+    "from": 1866,
+    "m": 12,
+    "hair": "k",
+    "beard": "none",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Meiji",
+    "title": "Imperador",
+    "from": 1868,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "eboshi"
+   },
+   {
+    "name": "Taishō",
+    "title": "Imperador",
+    "from": 1912,
+    "m": 7,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "helmet"
+   }
+  ]
+ },
+ "KOR": {
+  "skin": "east",
+  "garb": "kimono",
+  "leaders": [
+   {
+    "name": "Heonjong",
+    "title": "Rei",
+    "from": 1834,
+    "m": 12,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   },
+   {
+    "name": "Cheoljong",
+    "title": "Rei",
+    "from": 1849,
+    "m": 6,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   },
+   {
+    "name": "Gojong",
+    "title": "Rei (Imperador em 1897)",
+    "from": 1863,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "gat"
+   },
+   {
+    "name": "Sunjong",
+    "title": "Imperador",
+    "from": 1907,
+    "m": 7,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "gat"
+   },
+   {
+    "name": "Syngman Rhee",
+    "title": "Presidente",
+    "from": 1948,
+    "m": 8,
+    "hair": "w",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Yun Posun",
+    "title": "Presidente",
+    "from": 1960,
+    "m": 8,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "VNM": {
+  "skin": "east",
+  "garb": "kimono",
+  "leaders": [
+   {
+    "name": "Minh Mạng",
+    "title": "Imperador",
+    "from": 1820,
+    "m": 2,
+    "hair": "k",
+    "beard": "goatee",
+    "hat": "gat"
+   },
+   {
+    "name": "Thiệu Trị",
+    "title": "Imperador",
+    "from": 1841,
+    "m": 1,
+    "hair": "k",
+    "beard": "goatee",
+    "hat": "gat"
+   },
+   {
+    "name": "Tự Đức",
+    "title": "Imperador",
+    "from": 1847,
+    "m": 11,
+    "hair": "k",
+    "beard": "goatee",
+    "hat": "gat"
+   },
+   {
+    "name": "Hàm Nghi",
+    "title": "Imperador",
+    "from": 1884,
+    "m": 8,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   },
+   {
+    "name": "Đồng Khánh",
+    "title": "Imperador",
+    "from": 1885,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   },
+   {
+    "name": "Thành Thái",
+    "title": "Imperador",
+    "from": 1889,
+    "m": 1,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   },
+   {
+    "name": "Duy Tân",
+    "title": "Imperador",
+    "from": 1907,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "gat"
+   }
+  ]
+ },
+ "SIA": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Nangklao (Rama III)",
+    "title": "Rei",
+    "from": 1824,
+    "m": 7,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Mongkut (Rama IV)",
+    "title": "Rei",
+    "from": 1851,
+    "m": 4,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Chulalongkorn (Rama V)",
+    "title": "Rei",
+    "from": 1868,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Vajiravudh (Rama VI)",
+    "title": "Rei",
+    "from": 1910,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Prajadhipok (Rama VII)",
+    "title": "Rei",
+    "from": 1925,
+    "m": 11,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Ananda Mahidol (Rama VIII)",
+    "title": "Rei",
+    "from": 1935,
+    "m": 3,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Bhumibol Adulyadej (Rama IX)",
+    "title": "Rei",
+    "from": 1946,
+    "m": 6,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   }
+  ]
+ },
+ "BUR": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Bagyidaw",
+    "title": "Rei",
+    "from": 1819,
+    "m": 4,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Tharrawaddy",
+    "title": "Rei",
+    "from": 1837,
+    "m": 4,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Pagan Min",
+    "title": "Rei",
+    "from": 1846,
+    "m": 11,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Mindon",
+    "title": "Rei",
+    "from": 1853,
+    "m": 2,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Thibaw",
+    "title": "Rei",
+    "from": 1878,
+    "m": 10,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   }
+  ]
+ },
+ "IRN": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Maomé Xá Qajar",
+    "title": "Xá",
+    "from": 1834,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Nasereddin Xá",
+    "title": "Xá",
+    "from": 1848,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Mozaffareddin Xá",
+    "title": "Xá",
+    "from": 1896,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Mohammad Ali Xá",
+    "title": "Xá",
+    "from": 1907,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Ahmad Xá",
+    "title": "Xá",
+    "from": 1909,
+    "m": 7,
+    "hair": "k",
+    "beard": "none",
+    "hat": "papakha"
+   },
+   {
+    "name": "Reza Xá Pahlavi",
+    "title": "Xá",
+    "from": 1925,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "kepi"
+   },
+   {
+    "name": "Mohammad Reza Pahlavi",
+    "title": "Xá",
+    "from": 1941,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "kepi"
+   }
+  ]
+ },
+ "AFG": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Dost Mohammad Khan",
+    "title": "Emir",
+    "from": 1826,
+    "m": 10,
+    "hair": "k",
+    "beard": "long",
+    "hat": "turban"
+   },
+   {
+    "name": "Xá Shuja",
+    "title": "Rei (imposto pelos britânicos)",
+    "from": 1839,
+    "m": 8,
+    "hair": "k",
+    "beard": "long",
+    "hat": "turban"
+   },
+   {
+    "name": "Dost Mohammad Khan",
+    "title": "Emir (retorno)",
+    "from": 1843,
+    "m": 4,
+    "hair": "g",
+    "beard": "long",
+    "hat": "turban"
+   },
+   {
+    "name": "Sher Ali Khan",
+    "title": "Emir",
+    "from": 1863,
+    "m": 6,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdur Rahman Khan",
+    "title": "Emir",
+    "from": 1880,
+    "m": 7,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Habibullah Khan",
+    "title": "Emir",
+    "from": 1901,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Amanullah Khan",
+    "title": "Emir e depois Rei",
+    "from": 1919,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "kepi"
+   }
+  ]
+ },
+ "NEP": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Rajendra Bikram Shah",
+    "title": "Rei",
+    "from": 1816,
+    "m": 11,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Surendra Bikram Shah",
+    "title": "Rei",
+    "from": 1847,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Prithvi Bir Bikram Shah",
+    "title": "Rei",
+    "from": 1881,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Tribhuvan",
+    "title": "Rei",
+    "from": 1911,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "crown"
+   },
+   {
+    "name": "Mahendra",
+    "title": "Rei",
+    "from": 1955,
+    "m": 3,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Birendra",
+    "title": "Rei",
+    "from": 1972,
+    "m": 1,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   }
+  ]
+ },
+ "BIC": {
+  "skin": "light",
+  "garb": "uniform",
+  "leaders": [
+   {
+    "name": "Sir Charles Metcalfe",
+    "title": "Governador-Geral interino",
+    "from": 1835,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Lord Auckland",
+    "title": "Governador-Geral",
+    "from": 1836,
+    "m": 3,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Lord Ellenborough",
+    "title": "Governador-Geral",
+    "from": 1842,
+    "m": 2,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Lord Hardinge",
+    "title": "Governador-Geral",
+    "from": 1844,
+    "m": 7,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "bicorne"
+   },
+   {
+    "name": "Lord Dalhousie",
+    "title": "Governador-Geral",
+    "from": 1848,
+    "m": 1,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Lord Canning",
+    "title": "Governador-Geral e depois Vice-Rei",
+    "from": 1856,
+    "m": 2,
+    "hair": "g",
+    "beard": "chops",
+    "hat": "none"
+   }
+  ]
+ },
+ "SIK": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Ranjit Singh",
+    "title": "Marajá (Leão do Panjabe)",
+    "from": 1801,
+    "m": 4,
+    "hair": "g",
+    "beard": "long",
+    "hat": "turban"
+   },
+   {
+    "name": "Kharak Singh",
+    "title": "Marajá",
+    "from": 1839,
+    "m": 6,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Nau Nihal Singh",
+    "title": "Marajá",
+    "from": 1840,
+    "m": 11,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Sher Singh",
+    "title": "Marajá",
+    "from": 1841,
+    "m": 1,
+    "hair": "k",
+    "beard": "long",
+    "hat": "turban"
+   },
+   {
+    "name": "Duleep Singh",
+    "title": "Marajá",
+    "from": 1843,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "turban"
+   }
+  ]
+ },
+ "SND": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Mir Nur Muhammad Talpur",
+    "title": "Emir de Hyderabad (Sind)",
+    "from": 1830,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Mir Nasir Khan Talpur",
+    "title": "Emir de Hyderabad (Sind)",
+    "from": 1840,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Charles Napier",
+    "title": "Governador de Sind",
+    "from": 1843,
+    "m": 2,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   }
+  ]
+ },
+ "HYD": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Nasir-ud-Daulah",
+    "title": "Nizam",
+    "from": 1829,
+    "m": 5,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Afzal ad-Daulah",
+    "title": "Nizam",
+    "from": 1857,
+    "m": 5,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Mir Mahbub Ali Khan",
+    "title": "Nizam",
+    "from": 1869,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Mir Osman Ali Khan",
+    "title": "Nizam",
+    "from": 1911,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   }
+  ]
+ },
+ "MYS": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Krishnaraja Wodeyar III",
+    "title": "Marajá",
+    "from": 1799,
+    "m": 6,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Chamarajendra Wadiyar X",
+    "title": "Marajá",
+    "from": 1881,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Krishnaraja Wadiyar IV",
+    "title": "Marajá",
+    "from": 1895,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Jayachamaraja Wadiyar",
+    "title": "Marajá",
+    "from": 1940,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "TRV": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Swathi Thirunal",
+    "title": "Marajá",
+    "from": 1829,
+    "m": 4,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Uthram Thirunal",
+    "title": "Marajá",
+    "from": 1846,
+    "m": 12,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Ayilyam Thirunal",
+    "title": "Marajá",
+    "from": 1860,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Visakham Thirunal",
+    "title": "Marajá",
+    "from": 1880,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Moolam Thirunal",
+    "title": "Marajá",
+    "from": 1885,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Chithira Thirunal",
+    "title": "Marajá",
+    "from": 1931,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "RAJ": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Ram Singh II de Jaipur",
+    "title": "Marajá",
+    "from": 1835,
+    "m": 2,
+    "hair": "k",
+    "beard": "none",
+    "hat": "turban"
+   },
+   {
+    "name": "Madho Singh II",
+    "title": "Marajá",
+    "from": 1880,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Man Singh II",
+    "title": "Marajá",
+    "from": 1922,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "MAR": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Janakoji Rao Scindia",
+    "title": "Marajá de Gwalior",
+    "from": 1827,
+    "m": 3,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Jayajirao Scindia",
+    "title": "Marajá de Gwalior",
+    "from": 1843,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Madho Rao Scindia",
+    "title": "Marajá de Gwalior",
+    "from": 1886,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Jivajirao Scindia",
+    "title": "Marajá de Gwalior",
+    "from": 1925,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "MAL": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Shahabuddin Riayat Shah",
+    "title": "Sultão de Perak",
+    "from": 1830,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdul Malik Mansur Shah",
+    "title": "Sultão de Perak",
+    "from": 1851,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Ja'afar Safiuddin",
+    "title": "Sultão de Perak",
+    "from": 1857,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Ali Al-Mukammal",
+    "title": "Sultão de Perak",
+    "from": 1865,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdullah Muhammad Shah II",
+    "title": "Sultão de Perak",
+    "from": 1874,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Idris Murshidul Azam Shah",
+    "title": "Sultão de Perak",
+    "from": 1887,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "BRU": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Omar Ali Saifuddin II",
+    "title": "Sultão",
+    "from": 1829,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdul Momin",
+    "title": "Sultão",
+    "from": 1852,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Hashim Jalilul Alam",
+    "title": "Sultão",
+    "from": 1885,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Muhammad Jamalul Alam II",
+    "title": "Sultão",
+    "from": 1906,
+    "m": 5,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Ahmad Tajuddin II",
+    "title": "Sultão",
+    "from": 1924,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Omar Ali Saifuddien III",
+    "title": "Sultão",
+    "from": 1950,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "ACE": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Muhammad Syah",
+    "title": "Sultão",
+    "from": 1823,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Sulaiman Ali Iskandar Syah",
+    "title": "Sultão",
+    "from": 1838,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Mansur Syah",
+    "title": "Sultão",
+    "from": 1857,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Mahmud Syah",
+    "title": "Sultão",
+    "from": 1870,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Muhammad Daud Syah",
+    "title": "Sultão",
+    "from": 1874,
+    "m": 1,
+    "hair": "k",
+    "beard": "none",
+    "hat": "turban"
+   }
+  ]
+ },
+ "EGY": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Maomé Ali",
+    "title": "Paxá e Vice-Rei",
+    "from": 1805,
+    "m": 7,
+    "hair": "w",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Abbas I",
+    "title": "Paxá",
+    "from": 1848,
+    "m": 11,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Said Paxá",
+    "title": "Paxá",
+    "from": 1854,
+    "m": 7,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Ismail Paxá",
+    "title": "Quediva",
+    "from": 1863,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Tewfik Paxá",
+    "title": "Quediva",
+    "from": 1879,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Abbas II Hilmi",
+    "title": "Quediva",
+    "from": 1892,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   }
+  ]
+ },
+ "NAJ": {
+  "skin": "tan",
+  "garb": "arab",
+  "leaders": [
+   {
+    "name": "Faisal bin Turki",
+    "title": "Emir",
+    "from": 1834,
+    "m": 6,
+    "hair": "k",
+    "beard": "full",
+    "hat": "ghutra"
+   },
+   {
+    "name": "Khalid bin Saud",
+    "title": "Emir",
+    "from": 1838,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "ghutra"
+   },
+   {
+    "name": "Abdullah bin Thunayyan",
+    "title": "Emir",
+    "from": 1841,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "ghutra"
+   },
+   {
+    "name": "Faisal bin Turki",
+    "title": "Emir (retorno)",
+    "from": 1843,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "ghutra"
+   },
+   {
+    "name": "Abdullah bin Faisal",
+    "title": "Emir",
+    "from": 1865,
+    "m": 12,
+    "hair": "k",
+    "beard": "full",
+    "hat": "ghutra"
+   },
+   {
+    "name": "Saud bin Faisal",
+    "title": "Emir",
+    "from": 1871,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "ghutra"
+   }
+  ]
+ },
+ "OMA": {
+  "skin": "tan",
+  "garb": "arab",
+  "leaders": [
+   {
+    "name": "Said bin Sultan",
+    "title": "Sultão",
+    "from": 1806,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Thuwaini bin Said",
+    "title": "Sultão",
+    "from": 1856,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Salim bin Thuwaini",
+    "title": "Sultão",
+    "from": 1866,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Turki bin Said",
+    "title": "Sultão",
+    "from": 1871,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Faisal bin Turki",
+    "title": "Sultão",
+    "from": 1888,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Taimur bin Faisal",
+    "title": "Sultão",
+    "from": 1913,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "KHI": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Allah Quli Khan",
+    "title": "Cã de Khiva",
+    "from": 1825,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Rahim Quli Khan",
+    "title": "Cã de Khiva",
+    "from": 1842,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Muhammad Amin Khan",
+    "title": "Cã de Khiva",
+    "from": 1845,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Abdullah Khan",
+    "title": "Cã de Khiva",
+    "from": 1855,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Sayyid Muhammad Rahim II",
+    "title": "Cã de Khiva",
+    "from": 1864,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "papakha"
+   },
+   {
+    "name": "Isfandiyar Khan",
+    "title": "Cã de Khiva",
+    "from": 1910,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   }
+  ]
+ },
+ "BUK": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Nasrullah Khan",
+    "title": "Emir de Bucara",
+    "from": 1827,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Muzaffar al-Din",
+    "title": "Emir de Bucara",
+    "from": 1860,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdulahad Khan",
+    "title": "Emir de Bucara",
+    "from": 1885,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Alim Khan",
+    "title": "Emir de Bucara",
+    "from": 1910,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "KOK": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Muhammad Ali Khan (Madali)",
+    "title": "Cã de Kokand",
+    "from": 1822,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Shir Ali Khan",
+    "title": "Cã de Kokand",
+    "from": 1842,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Khudayar Khan",
+    "title": "Cã de Kokand",
+    "from": 1845,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Malla Khan",
+    "title": "Cã de Kokand",
+    "from": 1858,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Khudayar Khan",
+    "title": "Cã de Kokand (retorno)",
+    "from": 1862,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Nasriddin Khan",
+    "title": "Cã de Kokand",
+    "from": 1875,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "MOR": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Abderramão de Marrocos",
+    "title": "Sultão",
+    "from": 1822,
+    "m": 11,
+    "hair": "g",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Maomé IV",
+    "title": "Sultão",
+    "from": 1859,
+    "m": 8,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Hassan I",
+    "title": "Sultão",
+    "from": 1873,
+    "m": 9,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdelaziz",
+    "title": "Sultão",
+    "from": 1894,
+    "m": 6,
+    "hair": "k",
+    "beard": "none",
+    "hat": "turban"
+   },
+   {
+    "name": "Abdelhafid",
+    "title": "Sultão",
+    "from": 1908,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   },
+   {
+    "name": "Iúçufe de Marrocos",
+    "title": "Sultão",
+    "from": 1912,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "turban"
+   }
+  ]
+ },
+ "TUN": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Hussein II Bey",
+    "title": "Bei de Túnis",
+    "from": 1824,
+    "m": 1,
+    "hair": "g",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Mustafa Bey",
+    "title": "Bei de Túnis",
+    "from": 1835,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Ahmad I Bey",
+    "title": "Bei de Túnis",
+    "from": 1837,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Muhammad Bey",
+    "title": "Bei de Túnis",
+    "from": 1855,
+    "m": 5,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Muhammad as-Sadiq Bey",
+    "title": "Bei de Túnis",
+    "from": 1859,
+    "m": 9,
+    "hair": "k",
+    "beard": "full",
+    "hat": "fez"
+   },
+   {
+    "name": "Ali III Bey",
+    "title": "Bei de Túnis",
+    "from": 1882,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   },
+   {
+    "name": "Muhammad al-Hadi Bey",
+    "title": "Bei de Túnis",
+    "from": 1902,
+    "m": 6,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "fez"
+   }
+  ]
+ },
+ "ETH": {
+  "skin": "dark",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Sahle Dengel",
+    "title": "Imperador (Negus)",
+    "from": 1832,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Tewodros II",
+    "title": "Imperador",
+    "from": 1855,
+    "m": 2,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Yohannes IV",
+    "title": "Imperador",
+    "from": 1872,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "none"
+   },
+   {
+    "name": "Menelik II",
+    "title": "Imperador",
+    "from": 1889,
+    "m": 1,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Iyasu V",
+    "title": "Imperador (não coroado)",
+    "from": 1913,
+    "m": 12,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Zauditu",
+    "title": "Imperatriz",
+    "from": 1916,
+    "m": 9,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Haile Selassie I",
+    "title": "Imperador",
+    "from": 1930,
+    "m": 4,
+    "hair": "k",
+    "beard": "goatee",
+    "hat": "none"
+   }
+  ]
+ },
+ "SOK": {
+  "skin": "dark",
+  "garb": "arab",
+  "leaders": [
+   {
+    "name": "Muhammad Bello",
+    "title": "Sultão de Sokoto",
+    "from": 1817,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Abu Bakr Atiku",
+    "title": "Sultão de Sokoto",
+    "from": 1837,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Aliyu Karami",
+    "title": "Sultão de Sokoto",
+    "from": 1842,
+    "m": 10,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Ahmadu Atiku",
+    "title": "Sultão de Sokoto",
+    "from": 1859,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   },
+   {
+    "name": "Ahmadu Rufai",
+    "title": "Sultão de Sokoto",
+    "from": 1866,
+    "m": 1,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   }
+  ]
+ },
+ "ZUL": {
+  "skin": "dark",
+  "garb": "african",
+  "leaders": [
+   {
+    "name": "Dingane",
+    "title": "Rei dos Zulus",
+    "from": 1828,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Mpande",
+    "title": "Rei dos Zulus",
+    "from": 1840,
+    "m": 2,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Cetshwayo",
+    "title": "Rei dos Zulus",
+    "from": 1872,
+    "m": 9,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Dinuzulu",
+    "title": "Rei dos Zulus",
+    "from": 1884,
+    "m": 5,
+    "hair": "k",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "MAD": {
+  "skin": "brown",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Ranavalona I",
+    "title": "Rainha",
+    "from": 1828,
+    "m": 8,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Radama II",
+    "title": "Rei",
+    "from": 1861,
+    "m": 8,
+    "hair": "k",
+    "beard": "none",
+    "hat": "crown"
+   },
+   {
+    "name": "Rasoherina",
+    "title": "Rainha",
+    "from": 1863,
+    "m": 5,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Ranavalona II",
+    "title": "Rainha",
+    "from": 1868,
+    "m": 4,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   },
+   {
+    "name": "Ranavalona III",
+    "title": "Rainha",
+    "from": 1883,
+    "m": 7,
+    "hair": "k",
+    "beard": "f",
+    "hat": "tiara"
+   }
+  ]
+ },
+ "ABD": {
+  "skin": "tan",
+  "garb": "arab",
+  "leaders": [
+   {
+    "name": "Abd al-Qadir al-Jaza'iri",
+    "title": "Emir",
+    "from": 1832,
+    "m": 11,
+    "hair": "k",
+    "beard": "full",
+    "hat": "turban"
+   }
+  ]
+ },
+ "TEX": {
+  "skin": "light",
+  "garb": "suit",
+  "leaders": [
+   {
+    "name": "Henry Smith",
+    "title": "Governador provisório",
+    "from": 1835,
+    "m": 11,
+    "hair": "g",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "David G. Burnet",
+    "title": "Presidente interino",
+    "from": 1836,
+    "m": 3,
+    "hair": "b",
+    "beard": "chops",
+    "hat": "none"
+   },
+   {
+    "name": "Sam Houston",
+    "title": "Presidente",
+    "from": 1836,
+    "m": 10,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "Mirabeau B. Lamar",
+    "title": "Presidente",
+    "from": 1838,
+    "m": 12,
+    "hair": "b",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Sam Houston",
+    "title": "Presidente (retorno)",
+    "from": 1841,
+    "m": 12,
+    "hair": "g",
+    "beard": "stache",
+    "hat": "none"
+   },
+   {
+    "name": "Anson Jones",
+    "title": "Presidente",
+    "from": 1844,
+    "m": 12,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   },
+   {
+    "name": "J. Pinckney Henderson",
+    "title": "Governador",
+    "from": 1846,
+    "m": 2,
+    "hair": "b",
+    "beard": "none",
+    "hat": "none"
+   }
+  ]
+ },
+ "CAU": {
+  "skin": "tan",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Imã Shamil",
+    "title": "Imã do Daguestão e da Chechênia",
+    "from": 1834,
+    "m": 10,
+    "hair": "g",
+    "beard": "full",
+    "hat": "papakha"
+   }
+  ]
+ },
+ "MNE": {
+  "skin": "light",
+  "garb": "robe",
+  "leaders": [
+   {
+    "name": "Petar II Petrović-Njegoš",
+    "title": "Príncipe-bispo",
+    "from": 1830,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Danilo I",
+    "title": "Príncipe",
+    "from": 1851,
+    "m": 10,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   },
+   {
+    "name": "Nikola I",
+    "title": "Príncipe e depois Rei",
+    "from": 1860,
+    "m": 8,
+    "hair": "k",
+    "beard": "stache",
+    "hat": "papakha"
+   }
+  ]
+ }
+}

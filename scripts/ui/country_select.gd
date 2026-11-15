@@ -320,6 +320,30 @@ func _stat(icon_kind: String, key: String, value: String) -> void:
 	_card_stats.add_child(row)
 
 
+## Retrato pequeno do governante de 1836 no cartão do país (retrato desenhado em código).
+func _add_leader_row(c: Country) -> void:
+	var cur: Dictionary = Leaders.current(c.tag, Game.clock.year, Game.clock.month)
+	if cur.is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(LeaderPortrait.make(64.0, c.color, Leaders.info(c.tag), cur))
+	var txt := VBoxContainer.new()
+	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	txt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	txt.add_theme_constant_override("separation", 0)
+	row.add_child(txt)
+	txt.add_child(UIKit.label("Governante em %d" % Game.clock.year, 14, UIKit.TEXT_DIM))
+	var nm := UIKit.serif_label(str(cur["name"]), 19, UIKit.GOLD_BRIGHT)
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	txt.add_child(nm)
+	var tt := UIKit.label(str(cur["title"]), 14, UIKit.TEXT)
+	tt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	txt.add_child(tt)
+	_card_stats.add_child(row)
+	_card_stats.add_child(HSeparator.new())
+
+
 func _update_card() -> void:
 	UIKit.clear(_card_stats)
 	_btn_play.disabled = _selected < 0
@@ -333,6 +357,7 @@ func _update_card() -> void:
 	_card_flag.set_country(c.tag, c.color)
 	_card_name.text = c.name
 	_card_sub.text = _difficulty(int(_rank.get(c.id, 99)))
+	_add_leader_row(c)
 	var cap := Game.provinces[c.capital]
 	_stat("flag", "Capital", cap.city if cap.city != "" else cap.name)
 	_stat("people", "População", HUD._fmt_pop(Game.population_of(c)))

@@ -1599,6 +1599,8 @@ func _simulate_day() -> void:
 	var month_rolled := clock.advance_day()
 	_advance_training()
 	_advance_armies()
+	if tick % SUPPLY_TICK_DAYS == 0:
+		_update_supply()
 	_advance_fleets()
 	_advance_war()
 	_advance_ai()
@@ -1687,7 +1689,7 @@ func _advance_ai() -> void:
 
 
 const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university",
-	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant"]
+	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot"]
 const AI_INVEST_RESERVE_MONTHS := 8
 
 
@@ -1717,6 +1719,8 @@ func _ai_invest(c: Country) -> void:
 				var p := provinces[int(pid)]
 				if p.building_level(kind) != level or not can_build(int(pid), c.id, kind):
 					continue
+				if kind == "depot" and (level > 0 or not _is_border(p)):
+					continue   # a IA só põe depósitos (1 nível) em províncias de fronteira
 				var cost: int = build_total_cost(p, kind)
 				if c.treasury - cost < reserve:
 					continue
@@ -1932,8 +1936,8 @@ func _advance_war() -> void:
 					continue
 				var fx_x: Dictionary = tech_fx(countries[x.owner_id])
 				var fx_y: Dictionary = tech_fx(countries[y.owner_id])
-				var mod_x: int = clampi(100 + int(fx_y["atk"]) - int(fx_x["def"]), 50, 200)   # perdas de x
-				var mod_y: int = clampi(100 + int(fx_x["atk"]) - int(fx_y["def"]), 50, 200)
+				var mod_x: int = clampi(100 + int(fx_y["atk"]) - int(fx_x["def"]) + (100 - x.supply) * 35 / 100, 50, 250)   # perdas de x
+				var mod_y: int = clampi(100 + int(fx_x["atk"]) - int(fx_y["def"]) + (100 - y.supply) * 35 / 100, 50, 250)
 				var loss_x := (y.regiments * BATTLE_LOSS_PCT * mod_x + 9999) / 10000
 				var loss_y := (x.regiments * BATTLE_LOSS_PCT * mod_y + 9999) / 10000
 				if x.regiments == y.regiments and loss_x == loss_y:
@@ -2004,6 +2008,7 @@ func _simulate_month() -> void:
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
 	_simulate_migration()
+	_supply_attrition()
 	_run_trade()
 	for c in countries:
 		if c.is_alive():
@@ -2471,7 +2476,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_infra := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
-		for ik in ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph"]:
+		for ik in ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot"]:
 			up_infra += int(p.bld.get(ik, 0)) * int(Province.GOV_UPKEEP[ik])
 		tax += p.monthly_tax(c.tax_pct)
 		industry += p.factory_profit()
@@ -2533,6 +2538,179 @@ func unemployment_pct(c: Country) -> int:
 				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv
 	jobs *= JOB_SCALE
 	return SURPLUS_LABOR_PCT * maxi(0, surplus - jobs) / surplus
+
+
+# ---------------------------------------------------------------------------
+# Logística e abastecimento (inspirado no módulo Logistics & Supply V1, em inteiros)
+# ---------------------------------------------------------------------------
+const SUPPLY_TICK_DAYS := 5
+const SUPPLY_BASE_RANGE := 6000      # alcance da capital (custo de marcha)
+const SUPPLY_DEPOT_RANGE := 2000     # por nível de depósito (base 4000 do depósito)
+const SUPPLY_BASE_CAP := 12          # regimentos que a capital abastece
+const SUPPLY_DEPOT_CAP := 8          # por nível de depósito
+const SUPPLY_LIMIT := 15000          # raio máximo da busca
+
+
+func supply_label(ratio: int) -> String:
+	if ratio >= 75:
+		return "normal"
+	if ratio >= 35:
+		return "baixo"
+	return "crítico"
+
+
+## Abastecimento (0..100) a um custo de rota `cost` de uma fonte com alcance `rng_`.
+@warning_ignore("integer_division")
+func _supply_ratio(cost: int, rng_: int) -> int:
+	if rng_ <= 0:
+		return 0
+	var pct: int = cost * 100 / rng_
+	if pct <= 60:
+		return 100
+	if pct <= 100:
+		return 100 - (pct - 60) * 50 / 40
+	if pct <= 150:
+		return 150 - pct
+	return 0
+
+
+## Alcance de abastecimento de uma província para o dono (0 = não é fonte): capital e depósitos.
+func _supply_range_at(pid: int, owner: int) -> int:
+	var p := provinces[pid]
+	if p.owner_id != owner:
+		return 0
+	var best: int = 0
+	if countries[owner].capital == pid:
+		best = SUPPLY_BASE_RANGE
+	var dl: int = int(p.bld.get("depot", 0))
+	if dl > 0:
+		best = maxi(best, 4000 + SUPPLY_DEPOT_RANGE * dl)
+	return best
+
+
+func _supply_cap_at(pid: int) -> int:
+	var p := provinces[pid]
+	var cap: int = SUPPLY_DEPOT_CAP * int(p.bld.get("depot", 0))
+	if countries[p.owner_id].capital == pid:
+		cap += SUPPLY_BASE_CAP
+	return cap
+
+
+## Custo de a linha de suprimento entrar na província q: metade em terra própria (menos com
+## ferrovia), o dobro em terra alheia.
+@warning_ignore("integer_division")
+func _supply_step_cost(q: Province, owner: int) -> int:
+	var mult: int = int(Province.MOVE_MULT.get(q.terrain, 1000))
+	if q.owner_id == owner:
+		return maxi(150, mult / 2 * (100 - mini(55, 8 * int(q.bld.get("railway", 0)))) / 100)
+	return mult * 2
+
+
+## Melhor fonte para o exército: Dijkstra limitado a partir da província do exército.
+## Devolve {"src": id ou -1, "ratio": 0..100}.
+func _supply_route(a: Army) -> Dictionary:
+	var owner: int = a.owner_id
+	var dist: Dictionary = {a.province_id: 0}
+	var open: Array = [a.province_id]
+	var done: Dictionary = {}
+	var best_src: int = -1
+	var best_ratio: int = -1
+	while not open.is_empty():
+		var bi: int = 0
+		for i in open.size():
+			if int(dist[open[i]]) < int(dist[open[bi]]):
+				bi = i
+		var cur: int = int(open[bi])
+		open.remove_at(bi)
+		if done.has(cur):
+			continue
+		done[cur] = true
+		var cd: int = int(dist[cur])
+		if cd > SUPPLY_LIMIT:
+			break
+		var sr: int = _supply_range_at(cur, owner)
+		if sr > 0:
+			var r: int = _supply_ratio(cd, sr)
+			if r > best_ratio:
+				best_ratio = r
+				best_src = cur
+		for qi in provinces[cur].neighbors:
+			var qn: int = int(qi)
+			if done.has(qn):
+				continue
+			var nd: int = cd + _supply_step_cost(provinces[qn], owner)
+			if nd < int(dist.get(qn, 1 << 30)):
+				dist[qn] = nd
+				open.append(qn)
+		for qi in provinces[cur].sea_links:
+			var qs: int = int(qi)
+			if done.has(qs):
+				continue
+			var nd2: int = cd + 2 * _supply_step_cost(provinces[qs], owner)
+			if nd2 < int(dist.get(qs, 1 << 30)):
+				dist[qs] = nd2
+				open.append(qs)
+	return {"src": best_src, "ratio": maxi(0, best_ratio)}
+
+
+## Recalcula o abastecimento de todos os exércitos (a cada 5 dias). Exércitos que dividem a mesma
+## fonte repartem a capacidade dela.
+@warning_ignore("integer_division")
+func _update_supply() -> void:
+	var rows: Array = []
+	var demand: Dictionary = {}
+	for id in armies.keys():
+		var a: Army = armies[id]
+		var r: Dictionary = _supply_route(a)
+		rows.append([a, int(r["src"]), int(r["ratio"])])
+		if int(r["src"]) >= 0:
+			demand[int(r["src"])] = int(demand.get(int(r["src"]), 0)) + a.regiments
+	for row in rows:
+		var ar: Army = row[0]
+		var ratio: int = int(row[2])
+		var src: int = int(row[1])
+		if src >= 0:
+			var dem: int = int(demand[src])
+			var cp: int = _supply_cap_at(src)
+			if dem > cp and dem > 0:
+				ratio = ratio * cp / dem
+		var changed: bool = ar.supply != ratio
+		ar.supply = clampi(ratio, 0, 100)
+		if changed:
+			Events.army_changed.emit(ar.id)
+
+
+## Desgaste mensal por falta de suprimentos: abaixo de 75% o exército perde regimentos.
+@warning_ignore("integer_division")
+func _supply_attrition() -> void:
+	for id in armies.keys():
+		if not armies.has(id):
+			continue
+		var a: Army = armies[id]
+		if a.supply >= 75:
+			continue
+		var pct: int = (75 - a.supply) / 5
+		var loss: int = a.regiments * pct / 100
+		if rng.randi_range(0, 99) < (a.regiments * pct) % 100:
+			loss += 1
+		if loss <= 0:
+			continue
+		a.regiments = maxi(0, a.regiments - loss)
+		if a.owner_id == player_country:
+			Events.notice.emit("Exército #%d sem suprimentos (%d%%): perdeu %d regimento(s)." % [a.id, a.supply, loss])
+		if a.regiments <= 0:
+			armies.erase(id)
+			Events.army_removed.emit(id)
+		else:
+			Events.army_changed.emit(id)
+
+
+func _is_border(p: Province) -> bool:
+	for qi in p.neighbors:
+		var o: int = provinces[int(qi)].owner_id
+		if o >= 0 and o != p.owner_id:
+			return true
+	return false
 
 
 ## Densidade média mundial (habitantes por província com dono).
@@ -2976,6 +3154,7 @@ func state_hash() -> int:
 	for id in armies.keys():
 		var a: Army = armies[id]
 		h = _mix(h, a.id)
+		h = _mix(h, a.supply)
 		h = _mix(h, a.owner_id)
 		h = _mix(h, a.province_id)
 		h = _mix(h, a.regiments)

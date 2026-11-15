@@ -9,6 +9,7 @@ var province_id: int = 0          # província onde está (ou de onde partiu)
 var regiments: int = 0
 var path: Array[int] = []         # próximas províncias, sem incluir a atual
 var move_left: int = 0            # dias até chegar a path[0]
+var supply: int = 100             # abastecimento (0..100), recalculado a cada 5 dias
 
 
 func is_moving() -> bool:
@@ -23,7 +24,7 @@ func to_dict() -> Dictionary:
 	var pth: Array = []
 	for v in path:
 		pth.append(v)
-	return {"id": id, "owner": owner_id, "prov": province_id, "regs": regiments, "path": pth, "left": move_left}
+	return {"id": id, "owner": owner_id, "prov": province_id, "regs": regiments, "path": pth, "left": move_left, "sup": supply}
 
 
 static func from_dict(d: Dictionary) -> Army:
@@ -33,6 +34,7 @@ static func from_dict(d: Dictionary) -> Army:
 	a.province_id = int(d["prov"])
 	a.regiments = int(d["regs"])
 	a.move_left = int(d.get("left", 0))
+	a.supply = int(d.get("sup", 100))
 	var raw: Array = d.get("path", [])
 	for v in raw:
 		a.path.append(int(v))

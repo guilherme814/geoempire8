@@ -51,7 +51,7 @@ const BUILD_ICON := {
 	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot",
 	"market": "stall", "railway": "rail", "dock": "anchor",
 	"library": "book", "sanitation": "cross", "academy": "shield", "arsenal": "anvil", "lab": "bulb",
-	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars",
+	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars", "depot": "tent",
 }
 const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory", "inf": "rail"}
 const TAB_ORDER := ["gov", "res", "ind", "inf"]
@@ -1857,7 +1857,7 @@ func _refresh_side() -> void:
 			b.pressed.connect(_on_army_row_pressed.bind(aid))
 			_side_armies.add_child(b)
 			_army_rows[aid] = b
-		b.text = "#%d · %d reg. · %s%s" % [army.id, army.regiments, Game.provinces[army.province_id].name, "  >>" if army.is_moving() else ""]
+		b.text = "#%d · %d reg. · %s%s%s" % [army.id, army.regiments, Game.provinces[army.province_id].name, "  >>" if army.is_moving() else "", "  ⚠" if army.supply < 35 else ""]
 	_side_head.text = "Exércitos (%d)" % ids.size()
 	_side_head.visible = not ids.is_empty()
 
@@ -2002,6 +2002,7 @@ func _refresh_army() -> void:
 	var txt := "%s\n%d regimento(s)  (%d homens)\nEm: %s" % [
 		oc.name, a.regiments, a.men(), Game.provinces[a.province_id].name,
 	]
+	txt += "\nAbastecimento: %d%% (%s)" % [a.supply, Game.supply_label(a.supply)]
 	if a.is_moving():
 		txt += "\nDestino: %s (%d dias)" % [Game.provinces[a.path.back()].name, Game.eta_days(a)]
 	elif mine:

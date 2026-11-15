@@ -266,7 +266,7 @@ func run_all() -> void:
 			n_req += 1
 			if rq >= Techs.ALL.size() or not Province.EXTRA_KINDS.has(bk):
 				req_ok = false
-	check("10 construcoes por tecnologia com req valido e persistente", req_ok and n_req == 10, "%d" % n_req)
+	check("11 construcoes por tecnologia com req valido e persistente", req_ok and n_req == 11, "%d" % n_req)
 	var gate_saved: Array = rc.techs.duplicate()
 	var treas_saved: int = rc.treasury
 	var lv_bank: int = bp.building_level("bank")
@@ -334,6 +334,46 @@ func run_all() -> void:
 	check("politica de imigracao aplicada", rc.immigration == 2)
 	g.apply_command({"type": "set_immigration", "policy": 9, "issuer": g.player_country})
 	check("politica de imigracao invalida recusada", rc.immigration == 2)
+	# logística e abastecimento
+	check("abastecimento: perto da fonte = 100%", g._supply_ratio(3600, 6000) == 100)
+	check("abastecimento: no limite do alcance = 50%", g._supply_ratio(6000, 6000) == 50)
+	check("abastecimento: alem de 1,5x o alcance = 0%", g._supply_ratio(9000, 6000) == 0)
+	check("rotulos de abastecimento", g.supply_label(90) == "normal" and g.supply_label(50) == "baixo" and g.supply_label(10) == "crítico")
+	var cap_pid: int = rc.capital
+	check("capital e fonte de abastecimento", g._supply_range_at(cap_pid, g.player_country) == g.SUPPLY_BASE_RANGE)
+	var dpid: int = -1
+	for pid2 in rc.province_ids:
+		if int(pid2) != cap_pid:
+			dpid = int(pid2)
+			break
+	if dpid >= 0:
+		var dprov: Province = g.provinces[dpid]
+		var lv_dep: int = dprov.building_level("depot")
+		dprov.set_building_level("depot", 2)
+		check("deposito: alcance 8000 e capacidade 16", g._supply_range_at(dpid, g.player_country) == 8000 and g._supply_cap_at(dpid) == 16)
+		dprov.set_building_level("depot", lv_dep)
+	g._add_regiments(cap_pid, g.player_country, 20)
+	var sup_army: Army = null
+	for aid in g.armies.keys():
+		var ax: Army = g.armies[aid]
+		if ax.owner_id == g.player_country and ax.province_id == cap_pid:
+			sup_army = ax
+	if sup_army != null:
+		g._update_supply()
+		check("exercito na capital recebe abastecimento total ate a capacidade", sup_army.supply > 0 and sup_army.supply <= 100, "%d%%" % sup_army.supply)
+		var regs_before: int = sup_army.regiments
+		sup_army.supply = 0
+		g._supply_attrition()
+		check("sem suprimentos o exercito perde regimentos", sup_army.regiments < regs_before, "%d -> %d" % [regs_before, sup_army.regiments])
+		sup_army.supply = 37
+		var blob_s: Dictionary = g.serialize_state()
+		g.load_state(blob_s)
+		var back: Army = null
+		for aid2 in g.armies.keys():
+			if int(aid2) == sup_army.id:
+				back = g.armies[aid2]
+		check("abastecimento sobrevive ao salvar/carregar", back != null and back.supply == 37)
+		rc = g.countries[g.player_country]
 	var ai_res: int = 0
 	for cc in g.countries:
 		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:

@@ -63,10 +63,11 @@ const BUILDINGS := {
 	"power_plant": {"tab": "ind", "name": "Usina elétrica", "cost": 380, "tech": 0, "req": 30, "desc": "+20% produção de recursos por nível"},
 	"bank": {"tab": "inf", "name": "Banco", "cost": 240, "tech": 0, "req": 7, "desc": "+6% de imposto da província por nível"},
 	"shipyard": {"tab": "inf", "name": "Estaleiro naval", "cost": 280, "tech": 0, "req": 15, "desc": "Manutenção da frota -10% por nível (só litoral)"},
+	"depot": {"tab": "inf", "name": "Depósito de suprimentos", "cost": 220, "tech": 0, "req": 9, "desc": "Fonte de abastecimento do exército: alcance +2000 e +8 regimentos atendidos por nível"},
 	"telegraph": {"tab": "inf", "name": "Central telegráfica", "cost": 220, "tech": 0, "req": 19, "desc": "+5% de comércio nacional por nível (máx. +30%)"},
 }
 const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging", "hospital", "market", "railway", "dock",
-	"library", "sanitation", "academy", "arsenal", "lab", "irrigation", "power_plant", "bank", "shipyard", "telegraph"]
+	"library", "sanitation", "academy", "arsenal", "lab", "irrigation", "power_plant", "bank", "shipyard", "telegraph", "depot"]
 const MINE_RES := ["coal", "iron", "salt", "gold"]
 
 ## ECONOMIA DOS EDIFÍCIOS (salários, impostos e materiais de obra).
@@ -83,14 +84,14 @@ const WAGE_PCT := {
 ## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
 ## SCHOOL_UPKEEP / UNIVERSITY_UPKEEP do game_state; o quartel passa a ter soldo de instrutores).
 const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3, "market": 2, "dock": 3,
-	"library": 1, "sanitation": 3, "academy": 4, "arsenal": 4, "lab": 6, "bank": 3, "shipyard": 4, "telegraph": 3}
+	"library": 1, "sanitation": 3, "academy": 4, "arsenal": 4, "lab": 6, "bank": 3, "shipyard": 4, "telegraph": 3, "depot": 3}
 ## Empregos criados por nível (informativo: aparece na interface).
 const JOBS_PER_LEVEL := {
 	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
 	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340,
 	"hospital": 40, "market": 90, "railway": 200, "dock": 150,
 	"library": 10, "sanitation": 50, "academy": 25, "arsenal": 60, "lab": 35, "irrigation": 120,
-	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40,
+	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40, "depot": 60,
 }
 ## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
 ## de mercado do país, junto com o custo base (não há estoque no jogo).
@@ -120,6 +121,7 @@ const BUILD_MATERIALS := {
 	"bank": {"timber": 150, "tools": 30},
 	"shipyard": {"timber": 350, "iron": 150, "tools": 60},
 	"telegraph": {"iron": 120, "tools": 60},
+	"depot": {"timber": 200, "iron": 60, "tools": 20},
 }
 
 var id: int = 0

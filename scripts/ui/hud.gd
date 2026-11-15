@@ -674,7 +674,7 @@ func _build_windows() -> void:
 	_make_window("leaders", "Governantes", Vector2(1000, 640), "crown")
 	_make_window("laws", "Leis", Vector2(1040, 560), "scroll")
 	_make_window("diplo", "Diplomacia", Vector2(980, 600), "flag")
-	_make_window("tech", "Pesquisa tecnológica", Vector2(900, 580), "bulb")
+	_make_window("tech", "Pesquisa tecnológica", Vector2(1060, 680), "bulb")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
 	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
 	var menu := _make_window("menu", "Menu", Vector2(420, 480), "menu")
@@ -771,61 +771,151 @@ func _refresh_tech() -> void:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
 	body.add_child(top)
-	_big_number(top, "Nível", "%d / %d" % [lvl, Game.MAX_TECH], UIKit.GOLD_BRIGHT)
-	_big_number(top, "Era", str(Game.TECH_ERAS[lvl]["name"]), UIKit.TEXT)
+	_big_number(top, "Era", "%d · %s" % [lvl, str(Game.TECH_ERAS[lvl]["name"])], UIKit.GOLD_BRIGHT)
+	_big_number(top, "Tecnologias", "%d / %d" % [c.techs.size(), Techs.ALL.size()], UIKit.TEXT)
 	_big_number(top, "Pontos por mês", "+%d" % gain, UIKit.POS)
+	_big_number(top, "Banco de pontos", str(c.tech_pts), UIKit.TEXT)
 	_big_number(top, "Custo da pesquisa", Money.signed(-int(e["upkeep_research"])), UIKit.NEG if int(e["upkeep_research"]) > 0 else UIKit.TEXT_DIM)
 
+	# Pesquisa em curso e financiamento
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 12)
 	body.add_child(cols)
-	var left := _card(cols, "Progresso e financiamento", "bulb")
-	if lvl >= Game.MAX_TECH:
-		left.add_child(UIKit.label("Nível máximo alcançado.", 17, UIKit.GOLD_BRIGHT))
+	var left := _card(cols, "Pesquisa em curso", "bulb")
+	if c.techs.size() >= Techs.ALL.size():
+		left.add_child(UIKit.label("Todas as tecnologias foram dominadas.", 17, UIKit.GOLD_BRIGHT))
+	elif c.researching < 0:
+		left.add_child(UIKit.label("Nenhuma tecnologia em estudo: escolha uma abaixo. Os pontos ficam guardados no banco (até %d)." % Game.TECH_BANK_MAX, 16, UIKit.WARN))
 	else:
-		var into: int = c.tech_pts % Country.TECH_STEP
-		left.add_child(UIKit.kv_row("Próximo: %s" % str(Game.TECH_ERAS[lvl + 1]["name"]), "%d / %d" % [into, Country.TECH_STEP]))
-		left.add_child(UIKit.bar(float(into), float(Country.TECH_STEP), UIKit.GOLD))
-		var months: int = (Country.TECH_STEP - into + maxi(1, gain) - 1) / maxi(1, gain)
-		left.add_child(UIKit.label("Previsão: ~%d meses (%d anos e %d meses)." % [months, months / 12, months % 12], 15, UIKit.TEXT_DIM))
+		var tid: int = c.researching
+		var cost: int = Techs.cost(tid)
+		left.add_child(UIKit.kv_row("%s" % str(Techs.ALL[tid]["name"]), "%d / %d" % [mini(c.tech_pts, cost), cost], UIKit.GOLD_BRIGHT, 18))
+		left.add_child(UIKit.bar(float(mini(c.tech_pts, cost)), float(cost), UIKit.GOLD))
+		left.add_child(UIKit.label(Techs.fx_text(Techs.ALL[tid]["fx"]), 15, UIKit.TEXT_DIM))
+		var months: int = maxi(0, (cost - c.tech_pts + maxi(1, gain) - 1) / maxi(1, gain))
+		left.add_child(UIKit.label("Conclusão em ~%d meses." % months, 15, UIKit.TEXT_DIM))
 	left.add_child(HSeparator.new())
-	left.add_child(UIKit.label("De onde vêm os pontos (sem financiamento: %d)" % base, 16, UIKit.GOLD_BRIGHT))
+	left.add_child(UIKit.label("Origem dos pontos (sem financiamento: %d)" % base, 16, UIKit.GOLD_BRIGHT))
 	var edu := Game.edu_levels(c)
-	left.add_child(UIKit.kv_row("Base + alfabetização (%.1f%%)" % (c.literacy / 10.0), "+%d" % (6 + c.literacy / 50)))
-	left.add_child(UIKit.kv_row("Escolas (%d)" % edu.x, "+%d" % (3 * edu.x)))
-	left.add_child(UIKit.kv_row("Universidades (%d)" % edu.y, "+%d" % (10 * edu.y)))
 	var lm := Game.law_mods(c)
+	var tfx: Dictionary = Game.tech_fx(c)
+	left.add_child(UIKit.kv_row("Base + alfabetização (%.1f%%)" % (c.literacy / 10.0), "+%d" % (6 + c.literacy / 50)))
+	left.add_child(UIKit.kv_row("Escolas (%d) e universidades (%d)" % [edu.x, edu.y], "+%d" % (3 * edu.x + 10 * edu.y)))
 	left.add_child(UIKit.kv_row("Leis", "%+d" % int(lm["tech"]), _signed_color(int(lm["tech"]))))
+	left.add_child(UIKit.kv_row("Tecnologias de Sociedade", "+%d%%" % int(tfx["tech"]), UIKit.POS if int(tfx["tech"]) > 0 else UIKit.TEXT_DIM))
 	left.add_child(UIKit.kv_row("Financiamento (%d%% da renda)" % c.research_pct, "+%d" % (gain - base), UIKit.POS if gain > base else UIKit.TEXT_DIM))
-	left.add_child(HSeparator.new())
-	left.add_child(UIKit.label("Investimento em pesquisa: cada 20%% da renda dobra os pontos.", 15, UIKit.TEXT_DIM))
+
+	var right := _card(cols, "Financiamento", "coin")
+	right.add_child(UIKit.label("Cada 20%% da renda dobra os pontos por mês.", 15, UIKit.TEXT_DIM))
 	var grid := GridContainer.new()
-	grid.columns = 7
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 6)
-	left.add_child(grid)
+	grid.add_theme_constant_override("v_separation", 6)
+	right.add_child(grid)
 	var gross: int = int(e["income"]) + int(e["upkeep_research"])
 	for pct in range(0, Game.RESEARCH_MAX_PCT + 1, 5):
-		var b := _info_button("%d%%" % pct, Vector2(60, 44), _on_research_pct.bind(pct), grid)
+		var b := _info_button("%d%%" % pct, Vector2(72, 44), _on_research_pct.bind(pct), grid)
 		b.tooltip_text = "Custa ~%s por mês" % Money.fmt(gross * pct / 100)
 		b.disabled = pct == c.research_pct
+	right.add_child(HSeparator.new())
+	right.add_child(UIKit.label("Efeitos acumulados das tecnologias", 16, UIKit.GOLD_BRIGHT))
+	var any_fx: bool = false
+	for k in Techs.FX_KEYS:
+		var v: int = int(tfx[k])
+		if v != 0:
+			any_fx = true
+			right.add_child(UIKit.kv_row(str(Techs.FX_LABEL[k]), Techs.fx_text({k: v}).replace("%s " % str(Techs.FX_LABEL[k]), ""), UIKit.POS, 15))
+	if not any_fx:
+		right.add_child(UIKit.label("Nenhum ainda.", 15, UIKit.TEXT_DIM))
 
-	var right := _card(cols, "Eras tecnológicas", "scroll")
-	for i in range(Game.MAX_TECH + 1):
-		var era: Dictionary = Game.TECH_ERAS[i]
+	# Árvore: uma linha por era, três colunas (Produção, Militar, Sociedade)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	body.add_child(head)
+	for cat in Techs.CAT_ORDER:
+		var hp := PanelContainer.new()
+		hp.theme_type_variation = "BannerPanel"
+		hp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(hp)
+		var hr := HBoxContainer.new()
+		hr.add_theme_constant_override("separation", 8)
+		hp.add_child(hr)
+		hr.add_child(UiIcon.make(str(Techs.CATS[cat]["icon"]), 26, UIKit.GOLD_BRIGHT))
+		hr.add_child(UIKit.serif_label(str(Techs.CATS[cat]["name"]), 21, UIKit.GOLD_BRIGHT))
+	for era in range(1, Techs.MAX_ERA + 1):
+		var era_info: Dictionary = Game.TECH_ERAS[era]
 		var unlocks: Array = []
 		for k in Province.BUILDINGS.keys():
-			if int(Province.BUILDINGS[k]["tech"]) == i and i > 0:
+			if int(Province.BUILDINGS[k]["tech"]) == era:
 				unlocks.append(str(Province.BUILDINGS[k]["name"]))
-		var state: String = "[OK]" if i <= lvl else "[ ]"
-		var col: Color = UIKit.GOLD_BRIGHT if i == lvl else (UIKit.TEXT if i < lvl else UIKit.TEXT_DIM)
-		right.add_child(UIKit.kv_row("%s  %d. %s" % [state, i, str(era["name"])], "atual" if i == lvl else "", col, 17))
-		var txt: String = str(era["extra"])
+		var open: bool = era <= lvl + 1
+		var title: String = "Era %d · %s" % [era, str(era_info["name"])]
+		if era <= lvl:
+			title += "  (completa)"
+		elif not open:
+			title += "  (requer a era %d completa)" % (era - 1)
+		body.add_child(UIKit.serif_label(title, 18, UIKit.GOLD if open else UIKit.TEXT_DIM))
+		var extra: String = str(era_info["extra"])
 		if not unlocks.is_empty():
-			txt = "Libera: %s. %s" % [", ".join(unlocks), txt]
-		var lab := UIKit.label(txt, 14, UIKit.TEXT_DIM)
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.custom_minimum_size = Vector2(320, 0)
-		right.add_child(lab)
+			extra = "Libera: %s. %s" % [", ".join(unlocks), extra]
+		var el := UIKit.label(extra, 14, UIKit.TEXT_DIM)
+		el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		el.custom_minimum_size.x = 300
+		body.add_child(el)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		body.add_child(row)
+		for cat in Techs.CAT_ORDER:
+			var colv := VBoxContainer.new()
+			colv.add_theme_constant_override("separation", 6)
+			colv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(colv)
+			for tid in range((era - 1) * Techs.PER_ERA, era * Techs.PER_ERA):
+				if str(Techs.ALL[tid]["cat"]) == cat:
+					_tech_cell(colv, c, tid, open)
+
+
+func _tech_cell(parent: Control, c: Country, tid: int, era_open: bool) -> void:
+	var t: Dictionary = Techs.ALL[tid]
+	var owned: bool = c.techs.has(tid)
+	var active: bool = c.researching == tid
+	var pc := PanelContainer.new()
+	pc.theme_type_variation = "CardPanel"
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(pc)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	pc.add_child(hb)
+	var ic_col: Color = UIKit.POS if owned else (UIKit.GOLD_BRIGHT if (active or era_open) else UIKit.GOLD_DIM)
+	var ic := UiIcon.make(Techs.icon_of(tid), 34, ic_col)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hb.add_child(ic)
+	var tv := VBoxContainer.new()
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.add_theme_constant_override("separation", 1)
+	hb.add_child(tv)
+	var nm := UIKit.label(str(t["name"]), 16, UIKit.POS if owned else (UIKit.GOLD_BRIGHT if active else (UIKit.TEXT if era_open else UIKit.TEXT_DIM)))
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size.x = 120
+	tv.add_child(nm)
+	var fx := UIKit.label(Techs.fx_text(t["fx"]), 13, UIKit.TEXT_DIM)
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fx.custom_minimum_size.x = 120
+	tv.add_child(fx)
+	if owned:
+		tv.add_child(UIKit.label("Dominada", 13, UIKit.POS))
+	elif active:
+		tv.add_child(UIKit.label("Em estudo (%d pts)" % Techs.cost(tid), 13, UIKit.GOLD_BRIGHT))
+	elif Techs.available(c, tid):
+		var b := _info_button("Pesquisar (%d pts)" % Techs.cost(tid), Vector2(0, 38), _on_research_target.bind(tid), tv)
+		b.add_theme_font_size_override("font_size", 14)
+	else:
+		tv.add_child(UIKit.label("Bloqueada · %d pts" % Techs.cost(tid), 13, UIKit.TEXT_DIM))
+
+
+func _on_research_target(tid: int) -> void:
+	Game.submit_command(Cmd.set_research_target(tid))
+	_refresh_tech()
 
 
 func _on_research_pct(pct: int) -> void:
@@ -1689,7 +1779,10 @@ func _refresh_top() -> void:
 	_set_chip("pop", _fmt_pop(Game.population_of(c)), "habitantes")
 	_set_chip("lit", "%d,%d%%" % [c.literacy / 10, c.literacy % 10], "alfabetização")
 	_set_chip("sol", "%.1f" % (float(Game.standard_of_living_x10(c, e)) / 10.0), "padrão de vida")
-	_set_chip("tech", "Nível %d" % c.tech_level(), "%d%% p/ o próximo" % ((c.tech_pts % Country.TECH_STEP) * 100 / Country.TECH_STEP))
+	var tech_sub: String = "sem pesquisa"
+	if c.researching >= 0:
+		tech_sub = "%d%% da pesquisa" % mini(100, c.tech_pts * 100 / Techs.cost(c.researching))
+	_set_chip("tech", "Nível %d" % c.tech_level(), tech_sub)
 	var sc: Color = _sat_color(c.stability)
 	_set_chip("stab", "%d%%" % c.stability, "estabilidade", UIKit.TEXT_DIM, sc)
 	_set_chip("army", "%d reg." % int(e["regiments"]), "MO %s" % _fmt_pop(Game.manpower_of(c.id)))

@@ -175,3 +175,10 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 - **Retratos**: `scripts/ui/leader_portrait.gd` desenha cada retrato em código (arte original, sem fotos): ombros com a indumentária do país, rosto, cabelo, barba e coroa/chapéu. O cartão de seleção de país também mostra o governante de 1836.
 - **Nomes de época**: `tools/period_names.py` troca nomes modernos de províncias e cidades por nomes de 1836 (Constantinopla, Edo, Pequim, Bombaim, Batávia…) e ajusta cidades-capitais. Só altera texto exibido.
 - Os governantes são só apresentação (não entram no estado da simulação nem no hash).
+
+## Árvore de tecnologias (estilo Victoria 3)
+- `scripts/core/techs.gd`: 36 tecnologias em 3 categorias com ícone — **Produção** (martelo), **Militar** (escudo) e **Sociedade** (livro) — distribuídas em 6 eras (2 por categoria em cada era).
+- Cada país tem tecnologias dominadas e uma **pesquisa em curso**; os pontos mensais (alfabetização, escolas, universidades, leis, financiamento) vão para um banco que paga o custo da tecnologia escolhida (50 + 10 × era). O nível do país = tecnologias dominadas ÷ 6; a era N só abre quando a era N−1 está completa. A IA escolhe sozinha (mais Militar em guerra, mais Sociedade com alfabetização baixa).
+- Efeitos reais: produção, lucro industrial, comércio, imposto, custo do exército, mão de obra, ataque e defesa em batalha terrestre, força naval, alfabetização, velocidade de pesquisa, estabilidade e crescimento populacional.
+- Janela de pesquisa: uma linha por era e três colunas por categoria, com efeito, custo e botão "Pesquisar". Comando de rede: `set_research_target`.
+- Salvamentos antigos são convertidos (nível = pontos ÷ 400).

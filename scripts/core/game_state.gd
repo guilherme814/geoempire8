@@ -25,6 +25,7 @@ const EXPENSE_PER_PROVINCE := 1
 const REGIMENT_UPKEEP := 2
 const MIN_START_TREASURY := 300
 const MAX_TECH := 6                  # nível máximo de tecnologia
+const TECH_BANK_MAX := 600           # teto do banco de pontos de pesquisa
 const RESEARCH_MAX_PCT := 30         # teto do investimento em pesquisa (% da renda)
 ## Eras tecnológicas: nome e o que cada nível libera além das construções (Province.BUILDINGS).
 const TECH_ERAS := [
@@ -327,8 +328,8 @@ func _advance_fleets() -> void:
 ## Um round de combate naval. A força de cada navio cresce com a tecnologia do dono
 ## (fragata -> navio de linha -> vapor de guerra); com tecnologias iguais é a regra simples.
 func _naval_round(x: Fleet, y: Fleet) -> void:
-	var qx: int = 10 + 3 * countries[x.owner_id].tech_level()
-	var qy: int = 10 + 3 * countries[y.owner_id].tech_level()
+	var qx: int = 10 + 3 * countries[x.owner_id].tech_level() + int(tech_fx(countries[x.owner_id])["nav"])
+	var qy: int = 10 + 3 * countries[y.owner_id].tech_level() + int(tech_fx(countries[y.owner_id])["nav"])
 	var loss_x := ((y.ships * qy) * BATTLE_LOSS_PCT / 100 + qx - 1) / qx
 	var loss_y := ((x.ships * qx) * BATTLE_LOSS_PCT / 100 + qy - 1) / qy
 	if x.ships * qx == y.ships * qy:
@@ -497,19 +498,21 @@ func load_world(path: String = WORLD_PATH) -> bool:
 
 	for c in countries:
 		c.literacy = int(LITERACY_START.get(c.tag, 10)) * 10
-		c.tech_pts = int(TECH_START.get(c.tag, 0)) * Country.TECH_STEP
+		_set_tech_level(c, int(TECH_START.get(c.tag, 0)))
 		c.lit_acc = 0
 		_init_laws(c)
 		# O desenvolvimento industrial histórico adianta a tecnologia inicial.
 		var hh: Dictionary = history.get(c.tag, {})
-		c.tech_pts = maxi(c.tech_pts, (int(hh.get("ind", 0)) * 3 / 5) * Country.TECH_STEP)
+		var ind_lvl: int = int(hh.get("ind", 0)) * 3 / 5
+		if ind_lvl > c.tech_level():
+			_set_tech_level(c, ind_lvl)
 		if not hh.is_empty():
 			c.tax_pct = 20 + 4 * int(hh.get("tax", 2))   # capacidade fiscal histórica
 		var prof: Dictionary = hh.get("profile", {})
 		if not prof.is_empty():
 			# Perfil de referência (países principais): sobrepõe os valores genéricos.
 			c.literacy = int(prof.get("lit", c.literacy / 10)) * 10
-			c.tech_pts = int(prof.get("tech", c.tech_level())) * Country.TECH_STEP
+			_set_tech_level(c, int(prof.get("tech", c.tech_level())))
 			Laws.apply_profile(c.laws, prof.get("laws", {}))
 	_apply_historical_productivity()
 	for c in countries:
@@ -769,6 +772,15 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		countries[issuer].research_pct = clampi(int(cmd.get("pct", 0)) / 5 * 5, 0, RESEARCH_MAX_PCT)
 		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.SET_RESEARCH_TARGET:
+		if issuer < 0 or issuer >= countries.size():
+			return
+		var want: int = int(cmd.get("tech", -1))
+		var rcn: Country = countries[issuer]
+		if want == -1 or Techs.available(rcn, want):
+			rcn.researching = want
+			Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.SET_AUTO_FRONT:
 		if issuer >= 0 and issuer < countries.size():
@@ -1901,9 +1913,13 @@ func _advance_war() -> void:
 				var y: Army = list[j]
 				if x.regiments <= 0 or y.regiments <= 0 or not at_war(x.owner_id, y.owner_id):
 					continue
-				var loss_x := (y.regiments * BATTLE_LOSS_PCT + 99) / 100
-				var loss_y := (x.regiments * BATTLE_LOSS_PCT + 99) / 100
-				if x.regiments == y.regiments:
+				var fx_x: Dictionary = tech_fx(countries[x.owner_id])
+				var fx_y: Dictionary = tech_fx(countries[y.owner_id])
+				var mod_x: int = clampi(100 + int(fx_y["atk"]) - int(fx_x["def"]), 50, 200)   # perdas de x
+				var mod_y: int = clampi(100 + int(fx_x["atk"]) - int(fx_y["def"]), 50, 200)
+				var loss_x := (y.regiments * BATTLE_LOSS_PCT * mod_x + 9999) / 10000
+				var loss_y := (x.regiments * BATTLE_LOSS_PCT * mod_y + 9999) / 10000
+				if x.regiments == y.regiments and loss_x == loss_y:
 					# empate: o sorteio decide quem sofre o round
 					if rng.randi_range(0, 1) == 0:
 						loss_y = 0
@@ -1963,9 +1979,11 @@ func _advance_war() -> void:
 func _simulate_month() -> void:
 	for p in provinces:
 		# Crescimento demográfico: +0,1% ao mês.
-		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500
+		var own: int = p.owner_id
+		var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
+		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000
 		# Recuperação de mão de obra.
-		var mx := p.manpower_max()
+		var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
 	_run_trade()
@@ -1974,10 +1992,11 @@ func _simulate_month() -> void:
 			var edu := edu_levels(c)
 			var lmod := law_mods(c)
 			var lit_base: int = 100 + (edu.x + 2 * edu.y) * 400 / maxi(1, c.province_ids.size())
-			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"])) / 100)
+			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
 			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 			c.lit_acc = c.lit_acc % 100
-			c.tech_pts = mini(MAX_TECH * Country.TECH_STEP + Country.TECH_STEP - 1, c.tech_pts + tech_gain(c))
+			c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
+			_research_step(c)
 			for gi in c.law_cd.size():
 				if int(c.law_cd[gi]) > 0:
 					c.law_cd[gi] = int(c.law_cd[gi]) - 1
@@ -2265,7 +2284,7 @@ func politics_of(c: Country) -> Dictionary:
 	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
 	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
 	for i in 6:
-		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(lmp["sat"][i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
 
 	var pw := [0, 0, 0, 0, 0, 0]
 	var tot_pw := 0
@@ -2325,18 +2344,85 @@ func edu_levels(c: Country) -> Vector2i:
 
 ## Bônus por tecnologia: imposto (+4% por nível acima de 3) e manutenção do exército (-10% por nível acima de 4).
 func tech_tax_bonus(c: Country) -> int:
-	return 4 * maxi(0, mini(c.tech_level(), MAX_TECH) - 3)
+	return 4 * maxi(0, mini(c.tech_level(), MAX_TECH) - 3) + int(tech_fx(c)["tax"])
 
 
 func tech_army_discount(c: Country) -> int:
-	return 10 * maxi(0, mini(c.tech_level(), MAX_TECH) - 4)
+	return mini(70, 10 * maxi(0, mini(c.tech_level(), MAX_TECH) - 4) + int(tech_fx(c)["army"]))
+
+
+## Efeitos acumulados das tecnologias dominadas (cache por país).
+func tech_fx(c: Country) -> Dictionary:
+	if c.fx_dirty:
+		var f: Dictionary = {}
+		for k in Techs.FX_KEYS:
+			f[k] = 0
+		for tid in c.techs:
+			var fx: Dictionary = Techs.ALL[int(tid)]["fx"]
+			for k in fx.keys():
+				f[k] = int(f[k]) + int(fx[k])
+		c.fx = f
+		c.fx_dirty = false
+	return c.fx
+
+
+## Dá ao país exatamente as eras 1..lvl completas (e zera banco e pesquisa em curso).
+func _set_tech_level(c: Country, lvl: int) -> void:
+	c.techs = []
+	c.researching = -1
+	c.tech_pts = 0
+	c.fx_dirty = true
+	for tid in range(mini(lvl, Techs.MAX_ERA) * Techs.PER_ERA):
+		c.techs.append(tid)
+
+
+## Escolha determinística da IA: a tecnologia disponível de maior pontuação (empate: menor id).
+func _ai_pick_tech(c: Country) -> int:
+	var war: bool = not wars_of(c.id).is_empty()
+	var low_lit: bool = c.literacy < 300
+	var best: int = -1
+	var best_s: int = -1
+	for tid in Techs.ALL.size():
+		if not Techs.available(c, tid):
+			continue
+		var sc: int = Techs.score(tid, war, low_lit)
+		if sc > best_s:
+			best_s = sc
+			best = tid
+	return best
+
+
+## Passo mensal da pesquisa: gasta o banco na tecnologia em estudo e, concluída, aplica seus efeitos.
+func _research_step(c: Country) -> void:
+	if c.techs.size() >= Techs.ALL.size():
+		c.researching = -1
+		return
+	if c.researching >= 0 and not Techs.available(c, c.researching):
+		c.researching = -1
+	if c.researching < 0 and not is_human(c.id):
+		c.researching = _ai_pick_tech(c)
+	if c.researching < 0:
+		return
+	var cost: int = Techs.cost(c.researching)
+	if c.tech_pts < cost:
+		return
+	c.tech_pts -= cost
+	var done: int = c.researching
+	c.techs.append(done)
+	c.techs.sort()
+	c.fx_dirty = true
+	c.researching = -1
+	if not is_human(c.id):
+		c.researching = _ai_pick_tech(c)
+	if c.id == player_country:
+		Events.notice("Pesquisa concluída: %s" % str(Techs.ALL[done]["name"]))
 
 
 ## Pontos de tecnologia por mês SEM financiamento: base + alfabetização + escolas + universidades + leis.
 func tech_gain_base(c: Country) -> int:
 	var edu := edu_levels(c)
 	var lmod := law_mods(c)
-	return maxi(0, 6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"]))
+	return maxi(0, (6 + c.literacy / 50 + 3 * edu.x + 10 * edu.y + int(lmod["tech"])) * (100 + int(tech_fx(c)["tech"])) / 100)
 
 
 ## Pontos por mês com o financiamento atual (cada 20% da renda dobram a pesquisa).
@@ -2374,6 +2460,11 @@ func estimate_monthly(c: Country) -> Dictionary:
 		flat += Province.FLAT_TAX
 		prod += p.production()
 	var lm := law_mods(c)
+	var tf: Dictionary = tech_fx(c)
+	tax = tax * (100 + int(tf["prod"])) / 100       # tecnologias de produção
+	prod = prod * (100 + int(tf["prod"])) / 100
+	industry_state = industry_state * (100 + int(tf["ind"])) / 100
+	industry = industry * (100 + int(tf["ind"])) / 100
 	tax = tax * (1000 + c.literacy / 5) / 1000      # alfabetização: até ~+19% de imposto
 	tax = tax * (100 + int(lm["tax"]) + tech_tax_bonus(c)) / 100
 	if c.stability < UNREST_TAX_STABILITY:
@@ -2385,7 +2476,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + int(lm["trade"])) / 100
+	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"])) / 100
 	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
 	return {
 		"upkeep_research": up_research,
@@ -2807,6 +2898,9 @@ func state_hash() -> int:
 		h = _mix(h, c.literacy)
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.research_pct)
+		h = _mix(h, c.researching)
+		for tt in c.techs:
+			h = _mix(h, int(tt))
 		h = _mix(h, c.lit_acc)
 		h = _mix(h, c.stability)
 		for v in c.sat:
@@ -2866,6 +2960,13 @@ func _country_ints(field: String) -> Array:
 	var out: Array = []
 	for c in countries:
 		out.append(int(c.get(field)))
+	return out
+
+
+func _tech_lists() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.techs.duplicate())
 	return out
 
 
@@ -2957,6 +3058,8 @@ func serialize_state() -> Dictionary:
 		"workshops": workshops,
 		"bld": blds,
 		"tech": _country_ints("tech_pts"),
+		"techs": _tech_lists(),
+		"researching": _country_ints("researching"),
 		"lit_acc": _country_ints("lit_acc"),
 		"stab": _country_ints("stability"),
 		"sat": _sat_list(),
@@ -3085,6 +3188,22 @@ func load_state(d: Dictionary) -> bool:
 	for i in countries.size():
 		countries[i].tech_pts = int(tp[i]) if i < tp.size() else countries[i].tech_pts
 		countries[i].lit_acc = int(la[i]) if i < la.size() else 0
+	if d.has("techs"):
+		var tl: Array = d["techs"]
+		var rs: Array = d.get("researching", [])
+		for i in countries.size():
+			var lst: Array = []
+			if i < tl.size():
+				for v in tl[i]:
+					lst.append(int(v))
+			countries[i].techs = lst
+			countries[i].researching = int(rs[i]) if i < rs.size() else -1
+			countries[i].fx_dirty = true
+	else:
+		# salvamento antigo: o nível vinha dos pontos (400 por nível)
+		for i in countries.size():
+			var old_pts: int = countries[i].tech_pts
+			_set_tech_level(countries[i], old_pts / Country.TECH_STEP)
 	var stb: Array = d.get("stab", [])
 	var sts: Array = d.get("sat", [])
 	for i in countries.size():

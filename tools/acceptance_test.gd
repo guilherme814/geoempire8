@@ -202,13 +202,69 @@ func run_all() -> void:
 	g.apply_command({"type": "set_research", "pct": 20, "issuer": g.player_country})
 	check("20% dobra os pontos de pesquisa", g.tech_gain(rc) == gain0 * 2, "%d -> %d" % [gain0, g.tech_gain(rc)])
 	check("pesquisa tem custo mensal", int(g.estimate_monthly(rc)["upkeep_research"]) > cost0)
-	rc.tech_pts = g.MAX_TECH * Country.TECH_STEP + Country.TECH_STEP - 5
+	# árvore de tecnologias (estilo Victoria 3)
+	check("catalogo: 36 tecnologias, 6 por era", Techs.ALL.size() == Techs.PER_ERA * Techs.MAX_ERA)
+	var era_ok: bool = true
+	for tid in Techs.ALL.size():
+		var tdef: Dictionary = Techs.ALL[tid]
+		if int(tdef["era"]) != tid / Techs.PER_ERA + 1 or not Techs.CATS.has(str(tdef["cat"])):
+			era_ok = false
+	check("ids por era e categorias consistentes", era_ok)
+	var start_ok: bool = true
+	for cc in g.countries:
+		if cc.is_alive() and cc.techs.size() % Techs.PER_ERA != 0:
+			start_ok = false
+	check("paises comecam com eras completas", start_ok)
+	var pick: int = -1
+	for tid in Techs.ALL.size():
+		if Techs.available(rc, tid):
+			pick = tid
+			break
+	if pick >= 0:
+		g.apply_command({"type": "set_research_target", "tech": pick, "issuer": g.player_country})
+		check("alvo de pesquisa aplicado", rc.researching == pick)
+		var far: int = -1
+		for tid in Techs.ALL.size():
+			if int(Techs.ALL[tid]["era"]) > rc.tech_level() + 1:
+				far = tid
+				break
+		if far >= 0:
+			g.apply_command({"type": "set_research_target", "tech": far, "issuer": g.player_country})
+			check("tecnologia de era bloqueada e recusada", rc.researching == pick)
+		var n0: int = rc.techs.size()
+		rc.tech_pts = Techs.cost(pick) + 7
+		g._research_step(rc)
+		check("pesquisa concluida adiciona a tecnologia", rc.techs.size() == n0 + 1 and rc.techs.has(pick) and rc.researching == -1)
+		check("custo debitado do banco", rc.tech_pts == 7, "banco %d" % rc.tech_pts)
+	var sum_atk: int = 0
+	for tt in rc.techs:
+		sum_atk += int(Techs.ALL[int(tt)]["fx"].get("atk", 0))
+	check("efeitos acumulados conferem", int(g.tech_fx(rc)["atk"]) == sum_atk)
+	# efeito econômico: Fertilizantes químicos (+5% de produção) aumenta a renda
+	var saved_techs: Array = rc.techs.duplicate()
+	rc.techs.erase(13)
+	rc.fx_dirty = true
+	var inc_a: int = int(g.estimate_monthly(rc)["income"])
+	rc.techs.append(13)
+	rc.fx_dirty = true
+	var inc_b: int = int(g.estimate_monthly(rc)["income"])
+	check("tecnologia de producao aumenta a renda", inc_b > inc_a or inc_a < 200, "%d -> %d" % [inc_a, inc_b])
+	rc.techs = saved_techs
+	rc.fx_dirty = true
+	var ai_res: int = 0
+	for cc in g.countries:
+		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:
+			ai_res += 1
+	check("IA escolhe pesquisa sozinha", ai_res >= 10, "%d paises" % ai_res)
+	var techs_before: Array = rc.techs.duplicate()
+	rc.tech_pts = 450
 	g._simulate_month()
 	check("tecnologia respeita o nivel maximo", rc.tech_level() <= g.MAX_TECH, "nivel %d" % rc.tech_level())
 	var blob_r: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
 	var hr: int = g.state_hash()
 	g.load_state(blob_r)
 	check("pesquisa sobrevive ao salvar/carregar", g.countries[g.player_country].research_pct == 20 and g.state_hash() == hr)
+	check("tecnologias sobrevivem ao salvar/carregar", g.countries[g.player_country].techs.size() >= techs_before.size())
 	g.apply_command({"type": "set_research", "pct": 0, "issuer": g.player_country})
 
 	# --- guerra, pontuação, vassalagem -----------------------------------

@@ -37,6 +37,7 @@ const ACCEPT_PEACE := "accept_peace"
 const REJECT_PEACE := "reject_peace"
 const ENACT_LAW := "enact_law"
 const SET_RESEARCH := "set_research"
+const SET_RESEARCH_TARGET := "set_research_target"
 const SET_AUTO_FRONT := "set_auto_front"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
@@ -58,6 +59,10 @@ static func set_auto_front(enabled: bool) -> Dictionary:
 ## Define o investimento em pesquisa (% da renda, múltiplo de 5).
 static func set_research(pct: int) -> Dictionary:
 	return {"type": SET_RESEARCH, "pct": pct}
+
+
+static func set_research_target(tech: int) -> Dictionary:
+	return {"type": SET_RESEARCH_TARGET, "tech": tech}
 
 
 static func set_tax(country: int, pct: int) -> Dictionary:

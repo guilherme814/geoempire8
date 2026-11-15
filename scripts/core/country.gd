@@ -15,7 +15,11 @@ var last_income: int = 0
 var last_expense: int = 0
 var literacy: int = 100       # alfabetização em décimos de % (100 = 10,0%)
 var research_pct: int = 0      # % da renda investido em pesquisa (0..RESEARCH_MAX_PCT)
-var tech_pts: int = 0         # pontos de tecnologia (nível = pontos / TECH_STEP)
+var tech_pts: int = 0         # banco de pontos de pesquisa (gastos na tecnologia em estudo)
+var techs: Array = []         # ids (Techs.ALL) das tecnologias dominadas
+var researching: int = -1     # tecnologia em estudo (-1 = nenhuma)
+var fx: Dictionary = {}       # efeitos acumulados das tecnologias (cache; recalculado ao carregar)
+var fx_dirty: bool = true
 var lit_acc: int = 0          # resto fracionário do crescimento da alfabetização
 var sat: Array = [50, 50, 50, 50, 50, 50]   # satisfação (0-100) de cada classe social
 var stability: int = 50       # estabilidade interna (0-100), média ponderada da satisfação
@@ -47,9 +51,10 @@ static func from_dict(d: Dictionary) -> Country:
 const TECH_STEP := 400
 
 
+## Nível = tecnologias dominadas / 6 (uma era completa por nível), no máximo Techs.MAX_ERA.
 @warning_ignore("integer_division")
 func tech_level() -> int:
-	return tech_pts / TECH_STEP
+	return mini(Techs.MAX_ERA, techs.size() / Techs.PER_ERA)
 
 
 func is_alive() -> bool:

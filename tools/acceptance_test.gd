@@ -212,9 +212,14 @@ func run_all() -> void:
 	check("ids por era e categorias consistentes", era_ok)
 	var start_ok: bool = true
 	for cc in g.countries:
-		if cc.is_alive() and cc.techs.size() % Techs.PER_ERA != 0:
+		if not cc.is_alive():
+			continue
+		for ti in range(1, cc.techs.size()):
+			if int(cc.techs[ti]) <= int(cc.techs[ti - 1]):
+				start_ok = false
+		if cc.techs.size() > 0 and int(cc.techs[cc.techs.size() - 1]) >= Techs.ALL.size():
 			start_ok = false
-	check("paises comecam com eras completas", start_ok)
+	check("tecnologias ordenadas, sem repeticao e validas", start_ok)
 	var pick: int = -1
 	for tid in Techs.ALL.size():
 		if Techs.available(rc, tid):

@@ -25,6 +25,12 @@ const EXPENSE_PER_PROVINCE := 1
 const REGIMENT_UPKEEP := 2
 const MIN_START_TREASURY := 300
 const MAX_TECH := 6                  # nível máximo de tecnologia
+## Política de imigração inicial (0 fechada, 1 seletiva, 2 aberta): isolamento do Japão, da China
+## e da Coreia; "terras novas" abertas aos imigrantes.
+const IMMIGRATION_START := {
+	"JAP": 0, "QNG": 0, "KOR": 0, "VNM": 0, "ETH": 0,
+	"USA": 2, "TEX": 2, "ARG": 2, "URU": 2, "BRZ": 2, "CHL": 2,
+}
 const TECH_BANK_MAX := 600           # teto do banco de pontos de pesquisa
 const RESEARCH_MAX_PCT := 30         # teto do investimento em pesquisa (% da renda)
 ## Eras tecnológicas: nome e o que cada nível libera além das construções (Province.BUILDINGS).
@@ -499,6 +505,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	for c in countries:
 		c.literacy = int(LITERACY_START.get(c.tag, 10)) * 10
 		_set_tech_level(c, int(TECH_START.get(c.tag, 0)))
+		c.immigration = int(IMMIGRATION_START.get(c.tag, 1))
 		c.lit_acc = 0
 		_init_laws(c)
 		# O desenvolvimento industrial histórico adianta a tecnologia inicial.
@@ -772,6 +779,12 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		countries[issuer].research_pct = clampi(int(cmd.get("pct", 0)) / 5 * 5, 0, RESEARCH_MAX_PCT)
 		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.SET_IMMIGRATION:
+		var pol: int = int(cmd.get("policy", -1))
+		if issuer >= 0 and issuer < countries.size() and pol >= 0 and pol <= 2:
+			countries[issuer].immigration = pol
+			Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.SET_RESEARCH_TARGET:
 		if issuer < 0 or issuer >= countries.size():
@@ -1990,6 +2003,7 @@ func _simulate_month() -> void:
 		var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
+	_simulate_migration()
 	_run_trade()
 	for c in countries:
 		if c.is_alive():
@@ -2521,6 +2535,117 @@ func unemployment_pct(c: Country) -> int:
 	return SURPLUS_LABOR_PCT * maxi(0, surplus - jobs) / surplus
 
 
+## Densidade média mundial (habitantes por província com dono).
+func world_density() -> int:
+	var pop: int = 0
+	var n: int = 0
+	for p in provinces:
+		if p.owner_id >= 0:
+			pop += p.population
+			n += 1
+	return pop / maxi(1, n)
+
+
+## Atratividade de um país para migrantes. Chaves: total e cada parcela (para a interface).
+@warning_ignore("integer_division")
+func attractiveness(c: Country, avg_density: int) -> Dictionary:
+	var unemp: int = unemployment_pct(c)
+	var jobs_b: int = (20 - unemp) * 3
+	var stab_b: int = (c.stability - 50) / 2
+	var lit_b: int = mini(30, c.literacy / 25)
+	var dens: int = population_of(c) / maxi(1, c.province_ids.size())
+	var front_b: int = 20 if dens * 100 < avg_density * 60 else 0
+	var war_b: int = -30 if not wars_of(c.id).is_empty() else 0
+	var tech_b: int = int(tech_fx(c)["mig"])
+	var total: int = maxi(40, 100 + jobs_b + stab_b + lit_b + front_b + war_b + tech_b)
+	return {"total": total, "jobs": jobs_b, "stab": stab_b, "lit": lit_b, "front": front_b, "war": war_b, "tech": tech_b}
+
+
+## Migração mensal (determinística, sem rng; a população total se conserva):
+## 1) interna, de províncias menos para mais desenvolvidas; 2) entre países vizinhos (terra e
+## estreitos), rumo ao mais atrativo, conforme a política de imigração do destino; 3) transoceânica,
+## de portos para os 3 países mais atrativos que aceitam imigrantes.
+@warning_ignore("integer_division")
+func _simulate_migration() -> void:
+	var avg: int = world_density()
+	var att: Array = []
+	for c in countries:
+		c.migr_in = 0
+		c.migr_out = 0
+		att.append(int(attractiveness(c, avg)["total"]) if c.is_alive() else 0)
+	var delta: Array = []
+	delta.resize(provinces.size())
+	delta.fill(0)
+	var port_of: Dictionary = {}     # país -> província portuária menos povoada (assentamento)
+	for p in provinces:
+		if p.owner_id >= 0 and p.port >= 0:
+			if not port_of.has(p.owner_id) or p.population < provinces[int(port_of[p.owner_id])].population:
+				port_of[p.owner_id] = p.id
+	# destinos transoceânicos: os 3 países mais atrativos que aceitam imigrantes e têm porto
+	var dests: Array = []
+	for _n in 3:
+		var best: int = -1
+		for c in countries:
+			if c.is_alive() and c.immigration > 0 and port_of.has(c.id) and not dests.has(c.id):
+				if best < 0 or att[c.id] > att[best]:
+					best = c.id
+		if best >= 0:
+			dests.append(best)
+	for p in provinces:
+		var a: int = p.owner_id
+		if a < 0 or p.population < 20000:
+			continue
+		var cap: int = p.population / 50
+		var sent: int = 0
+		var links: Array = []
+		for q in p.neighbors:
+			links.append(q)
+		for q in p.sea_links:
+			links.append(q)
+		for qi in links:
+			var q: Province = provinces[int(qi)]
+			var b: int = q.owner_id
+			if b < 0 or sent >= cap:
+				continue
+			var m: int = 0
+			if a == b:
+				var diff: int = q.pull() - p.pull()
+				if diff > 15:
+					m = p.population * diff / 100000
+			else:
+				var gap: int = int(att[b]) - int(att[a])
+				if gap > 10 and not at_war(a, b):
+					m = p.population * gap / 40000 * countries[b].immigration
+			m = mini(m, cap - sent)
+			if m <= 0:
+				continue
+			sent += m
+			delta[p.id] = int(delta[p.id]) - m
+			delta[q.id] = int(delta[q.id]) + m
+			if a != b:
+				countries[a].migr_out += m
+				countries[b].migr_in += m
+		if p.port >= 0 and p.population >= 50000 and sent < cap:
+			for d in dests:
+				var di: int = int(d)
+				if di == a or at_war(a, di) or int(att[di]) <= int(att[a]) + 15:
+					continue
+				var m2: int = p.population * (int(att[di]) - int(att[a])) / 200000 * countries[di].immigration
+				m2 = mini(m2, cap - sent)
+				if m2 <= 0:
+					continue
+				var dst: int = int(port_of[di])
+				delta[p.id] = int(delta[p.id]) - m2
+				delta[dst] = int(delta[dst]) + m2
+				countries[a].migr_out += m2
+				countries[di].migr_in += m2
+				break
+	for i in provinces.size():
+		var dv: int = int(delta[i])
+		if dv != 0:
+			provinces[i].population = maxi(0, provinces[i].population + dv)
+
+
 ## População total do país.
 func population_of(c: Country) -> int:
 	var n := 0
@@ -2912,6 +3037,7 @@ func state_hash() -> int:
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.research_pct)
 		h = _mix(h, c.researching)
+		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
 			h = _mix(h, int(tt))
 		h = _mix(h, c.lit_acc)
@@ -3080,6 +3206,9 @@ func serialize_state() -> Dictionary:
 		"overlord": _country_ints("overlord"),
 		"overlord_since": _country_ints("overlord_since"),
 		"research_pct": _country_ints("research_pct"),
+		"immigration": _country_ints("immigration"),
+		"migr_in": _country_ints("migr_in"),
+		"migr_out": _country_ints("migr_out"),
 		"last_income": _country_ints("last_income"),
 		"last_expense": _country_ints("last_expense"),
 		"laws": _law_lists("laws"),
@@ -3201,6 +3330,13 @@ func load_state(d: Dictionary) -> bool:
 	for i in countries.size():
 		countries[i].tech_pts = int(tp[i]) if i < tp.size() else countries[i].tech_pts
 		countries[i].lit_acc = int(la[i]) if i < la.size() else 0
+	var imm: Array = d.get("immigration", [])
+	var mig_i: Array = d.get("migr_in", [])
+	var mig_o: Array = d.get("migr_out", [])
+	for i in countries.size():
+		countries[i].immigration = int(imm[i]) if i < imm.size() else 1
+		countries[i].migr_in = int(mig_i[i]) if i < mig_i.size() else 0
+		countries[i].migr_out = int(mig_o[i]) if i < mig_o.size() else 0
 	if d.has("techs"):
 		var tl: Array = d["techs"]
 		var rs: Array = d.get("researching", [])

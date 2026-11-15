@@ -927,6 +927,11 @@ func _tech_cell(parent: Control, c: Country, tid: int, era_open: bool) -> void:
 		tv.add_child(UIKit.label("Bloqueada · %d pts" % Techs.cost(tid), 13, UIKit.TEXT_DIM))
 
 
+func _on_immigration(pol: int) -> void:
+	Game.submit_command(Cmd.set_immigration(pol))
+	_refresh_politics()
+
+
 func _on_research_target(tid: int) -> void:
 	Game.submit_command(Cmd.set_research_target(tid))
 	_refresh_tech()
@@ -1369,6 +1374,27 @@ func _refresh_politics() -> void:
 	var st := UIKit.label(_stability_text(c.stability), 18, _sat_color(c.stability))
 	st.custom_minimum_size = Vector2(230, 0)
 	srow.add_child(st)
+
+	var mcard := _card(body, "Migração e imigração", "people")
+	var att: Dictionary = Game.attractiveness(c, Game.world_density())
+	mcard.add_child(UIKit.kv_row("Atratividade para migrantes", str(att["total"]), UIKit.GOLD_BRIGHT, 18))
+	var al := UIKit.label("Empregos %+d · Estabilidade %+d · Alfabetização %+d · Terras livres %+d · Guerra %+d · Tecnologia %+d" % [
+		int(att["jobs"]), int(att["stab"]), int(att["lit"]), int(att["front"]), int(att["war"]), int(att["tech"])], 14, UIKit.TEXT_DIM)
+	al.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mcard.add_child(al)
+	mcard.add_child(UIKit.kv_row("Imigrantes no último mês", "+%s" % _fmt_pop(c.migr_in), UIKit.POS if c.migr_in > 0 else UIKit.TEXT_DIM))
+	mcard.add_child(UIKit.kv_row("Emigrantes no último mês", "-%s" % _fmt_pop(c.migr_out), UIKit.NEG if c.migr_out > 0 else UIKit.TEXT_DIM))
+	var prow := HBoxContainer.new()
+	prow.add_theme_constant_override("separation", 8)
+	mcard.add_child(prow)
+	var pol_names: Array = ["Fronteira fechada", "Imigração seletiva", "Fronteira aberta"]
+	for pidx in 3:
+		var pb := _info_button(str(pol_names[pidx]), Vector2(0, 46), _on_immigration.bind(pidx), prow)
+		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pb.disabled = pidx == c.immigration
+	var pd := UIKit.label(str(["Ninguém entra: a população só se move dentro do país.", "Recebe imigrantes dos vizinhos mais pobres, em ritmo normal.", "Atrai o dobro de imigrantes, inclusive por mar, dos países de onde se emigra."][c.immigration]), 14, UIKit.TEXT_DIM)
+	pd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mcard.add_child(pd)
 
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 12)

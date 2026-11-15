@@ -7,16 +7,16 @@ extends RefCounted
 ## Efeitos (inteiros, em %): prod produção, ind lucro industrial, trade comércio, tax imposto,
 ## army desconto na manutenção do exército, mp mão de obra, atk ataque, def defesa,
 ## nav força naval (pontos), lit crescimento da alfabetização, tech pesquisa, stab estabilidade
-## (pontos), pop crescimento populacional (centésimos de % ao mês).
+## (pontos), pop crescimento populacional (centésimos de % ao mês), mig atração migratória (pontos).
 
 const PER_ERA := 6
 const MAX_ERA := 6
-const FX_KEYS := ["prod", "ind", "trade", "tax", "army", "mp", "atk", "def", "nav", "lit", "tech", "stab", "pop"]
+const FX_KEYS := ["prod", "ind", "trade", "tax", "army", "mp", "atk", "def", "nav", "lit", "tech", "stab", "pop", "mig"]
 const FX_LABEL := {
 	"prod": "Produção", "ind": "Lucro industrial", "trade": "Comércio", "tax": "Imposto",
 	"army": "Manutenção do exército", "mp": "Mão de obra", "atk": "Ataque", "def": "Defesa",
 	"nav": "Força naval", "lit": "Alfabetização", "tech": "Pesquisa", "stab": "Estabilidade",
-	"pop": "Crescimento populacional",
+	"pop": "Crescimento populacional", "mig": "Atração migratória",
 }
 const CAT_ORDER := ["prod", "mil", "soc"]
 const CATS := {
@@ -41,11 +41,11 @@ const ALL := [
 	{"cat": "soc", "era": 2, "name": "Escolas normais", "fx": {"lit": 12}},
 	{"cat": "soc", "era": 2, "name": "Sanidade pública", "fx": {"pop": 2}},
 	# Era 3
-	{"cat": "prod", "era": 3, "name": "Locomotiva a vapor", "fx": {"prod": 4, "trade": 6}},
+	{"cat": "prod", "era": 3, "name": "Locomotiva a vapor", "fx": {"prod": 4, "trade": 6, "mig": 3}},
 	{"cat": "prod", "era": 3, "name": "Fertilizantes químicos", "fx": {"prod": 5}},
 	{"cat": "mil", "era": 3, "name": "Fuzil raiado", "fx": {"atk": 6, "def": 4}},
-	{"cat": "mil", "era": 3, "name": "Casco a vapor e hélice", "fx": {"nav": 2}},
-	{"cat": "soc", "era": 3, "name": "Código civil", "fx": {"tax": 2, "stab": 2}},
+	{"cat": "mil", "era": 3, "name": "Casco a vapor e hélice", "fx": {"nav": 2, "mig": 4}},
+	{"cat": "soc", "era": 3, "name": "Código civil", "fx": {"tax": 2, "stab": 2, "mig": 3}},
 	{"cat": "soc", "era": 3, "name": "Imprensa a vapor", "fx": {"tech": 6, "lit": 6}},
 	# Era 4
 	{"cat": "prod", "era": 4, "name": "Processo Bessemer", "fx": {"ind": 10}},
@@ -53,20 +53,20 @@ const ALL := [
 	{"cat": "mil", "era": 4, "name": "Artilharia raiada de culatra", "fx": {"atk": 7}},
 	{"cat": "mil", "era": 4, "name": "Ferrovia militar", "fx": {"mp": 6, "army": 4}},
 	{"cat": "soc", "era": 4, "name": "Universidade de pesquisa", "fx": {"tech": 10}},
-	{"cat": "soc", "era": 4, "name": "Parlamento e sufrágio", "fx": {"stab": 3, "lit": 6}},
+	{"cat": "soc", "era": 4, "name": "Parlamento e sufrágio", "fx": {"stab": 3, "lit": 6, "mig": 4}},
 	# Era 5
 	{"cat": "prod", "era": 5, "name": "Maquinário mecanizado", "fx": {"ind": 12, "prod": 3}},
 	{"cat": "prod", "era": 5, "name": "Conservas e refrigeração", "fx": {"prod": 4, "pop": 2}},
 	{"cat": "mil", "era": 5, "name": "Arame farpado e metralhadora", "fx": {"def": 9}},
 	{"cat": "mil", "era": 5, "name": "Encouraçados", "fx": {"nav": 3}},
-	{"cat": "soc", "era": 5, "name": "Sindicatos reconhecidos", "fx": {"stab": 4}},
+	{"cat": "soc", "era": 5, "name": "Sindicatos reconhecidos", "fx": {"stab": 4, "mig": 3}},
 	{"cat": "soc", "era": 5, "name": "Escolaridade obrigatória", "fx": {"lit": 15}},
 	# Era 6
 	{"cat": "prod", "era": 6, "name": "Eletricidade industrial", "fx": {"ind": 14, "prod": 4}},
 	{"cat": "prod", "era": 6, "name": "Motor de combustão", "fx": {"trade": 10, "prod": 3}},
 	{"cat": "mil", "era": 6, "name": "Artilharia de tiro rápido", "fx": {"atk": 9}},
 	{"cat": "mil", "era": 6, "name": "Estado-maior geral", "fx": {"army": 6, "mp": 8, "def": 4}},
-	{"cat": "soc", "era": 6, "name": "Seguridade social", "fx": {"stab": 5, "pop": 3}},
+	{"cat": "soc", "era": 6, "name": "Seguridade social", "fx": {"stab": 5, "pop": 3, "mig": 5}},
 	{"cat": "soc", "era": 6, "name": "Método científico aplicado", "fx": {"tech": 12}},
 ]
 
@@ -115,7 +115,7 @@ static func fx_text(fx: Dictionary) -> String:
 				parts.append("%s -%d%%" % [FX_LABEL[k], v])
 			"stab":
 				parts.append("%s +%d" % [FX_LABEL[k], v])
-			"nav":
+			"nav", "mig":
 				parts.append("%s +%d" % [FX_LABEL[k], v])
 			"pop":
 				parts.append("%s +%d,%02d%%/mês" % [FX_LABEL[k], v / 100, v % 100])

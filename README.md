@@ -187,3 +187,9 @@ Requer `numpy`, `scipy`, `Pillow` e `scikit-image`. `--density` maior = menos pr
 Dez construções novas só podem ser erguidas depois de dominar uma tecnologia específica (o cartão da tecnologia mostra "Libera: …" e o botão de construir mostra "Requer: …"):
 Biblioteca pública (Alfabetização paroquial), Academia militar (Escola de oficiais), Esgoto e água encanada (Sanidade pública), Arsenal nacional (Fuzil raiado), Laboratório de pesquisa (Universidade de pesquisa), Irrigação (Fertilizantes químicos), Usina elétrica (Eletricidade industrial), Banco (Bancos comerciais), Estaleiro naval (Casco a vapor e hélice) e Central telegráfica (Telégrafo elétrico).
 Efeitos: imposto provincial, produção, mão de obra, crescimento populacional, alfabetização, pontos de pesquisa, custo do exército, custo da frota e comércio. A IA também constrói.
+
+## Migração e imigração
+- Todo mês a população se move (sem sorteio, a população mundial se conserva): **interna** (de províncias menos para mais desenvolvidas, com capital e porto atraindo), **entre países vizinhos** (por terra e estreitos) rumo ao mais atrativo e **transoceânica** (de portos para os 3 países mais atrativos que aceitam imigrantes).
+- **Atratividade** do país: empregos (desemprego), estabilidade, alfabetização, terras livres (baixa densidade), guerra (−) e tecnologias de Sociedade e transporte (Código civil, Parlamento, Seguridade social, Locomotiva, Casco a vapor…).
+- **Política de imigração** (aba Política): fronteira fechada (ninguém entra), seletiva (padrão) ou aberta (dobro de imigrantes). Japão, China, Coreia, Vietnã e Etiópia começam fechados; EUA, Texas, Argentina, Uruguai, Brasil e Chile, abertos. Comando de rede: `set_immigration`.
+- A janela mostra imigrantes e emigrantes do último mês e a decomposição da atratividade.

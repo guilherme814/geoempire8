@@ -296,6 +296,44 @@ func run_all() -> void:
 	rc.techs = gate_saved
 	rc.treasury = treas_saved
 	rc.fx_dirty = true
+	# migração e imigração
+	var pop_before: int = 0
+	for pp in g.provinces:
+		pop_before += pp.population
+	var pol_saved: Array = []
+	for cc in g.countries:
+		pol_saved.append(cc.immigration)
+		cc.immigration = 0
+	var per_c: Array = []
+	for cc in g.countries:
+		per_c.append(g.population_of(cc))
+	g._simulate_migration()
+	var closed_ok: bool = true
+	for cc in g.countries:
+		if cc.migr_in != 0 or g.population_of(cc) != int(per_c[cc.id]):
+			closed_ok = false
+	check("fronteira fechada: ninguem entra e a populacao do pais se conserva", closed_ok)
+	for cc in g.countries:
+		cc.immigration = 2
+	g._simulate_migration()
+	var pop_after: int = 0
+	for pp in g.provinces:
+		pop_after += pp.population
+	var tot_in: int = 0
+	var tot_out: int = 0
+	for cc in g.countries:
+		tot_in += cc.migr_in
+		tot_out += cc.migr_out
+	check("migracao conserva a populacao mundial", pop_after == pop_before, "%d -> %d" % [pop_before, pop_after])
+	check("fronteira aberta gera fluxo entre paises", tot_in > 0 and tot_in == tot_out, "entram %d saem %d" % [tot_in, tot_out])
+	for cc in g.countries:
+		cc.immigration = int(pol_saved[cc.id])
+		if cc.tag == "JAP":
+			check("Japao comeca com a fronteira fechada", cc.immigration == 0)
+	g.apply_command({"type": "set_immigration", "policy": 2, "issuer": g.player_country})
+	check("politica de imigracao aplicada", rc.immigration == 2)
+	g.apply_command({"type": "set_immigration", "policy": 9, "issuer": g.player_country})
+	check("politica de imigracao invalida recusada", rc.immigration == 2)
 	var ai_res: int = 0
 	for cc in g.countries:
 		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:
@@ -310,6 +348,7 @@ func run_all() -> void:
 	g.load_state(blob_r)
 	check("pesquisa sobrevive ao salvar/carregar", g.countries[g.player_country].research_pct == 20 and g.state_hash() == hr)
 	check("tecnologias sobrevivem ao salvar/carregar", g.countries[g.player_country].techs.size() >= techs_before.size())
+	check("politica de imigracao sobrevive ao salvar/carregar", g.countries[g.player_country].immigration == 2)
 	g.apply_command({"type": "set_research", "pct": 0, "issuer": g.player_country})
 
 	# --- guerra, pontuação, vassalagem -----------------------------------

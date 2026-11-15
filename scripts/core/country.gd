@@ -14,6 +14,9 @@ var tax_pct: int = 30
 var last_income: int = 0
 var last_expense: int = 0
 var literacy: int = 100       # alfabetização em décimos de % (100 = 10,0%)
+var immigration: int = 1       # política: 0 fechada, 1 seletiva, 2 aberta
+var migr_in: int = 0           # imigrantes recebidos no último mês
+var migr_out: int = 0          # emigrantes no último mês
 var research_pct: int = 0      # % da renda investido em pesquisa (0..RESEARCH_MAX_PCT)
 var tech_pts: int = 0         # banco de pontos de pesquisa (gastos na tecnologia em estudo)
 var techs: Array = []         # ids (Techs.ALL) das tecnologias dominadas

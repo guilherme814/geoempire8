@@ -423,6 +423,19 @@ func material_cost(kind: String, level: int) -> int:
 	return t
 
 
+## Soma dos níveis de construções (desenvolvimento urbano/industrial); base da migração interna.
+func development() -> int:
+	var n: int = workshop + factory_level
+	for k in EXTRA_KINDS:
+		n += int(bld.get(k, 0))
+	return n
+
+
+## Atração local para a migração interna: desenvolvimento, capital e porto.
+func pull() -> int:
+	return 15 * mini(6, development()) + (30 if capital_city else 0) + (15 if port >= 0 else 0)
+
+
 func building_level(kind: String) -> int:
 	if FACTORIES.has(kind):
 		return factory_level if factory == kind else 0

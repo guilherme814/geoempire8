@@ -1,0 +1,314 @@
+{
+ "GBR": {
+  "hist": "Oficina e banco do mundo, senhora dos mares. A Revolução Industrial acelera e a Rainha Vitória ainda não reina.",
+  "goal": "Mantenha a hegemonia naval, proteja a Índia e lidere a industrialização."
+ },
+ "FRA": {
+  "hist": "A Monarquia de Julho do Rei Burguês consolida-se; a conquista da Argélia está em curso.",
+  "goal": "Dispute a Europa com os britânicos e transforme a Argélia em colônia produtiva."
+ },
+ "RUS": {
+  "hist": "O maior exército da Europa sob Nicolau I, mas com servidão e atraso industrial.",
+  "goal": "Modernize sem romper a ordem e avance sobre Cáucaso, Ásia Central e Balcãs."
+ },
+ "PRU": {
+  "hist": "Potência menor da Europa, líder do Zollverein, a união aduaneira alemã.",
+  "goal": "Una a Alemanha pela economia e pela espada, antes da Áustria."
+ },
+ "AUT": {
+  "hist": "Império multiétnico de Metternich, guardião da ordem conservadora.",
+  "goal": "Segure o mosaico de povos, a Itália e a Alemanha contra o nacionalismo."
+ },
+ "OTT": {
+  "hist": "O 'Homem Doente' da Europa: perdeu a Grécia e enfrenta o Egito de Mehmed Ali.",
+  "goal": "Reforme o exército e o Estado (Tanzimat) antes que as potências partilhem o império."
+ },
+ "ESP": {
+  "hist": "Em plena Guerra Carlista, perdeu quase todo o império americano.",
+  "goal": "Vença a guerra civil, estabilize a coroa e conserve Cuba e Filipinas."
+ },
+ "POR": {
+  "hist": "Recém-saída das guerras liberais; o Brasil independente já não paga tributo.",
+  "goal": "Reconstrua as finanças e preserve as colônias na África e na Ásia."
+ },
+ "NED": {
+  "hist": "Reino separado da Bélgica, rico nas Índias Orientais Holandesas.",
+  "goal": "Explore o Sistema de Cultivo em Java e mantenha a neutralidade."
+ },
+ "BEL": {
+  "hist": "Reino jovem, independente desde 1830, primeiro país do continente a se industrializar.",
+  "goal": "Faça do carvão e do aço a base de uma economia que as potências respeitem."
+ },
+ "SWE": {
+  "hist": "União pessoal sueco-norueguesa sob Carlos XIV João, antigo marechal napoleônico.",
+  "goal": "Mantenha a neutralidade e modernize a economia agrária."
+ },
+ "DEN": {
+  "hist": "Monarquia absoluta que perdeu a Noruega em 1814; controla Islândia e as Antilhas.",
+  "goal": "Equilibre Schleswig-Holstein, o comércio do Báltico e as colônias."
+ },
+ "SAR": {
+  "hist": "Reino do Piemonte, núcleo do futuro Risorgimento italiano.",
+  "goal": "Modernize o exército e prepare-se para expulsar os austríacos da Itália."
+ },
+ "SIC": {
+  "hist": "O maior estado da península italiana, agrário e atrasado.",
+  "goal": "Resista às revoltas e à pressão da Áustria e do Piemonte."
+ },
+ "PAP": {
+  "hist": "Teocracia que governa o centro da Itália com ajuda de tropas estrangeiras.",
+  "goal": "Preserve o poder temporal diante dos liberais."
+ },
+ "TUS": {
+  "hist": "Grão-ducado pacífico e culto sob domínio dos Habsburgo-Lorena.",
+  "goal": "Prospere pelo comércio de Livorno e evite ser engolido."
+ },
+ "BAV": {
+  "hist": "Maior estado alemão do sul, de Luís I, patrono das artes.",
+  "goal": "Disputa a liderança do sul da Alemanha com a Prússia e a Áustria."
+ },
+ "SAX": {
+  "hist": "Reino industrial e universitário, com Leipzig e Dresden.",
+  "goal": "Aproveite o Zollverein sem perder autonomia."
+ },
+ "HAN": {
+  "hist": "Reino ligado à coroa britânica até 1837.",
+  "goal": "Segure a independência enquanto a Prússia cresce."
+ },
+ "WUR": {
+  "hist": "Estados do sudoeste alemão, centros de comércio e universidades.",
+  "goal": "Una forças para não ser absorvido pelos vizinhos."
+ },
+ "HES": {
+  "hist": "Estados hessianos, pequenos e divididos, entre Prússia e Baviera.",
+  "goal": "Mantenha-se independente num mundo de gigantes."
+ },
+ "MEC": {
+  "hist": "Grão-ducados rurais do norte da Alemanha.",
+  "goal": "Sobreviva à unificação alemã que se anuncia."
+ },
+ "THU": {
+  "hist": "Colcha de retalhos de ducados da Turíngia.",
+  "goal": "Preserve a identidade entre vizinhos poderosos."
+ },
+ "SUI": {
+  "hist": "Confederação de cantões, neutra e dividida entre católicos e protestantes.",
+  "goal": "Evite a guerra civil e fortaleça a união."
+ },
+ "GRE": {
+  "hist": "Reino independente desde 1830, sob o rei bávaro Otão.",
+  "goal": "Realize a 'Grande Ideia': reunir os gregos do Império Otomano."
+ },
+ "SER": {
+  "hist": "Principado autônomo dentro do Império Otomano, sob Miloš Obrenović.",
+  "goal": "Conquiste independência plena e una os eslavos do sul."
+ },
+ "VAL": {
+  "hist": "Valáquia e Moldávia, sob proteção russa e suserania otomana.",
+  "goal": "Ganhe autonomia e modernize."
+ },
+ "USA": {
+  "hist": "República em expansão sob Andrew Jackson; fronteira avança para o Oeste.",
+  "goal": "Cumpra o 'Destino Manifesto' do Atlântico ao Pacífico."
+ },
+ "MEX": {
+  "hist": "Jovem república instável; a revolta no Texas desafia Santa Anna.",
+  "goal": "Consolide o Estado e não perca o Norte para os americanos."
+ },
+ "CAM": {
+  "hist": "Federação centro-americana à beira da dissolução.",
+  "goal": "Mantenha a união contra conservadores e caudilhos."
+ },
+ "HAI": {
+  "hist": "Primeira república negra do mundo, paga indenização à França.",
+  "goal": "Reconstrua a economia livre da escravidão e defenda a independência."
+ },
+ "NGR": {
+  "hist": "A Nova Granada, herdeira da Grã-Colômbia dissolvida.",
+  "goal": "Consolide o Estado entre os Andes e o Caribe."
+ },
+ "VEN": {
+  "hist": "Pátria de Bolívar, agora separada da Grã-Colômbia sob Páez.",
+  "goal": "Estabilize a república dos caudilhos."
+ },
+ "ECU": {
+  "hist": "República andina recente, dividida entre Quito e Guayaquil.",
+  "goal": "Crie um Estado coeso e exporte cacau."
+ },
+ "PER": {
+  "hist": "Pós-independência turbulenta; tenta a Confederação Peru-Bolívia.",
+  "goal": "Una o altiplano e derrote o Chile."
+ },
+ "BOL": {
+  "hist": "República do altiplano de Santa Cruz, sob a Confederação Peru-Boliviana.",
+  "goal": "Sustente a confederação e proteja a mineração."
+ },
+ "BRZ": {
+  "hist": "Império do Brasil, regência durante a menoridade de Pedro II, com revoltas provinciais.",
+  "goal": "Mantenha a unidade, vença a Farroupilha e modernize o café."
+ },
+ "ARG": {
+  "hist": "Confederação sob Rosas, que impõe ordem pela força.",
+  "goal": "Una as províncias e domine o Prata."
+ },
+ "URU": {
+  "hist": "Jovem república disputada por Brasil e Argentina; a guerra civil estoura.",
+  "goal": "Garanta soberania entre dois gigantes."
+ },
+ "PAR": {
+  "hist": "República isolada do Dr. Francia, fechada ao mundo.",
+  "goal": "Mantenha a autossuficiência e abra-se com cautela."
+ },
+ "CHL": {
+  "hist": "República ordeira de Portales, em rota de consolidação.",
+  "goal": "Domine o Pacífico sul e derrote a Confederação Peru-Boliviana."
+ },
+ "HAW": {
+  "hist": "Reino do Pacífico de Kamehameha III, visitado por baleeiros e missionários.",
+  "goal": "Preserve a independência diante de britânicos, franceses e americanos."
+ },
+ "QNG": {
+  "hist": "O maior império do mundo, com cerca de um terço da humanidade, mas o ópio ameaça a prata.",
+  "goal": "Reforme-se antes das Guerras do Ópio e preserve a ordem imperial."
+ },
+ "JAP": {
+  "hist": "Xogunato Tokugawa isolado (sakoku), sob fome e inquietação.",
+  "goal": "Prepare o Japão para a abertura que virá."
+ },
+ "KOR": {
+  "hist": "Reino eremita de Joseon, tributário da China.",
+  "goal": "Fortaleça o Estado e resista à abertura forçada."
+ },
+ "VNM": {
+  "hist": "Dinastia Nguyễn de Minh Mạng, que consolida o país até o Camboja.",
+  "goal": "Modernize sem se ocidentalizar e resista aos missionários."
+ },
+ "SIA": {
+  "hist": "Reino de Rama III, hábil no comércio e na diplomacia entre potências.",
+  "goal": "Preserve a independência jogando as potências umas contra as outras."
+ },
+ "BUR": {
+  "hist": "Império de Ava, que perdeu Assam e Arakan para os britânicos.",
+  "goal": "Evite nova guerra com a Companhia e recupere o prestígio."
+ },
+ "IRN": {
+  "hist": "Pérsia dos Qajar, derrotada pela Rússia, vê a Inglaterra na Índia.",
+  "goal": "Modernize o exército e retome Herat."
+ },
+ "AFG": {
+  "hist": "Emirado de Dost Mohammad, entre o Império Britânico e a Rússia.",
+  "goal": "Una as tribos e enfrente a ambição britânica no 'Grande Jogo'."
+ },
+ "NEP": {
+  "hist": "Reino Gorkha, que perdeu terras para a Companhia na guerra de 1816.",
+  "goal": "Mantenha a independência entre britânicos e chineses."
+ },
+ "BIC": {
+  "hist": "Companhia mercantil que governa a maior parte da Índia.",
+  "goal": "Expanda o domínio pela diplomacia e pelas armas, sem estourar o orçamento."
+ },
+ "SIK": {
+  "hist": "Império de Ranjit Singh no Punjab, com o melhor exército indiano.",
+  "goal": "Evite a guerra com a Companhia e conserve a unidade."
+ },
+ "SND": {
+  "hist": "Emirados talpur do Sinde, na foz do Indo.",
+  "goal": "Resista à pressão britânica e afegã."
+ },
+ "HYD": {
+  "hist": "Estado do Nizam, o maior principado da Índia central.",
+  "goal": "Equilibre-se entre a Companhia e os marathas."
+ },
+ "MYS": {
+  "hist": "Reino restaurado dos Wodeyar, sob tutela britânica.",
+  "goal": "Recupere a autonomia."
+ },
+ "TRV": {
+  "hist": "Estado modelo do Sul da Índia, culto e próspero.",
+  "goal": "Preserve a independência com diplomacia."
+ },
+ "RAJ": {
+  "hist": "Estados rajaputes, aliados subordinados da Companhia.",
+  "goal": "Mantenha o orgulho guerreiro sem romper com Calcutá."
+ },
+ "MAR": {
+  "hist": "Resto da Confederação Maratha após as guerras anglo-marathas.",
+  "goal": "Reorganize os chefes e resista aos britânicos."
+ },
+ "MAL": {
+  "hist": "Sultanatos do estreito de Malaca, entre britânicos e holandeses.",
+  "goal": "Aproveite o comércio de estanho sem perder soberania."
+ },
+ "BRU": {
+  "hist": "Sultanato antes poderoso, hoje declinante diante de piratas e europeus.",
+  "goal": "Preserve Bornéu do avanço de Sarawak."
+ },
+ "ACE": {
+  "hist": "Sultanato do norte de Sumatra, poderoso na pimenta.",
+  "goal": "Resista aos holandeses."
+ },
+ "EGY": {
+  "hist": "O Egito modernizado de Mehmed Ali, que desafia o sultão otomano.",
+  "goal": "Construa uma potência regional e conquiste a Síria."
+ },
+ "NAJ": {
+  "hist": "Segundo emirado saudita, sucessor do Estado wahhabita.",
+  "goal": "Una os beduínos do deserto."
+ },
+ "OMA": {
+  "hist": "Sultanato de Omã e Zanzibar, potência comercial do Oceano Índico.",
+  "goal": "Domine o comércio de especiarias, marfim e escravos."
+ },
+ "KHI": {
+  "hist": "Canato da Corásmia, rico no comércio de escravos.",
+  "goal": "Resista à Rússia."
+ },
+ "BUK": {
+  "hist": "Emirado de Bucara, centro religioso da Ásia Central.",
+  "goal": "Evite a Rússia e controle a Rota da Seda."
+ },
+ "KOK": {
+  "hist": "Canato de Cocanda, no vale de Fergana.",
+  "goal": "Sobreviva entre Rússia e China."
+ },
+ "MOR": {
+  "hist": "Sultanato independente do Marrocos, pressionado pela França na Argélia.",
+  "goal": "Modernize o exército e preserve a independência."
+ },
+ "TUN": {
+  "hist": "Beilhique autônomo de Túnis, reformista.",
+  "goal": "Modernize sem cair sob a França."
+ },
+ "ETH": {
+  "hist": "Reino fragmentado na Era dos Príncipes.",
+  "goal": "Una os príncipes e preserve a independência."
+ },
+ "SOK": {
+  "hist": "Califado de Sokoto, o maior estado da África ocidental.",
+  "goal": "Mantenha a união dos emirados."
+ },
+ "ZUL": {
+  "hist": "Reino Zulu de Dingane, após a morte de Shaka.",
+  "goal": "Preserve o reino contra os bôeres que avançam."
+ },
+ "MAD": {
+  "hist": "Reino de Madagascar sob a rainha Ranavalona I, isolacionista.",
+  "goal": "Mantenha a independência contra a Europa."
+ },
+ "ABD": {
+  "hist": "Emirado de Abd al-Qadir, que resiste aos franceses na Argélia.",
+  "goal": "Construa um Estado e vença os franceses."
+ },
+ "TEX": {
+  "hist": "República do Texas, recém-independente do México.",
+  "goal": "Sobreviva ao México e escolha entre independência e anexação."
+ },
+ "CAU": {
+  "hist": "Imamado de Shamil, que resiste à Rússia nas montanhas.",
+  "goal": "Sustente a guerra santa no Cáucaso."
+ },
+ "MNE": {
+  "hist": "Principado de Montenegro, pequeno e guerreiro, nunca submetido aos otomanos.",
+  "goal": "Ganhe saída para o mar e sobreviva."
+ }
+}

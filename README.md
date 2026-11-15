@@ -193,3 +193,9 @@ Efeitos: imposto provincial, produção, mão de obra, crescimento populacional,
 - **Atratividade** do país: empregos (desemprego), estabilidade, alfabetização, terras livres (baixa densidade), guerra (−) e tecnologias de Sociedade e transporte (Código civil, Parlamento, Seguridade social, Locomotiva, Casco a vapor…).
 - **Política de imigração** (aba Política): fronteira fechada (ninguém entra), seletiva (padrão) ou aberta (dobro de imigrantes). Japão, China, Coreia, Vietnã e Etiópia começam fechados; EUA, Texas, Argentina, Uruguai, Brasil e Chile, abertos. Comando de rede: `set_immigration`.
 - A janela mostra imigrantes e emigrantes do último mês e a decomposição da atratividade.
+
+## Logística e abastecimento
+Exércitos precisam de suprimentos: a capital e os **Depósitos de suprimentos** (construção, req. tecnologia 9) são as fontes. O abastecimento (0–100%) é recalculado a cada 5 dias por uma busca de rota limitada (custo de marcha: metade em terra própria, ferrovia ajuda, dobro em terra alheia, mar custa o dobro). Cada fonte atende um número limitado de regimentos. Abaixo de 75% há desgaste mensal; o abastecimento baixo também aumenta as perdas em batalha. Estado determinístico, salvo e incluído no hash.
+
+## Briefings por país
+`data/briefings_1836.json` (gerado por `tools/gen_briefings.py`): situação histórica em 1836 e objetivo sugerido, exibidos no cartão de seleção de país.

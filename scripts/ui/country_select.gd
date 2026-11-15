@@ -341,6 +341,14 @@ func _add_leader_row(c: Country) -> void:
 	tt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	txt.add_child(tt)
 	_card_stats.add_child(row)
+	var br: Dictionary = Leaders.briefing(c.tag)
+	if not br.is_empty():
+		var h := UIKit.label(str(br["hist"]), 14, UIKit.TEXT)
+		h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_card_stats.add_child(h)
+		var g := UIKit.label("Objetivo: " + str(br["goal"]), 14, UIKit.GOLD_BRIGHT)
+		g.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_card_stats.add_child(g)
 	_card_stats.add_child(HSeparator.new())
 
 

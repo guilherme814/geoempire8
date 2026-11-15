@@ -23,6 +23,24 @@ static func _ensure() -> void:
 		_data = parsed
 
 
+const BRIEF_PATH := "res://data/briefings_1836.json"
+static var _brief: Dictionary = {}
+static var _brief_loaded: bool = false
+
+
+## Situação histórica em 1836 e desafio sugerido ({"hist","goal"}); vazio se não houver.
+static func briefing(tag: String) -> Dictionary:
+	if not _brief_loaded:
+		_brief_loaded = true
+		if FileAccess.file_exists(BRIEF_PATH):
+			var f := FileAccess.open(BRIEF_PATH, FileAccess.READ)
+			if f != null:
+				var js: Variant = JSON.parse_string(f.get_as_text())
+				if js is Dictionary:
+					_brief = js
+	return _brief.get(tag, {})
+
+
 static func has_tag(tag: String) -> bool:
 	_ensure()
 	return _data.has(tag)

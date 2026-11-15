@@ -143,6 +143,15 @@ func run_all() -> void:
 	check("governantes em ordem cronologica", bad_order.is_empty(), str(bad_order))
 	check("aparencia dos governantes valida", bad_look.is_empty(), str(bad_look))
 	check("maioria dos paises com 4+ sucessores", rich >= 50, "%d paises" % rich)
+	var all_brief: bool = true
+	for cid_b in g.countries.keys():
+		var cb: Country = g.countries[cid_b]
+		if cb.province_ids.is_empty():
+			continue
+		var bb: Dictionary = Leaders.briefing(cb.tag)
+		if bb.is_empty() or str(bb.get("hist", "")) == "" or str(bb.get("goal", "")) == "":
+			all_brief = false
+	check("todo pais tem briefing historico", all_brief)
 	check("GBR 1836: Guilherme IV", str(Leaders.current("GBR", 1836, 1)["name"]) == "Guilherme IV")
 	check("GBR 1837/6: Vitoria", str(Leaders.current("GBR", 1837, 6)["name"]) == "Vitória")
 	check("GBR 1836: 6 sucessores", Leaders.successors("GBR", 1836, 1, 6).size() == 6)

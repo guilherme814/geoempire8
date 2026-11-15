@@ -2415,7 +2415,7 @@ func _research_step(c: Country) -> void:
 	if not is_human(c.id):
 		c.researching = _ai_pick_tech(c)
 	if c.id == player_country:
-		Events.notice("Pesquisa concluída: %s" % str(Techs.ALL[done]["name"]))
+		Events.notice.emit("Pesquisa concluída: %s" % str(Techs.ALL[done]["name"]))
 
 
 ## Pontos de tecnologia por mês SEM financiamento: base + alfabetização + escolas + universidades + leis.

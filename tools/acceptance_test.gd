@@ -383,24 +383,24 @@ func run_all() -> void:
 		check("abastecimento sobrevive ao salvar/carregar", back != null and back.supply == 37)
 		rc = g.countries[g.player_country]
 	# IA operacional (AiWar)
-	check("IA recua diante de inimigo superior", AiWar.should_retreat(5, 8, 0, 100))
-	check("IA luta com vantagem", not AiWar.should_retreat(10, 5, 3, 100))
-	check("IA recua com vizinhanca esmagadora", AiWar.should_retreat(4, 0, 9, 100))
-	check("IA recua sem suprimentos", AiWar.should_retreat(10, 0, 0, 20))
-	check("alvo proximo vale mais que distante", AiWar.target_score(60, 1, 0) > AiWar.target_score(60, 6, 0))
-	check("alvo guarnecido vale menos", AiWar.target_score(60, 2, 3) < AiWar.target_score(60, 2, 0))
-	check("capital inimiga e mais valiosa", AiWar.province_value(g, g.provinces[g.countries[1].capital], g.countries[0]) >= 110)
+	check("IA recua diante de inimigo superior", g.ai_should_retreat(5, 8, 0, 100))
+	check("IA luta com vantagem", not g.ai_should_retreat(10, 5, 3, 100))
+	check("IA recua com vizinhanca esmagadora", g.ai_should_retreat(4, 0, 9, 100))
+	check("IA recua sem suprimentos", g.ai_should_retreat(10, 0, 0, 20))
+	check("alvo proximo vale mais que distante", g.ai_target_score(60, 1, 0) > g.ai_target_score(60, 6, 0))
+	check("alvo guarnecido vale menos", g.ai_target_score(60, 2, 3) < g.ai_target_score(60, 2, 0))
+	check("capital inimiga e mais valiosa", g.ai_province_value(g.countries[1].capital, 0) >= 110)
 	var wc: Country = null
 	for oc in g.countries:
-		if oc.id != g.player_country and oc.is_alive() and not AiBrain.neighbors(g, oc).is_empty():
+		if oc.id != g.player_country and oc.is_alive() and not g.ai_neighbors(oc.id).is_empty():
 			wc = oc
 			break
 	if wc != null:
-		var wt: int = int(AiBrain.neighbors(g, wc)[0])
+		var wt: int = int(g.ai_neighbors(wc.id)[0])
 		var wsave: Dictionary = g.serialize_state()
 		g._start_war(wc.id, wt)
 		g._add_regiments(wc.capital, wc.id, 3)
-		AiWar.think(g, wc)
+		g.ai_think(wc.id)
 		var noted: bool = false
 		for aid3 in g.armies.keys():
 			var a3: Army = g.armies[aid3]

@@ -1854,6 +1854,27 @@ func _ai_war(c: Country) -> void:
 	AiWar.think(self, c)
 
 
+# Fachada para testes headless (que não compilam referências diretas a classes que usam autoloads).
+func ai_should_retreat(mine: int, enemy_here: int, ring: int, supply: int) -> bool:
+	return AiWar.should_retreat(mine, enemy_here, ring, supply)
+
+
+func ai_target_score(value: int, hops: int, garrison: int) -> int:
+	return AiWar.target_score(value, hops, garrison)
+
+
+func ai_province_value(pid: int, commander: int) -> int:
+	return AiWar.province_value(self, provinces[pid], countries[commander])
+
+
+func ai_neighbors(cid: int) -> Array:
+	return AiBrain.neighbors(self, countries[cid])
+
+
+func ai_think(cid: int) -> void:
+	AiWar.think(self, countries[cid])
+
+
 ## Guerra: batalhas, cercos e conquista. Ordem fixa (ids crescentes) para ser determinístico.
 @warning_ignore("integer_division")
 func _advance_war() -> void:

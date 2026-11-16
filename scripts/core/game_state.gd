@@ -1341,6 +1341,7 @@ func _start_war(attacker: int, target: int) -> void:
 			wars.append(_new_war(v, target))
 			if v == player_country:
 				Events.notice.emit("Seu suserano %s entrou em guerra: você o acompanha." % countries[attacker].name)
+	AiDiplomacy.rally(self, attacker, target)
 	Events.war_changed.emit()
 	# Frente automática: os exércitos do jogador marcham ao front assim que a guerra começa.
 	for cid in [attacker, target]:
@@ -1683,6 +1684,7 @@ func _advance_ai() -> void:
 		if tick % 30 == 0:
 			AiBrain.balance_drift(self, c, heg)
 			var plan := AiBrain.plan(self, c, heg)
+			AiEconomy.review_taxes(self, c)
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
 			_ai_invest(c)
@@ -1715,16 +1717,19 @@ func _ai_invest(c: Country) -> void:
 	if spare < 150:
 		return
 	var budget: int = clampi(spare / 800, 1, 5) + clampi(spare / 100000, 0, 20)   # potências ricas investem mais por ciclo
+	var at_war: bool = not wars_of(c.id).is_empty()
+	var order: Array = AiEconomy.build_order(AI_BUILD_ORDER, AiWar.personality_key(self, c), at_war, c.tag)
+	var max_depot: int = 2 if at_war else 1
 	for level in 3:
-		for kind in AI_BUILD_ORDER:
+		for kind in order:
 			for pid in c.province_ids:
 				if budget <= 0:
 					return
 				var p := provinces[int(pid)]
 				if p.building_level(kind) != level or not can_build(int(pid), c.id, kind):
 					continue
-				if kind == "depot" and (level > 0 or not _is_border(p)):
-					continue   # a IA só põe depósitos (1 nível) em províncias de fronteira
+				if kind == "depot" and (level >= max_depot or not _is_border(p)):
+					continue   # depósitos só na fronteira (até 2 níveis em guerra)
 				var cost: int = build_total_cost(p, kind)
 				if c.treasury - cost < reserve:
 					continue
@@ -1875,6 +1880,22 @@ func ai_target_score(value: int, hops: int, garrison: int, doctrine_key: String 
 
 func ai_province_value(pid: int, commander: int) -> int:
 	return AiWar.province_value(self, provinces[pid], countries[commander])
+
+
+func ai_tax_step(tax: int, net: int, treasury: int, expense: int, stability: int, at_war: bool, pers: String) -> int:
+	return AiEconomy.tax_step(tax, net, treasury, expense, stability, at_war, pers)
+
+
+func ai_build_order(base: Array, pers: String, at_war: bool, tag: String) -> Array:
+	return AiEconomy.build_order(base, pers, at_war, tag)
+
+
+func ai_ally_joins(pers: String, op: int, ready: bool, motive: int) -> bool:
+	return AiDiplomacy.ally_joins(pers, op, ready, motive)
+
+
+func ai_coalition_joins(pers: String, balance: bool, op_target: int, op_aggressor: int, ratio: int, ready: bool) -> bool:
+	return AiDiplomacy.coalition_joins(pers, balance, op_target, op_aggressor, ratio, ready)
 
 
 func ai_neighbors(cid: int) -> Array:

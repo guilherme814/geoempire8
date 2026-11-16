@@ -111,3 +111,67 @@ static func review(g: Node, ai) -> void:
 		g.peace_offers.append({"from": ai.id, "to": f, "winner": winner, "term": term, "tick": int(g.tick)})
 		Events.notice.emit("%s propõe a paz: veja a proposta." % ai.name)
 		Events.war_changed.emit()
+
+
+# ---------------------------------------------------------------------------
+# Convocação de aliados e coalizões (GEAI). Roda ao começar uma guerra.
+# ---------------------------------------------------------------------------
+const RALLY_MAX_PER_SIDE := 3
+const ALLY_NEED := {"aggressive": 40, "opportunist": 45, "strategic": 55, "cautious": 70, "defensive": 85}
+
+
+## Pura: um aliado do atacante entra na guerra? Precisa estar pronto e gostar do atacante o
+## bastante; interesse próprio no alvo (motivo > 0) baixa a exigência.
+static func ally_joins(pers: String, opinion: int, ready: bool, motive: int) -> bool:
+	if not ready:
+		return false
+	var need: int = int(ALLY_NEED.get(pers, 60))
+	if motive > 0:
+		need -= 15
+	return opinion >= need
+
+
+## Pura: uma potência neutra entra ao lado do alvo para conter um agressor muito mais forte?
+## Só estratégicos e países de "equilíbrio de poder"; cautelosos nunca. `ratio` = poder do
+## agressor / poder do alvo (%).
+static func coalition_joins(pers: String, balance: bool, op_target: int, op_aggressor: int, ratio: int, ready: bool) -> bool:
+	if not ready or pers == "cautious":
+		return false
+	if not (balance or pers == "strategic"):
+		return false
+	return ratio >= 150 and op_target >= -10 and op_aggressor <= 20
+
+
+static func _join(g: Node, o: int, enemy: int, other_side: int, why: String) -> void:
+	g.wars.append(g._new_war(o, enemy))
+	g.relations[g._pair(o, enemy)] = mini(g.opinion(o, enemy), -60)
+	if g.is_human(enemy) or g.is_human(other_side):
+		Events.notice.emit("%s entra na guerra %s." % [g.countries[o].name, why])
+
+
+## Aliados do atacante e coalizões contra um agressor. Determinístico: países em ordem de id.
+static func rally(g: Node, attacker: int, target: int) -> void:
+	var on_att := 0
+	var on_def := 0
+	var ratio: int = AiBrain.own_power(g, attacker) * 100 / maxi(1, AiBrain.own_power(g, target))
+	for o in g.countries:
+		if o.id == attacker or o.id == target or not o.is_alive() or g.is_human(o.id) or int(o.overlord) >= 0:
+			continue
+		if g.at_war(o.id, attacker) or g.at_war(o.id, target) or g.wars_of(o.id).size() >= 2:
+			continue
+		var pers: String = AiWar.personality_key(g, o)
+		var ready: bool = AiBrain.ready_for_war(g, o)
+		if g.allied(o.id, attacker) and not g.allied(o.id, target):
+			if on_att >= RALLY_MAX_PER_SIDE or not g.can_declare_war(o.id, target):
+				continue
+			var ev: Dictionary = AiBrain.evaluate(g, o, g.countries[target], -1, false)
+			if ally_joins(pers, g.opinion(o.id, attacker), ready, int(ev["motive"])):
+				_join(g, o.id, target, attacker, "ao lado de %s" % g.countries[attacker].name)
+				on_att += 1
+		elif not g.allied(o.id, attacker) and not g.allied(o.id, target):
+			if on_def >= RALLY_MAX_PER_SIDE or not g.can_declare_war(o.id, attacker):
+				continue
+			var bal: bool = bool(AiBrain.profile_of(o)["balance"])
+			if coalition_joins(pers, bal, g.opinion(o.id, target), g.opinion(o.id, attacker), ratio, ready):
+				_join(g, o.id, attacker, target, "para conter %s" % g.countries[attacker].name)
+				on_def += 1

@@ -387,6 +387,8 @@ func run_all() -> void:
 	check("IA luta com vantagem", not g.ai_should_retreat(10, 5, 3, 100))
 	check("IA recua com vizinhanca esmagadora", g.ai_should_retreat(4, 0, 9, 100))
 	check("IA recua sem suprimentos", g.ai_should_retreat(10, 0, 0, 20))
+	check("doutrina cautelosa recua onde a agressiva luta", g.ai_should_retreat(10, 13, 0, 100, 20) and not g.ai_should_retreat(10, 13, 0, 100, 90))
+	check("doutrinas por ousadia", g.ai_doctrine_name(10) == "cauteloso" and g.ai_doctrine_name(50) == "equilibrado" and g.ai_doctrine_name(90) == "agressivo")
 	check("alvo proximo vale mais que distante", g.ai_target_score(60, 1, 0) > g.ai_target_score(60, 6, 0))
 	check("alvo guarnecido vale menos", g.ai_target_score(60, 2, 3) < g.ai_target_score(60, 2, 0))
 	check("capital inimiga e mais valiosa", g.ai_province_value(g.countries[1].capital, 0) >= 110)
@@ -407,6 +409,7 @@ func run_all() -> void:
 			if a3.owner_id == wc.id and g.ai_notes.has(a3.id):
 				noted = true
 		check("exercito da IA em guerra recebe ordens com motivo", noted)
+		check("teatro de guerra define objetivo principal", g.ai_theater.has(wc.id) or not noted)
 		g.load_state(wsave)
 		rc = g.countries[g.player_country]
 	var ai_res: int = 0

@@ -6,7 +6,11 @@ extends RefCounted
 ##                        retaguarda (capital/depósito); suprimentos críticos também mandam recuar.
 ##   2. Concentração    - exércitos pequenos se juntam a um maior próximo, em vez de morrer sozinhos.
 ##   3. Defesa          - expulsa invasores da própria terra quando tem vantagem.
-##   4. Ofensiva        - pontua alvos por valor (capital, núcleo, porto, recurso raro) menos
+##   4. Teatro de guerra - o maior exército define o OBJETIVO PRINCIPAL da campanha; os demais
+##                        convergem para ele (reforço) em vez de cada um caçar o próprio alvo.
+##   5. Doutrina        - a ousadia do país molda o comandante: cauteloso recua cedo e junta
+##                        grandes massas; agressivo aceita risco e ataca com menos vantagem.
+##   6. Ofensiva        - pontua alvos por valor (capital, núcleo, porto, recurso raro) menos
 ##                        distância e guarnição, e evita alvos fortes demais.
 ## Sem estado próprio: tudo é recalculado do estado do jogo (determinístico no P2P). Cada decisão
 ## deixa um motivo em Game.ai_notes (só exibição; fora do hash e do save).
@@ -22,13 +26,28 @@ const HOP_COST := 8
 const GARRISON_COST := 35
 
 
+## Doutrina do comandante a partir da ousadia do país (0..100):
+## cautious (<35), balanced, aggressive (>65). Todos os limiares vêm daqui.
+static func doctrine(boldness: int) -> Dictionary:
+	if boldness < 35:
+		return {"name": "cauteloso", "retreat": 120, "ring": 160, "supply": 45, "below": 6, "attack": 100, "garrison": 100}
+	if boldness > 65:
+		return {"name": "agressivo", "retreat": 200, "ring": 260, "supply": 25, "below": 2, "attack": 60, "garrison": 180}
+	return {"name": "equilibrado", "retreat": RETREAT_RATIO, "ring": RING_RATIO, "supply": SUPPLY_CRITICAL, "below": CONCENTRATE_BELOW, "attack": ATTACK_MIN_PCT, "garrison": GARRISON_SKIP_PCT}
+
+
+static func doctrine_of(c) -> Dictionary:
+	return doctrine(int(AiBrain.profile_of(c)["boldness"]))
+
+
 ## Pura: o exército deve recuar? (inimigo na própria província e na vizinhança).
-static func should_retreat(mine: int, enemy_here: int, enemy_ring: int, supply: int) -> bool:
-	if supply < SUPPLY_CRITICAL:
+static func should_retreat(mine: int, enemy_here: int, enemy_ring: int, supply: int, doc: Dictionary = {}) -> bool:
+	var d: Dictionary = doc if not doc.is_empty() else doctrine(50)
+	if supply < int(d["supply"]):
 		return true
-	if enemy_here > 0 and enemy_here * 100 >= mine * RETREAT_RATIO:
+	if enemy_here > 0 and enemy_here * 100 >= mine * int(d["retreat"]):
 		return true
-	return enemy_ring > 0 and enemy_ring * 100 >= mine * RING_RATIO
+	return enemy_ring > 0 and enemy_ring * 100 >= mine * int(d["ring"])
 
 
 ## Pura: pontuação de um alvo ofensivo.
@@ -123,6 +142,23 @@ static func think(g: Node, c) -> void:
 		var o = g.armies[id]
 		if o.owner_id == c.id and not o.is_moving():
 			own_regs[o.province_id] = int(own_regs.get(o.province_id, 0)) + o.regiments
+	var doc := doctrine_of(c)
+	# Teatro de guerra: o maior exército parado define o objetivo principal da campanha.
+	var main_id := -1
+	var main_regs := 0
+	for id in ids:
+		var m = g.armies[id]
+		if m.owner_id == c.id and not m.is_moving() and m.supply >= int(doc["supply"]) and m.regiments > main_regs:
+			main_regs = m.regiments
+			main_id = id
+	var objective := -1
+	if main_id >= 0:
+		var ma = g.armies[main_id]
+		objective = _best_target(g, ma, c, enemies, enemy_regs, int(own_regs.get(ma.province_id, ma.regiments)), doc)
+		if objective >= 0:
+			g.ai_theater[c.id] = objective
+		else:
+			g.ai_theater.erase(c.id)
 	for id in ids:
 		if not g.armies.has(id):
 			continue
@@ -138,32 +174,33 @@ static func think(g: Node, c) -> void:
 		var eh: int = int(enemy_regs.get(a.province_id, 0))
 		var ring: int = _ring(g, a.province_id, enemy_regs)
 		# 1) autopreservação
-		if should_retreat(mine, eh, ring, a.supply):
+		if should_retreat(mine, eh, ring, a.supply, doc):
 			var fb := _fallback(g, a, c, own_regs, enemy_regs)
 			if fb >= 0:
-				var why := "Recuando: suprimentos críticos" if a.supply < SUPPLY_CRITICAL else "Recuando: inimigo superior"
+				var why := "Recuando: suprimentos críticos" if a.supply < int(doc["supply"]) else "Recuando: inimigo superior"
 				_go(g, a, fb, why)
 				if a.is_moving():
 					continue
-		if eh > 0 and eh * 100 >= mine * RETREAT_RATIO:
+		if eh > 0 and eh * 100 >= mine * int(doc["retreat"]):
 			continue   # sem rota de fuga: luta onde está
-		# 2) concentração
-		if mine < CONCENTRATE_BELOW and ring == 0 and eh == 0:
+		# 2) concentração (exército pequeno junta-se a um maior; reforça a frente principal)
+		if mine < int(doc["below"]) and ring == 0 and eh == 0:
 			var join := _join_target(g, a, own_regs, enemy_regs)
 			if join >= 0:
 				_go(g, a, join, "Juntando forças")
 				if a.is_moving():
 					continue
 		# 3) defesa: invasor em terra própria
-		var inv := _invader(g, a, c, enemy_regs, mine)
+		var inv := _invader(g, a, c, enemy_regs, mine, doc)
 		if inv >= 0:
 			_go(g, a, inv, "Expulsando invasor")
 			if a.is_moving():
 				continue
-		# 4) ofensiva
-		var t := _best_target(g, a, c, enemies, enemy_regs, mine)
+		# 4) ofensiva: todos convergem para o objetivo do teatro; o principal escolhe e os demais o seguem
+		var t := objective if (objective >= 0 and a.supply >= int(doc["supply"]) and mine * 100 >= int(enemy_regs.get(objective, 0)) * int(doc["garrison"])) else _best_target(g, a, c, enemies, enemy_regs, mine, doc)
 		if t >= 0:
-			_go(g, a, t, "Avançando sobre %s" % g.provinces[t].name)
+			var tag := "Frente principal" if id == main_id else "Reforçando a frente"
+			_go(g, a, t, "%s: %s (%s)" % [tag, g.provinces[t].name, str(doc["name"])])
 		else:
 			g.ai_notes[a.id] = "Mantendo posição"
 
@@ -186,7 +223,7 @@ static func _join_target(g: Node, a, own_regs: Dictionary, enemy_regs: Dictionar
 	return -1
 
 
-static func _invader(g: Node, a, c, enemy_regs: Dictionary, mine: int) -> int:
+static func _invader(g: Node, a, c, enemy_regs: Dictionary, mine: int, doc: Dictionary) -> int:
 	var origin: Vector2 = g.provinces[a.province_id].center
 	var best := -1
 	var best_d := INF
@@ -195,7 +232,7 @@ static func _invader(g: Node, a, c, enemy_regs: Dictionary, mine: int) -> int:
 	for pid in keys:
 		if g.provinces[int(pid)].owner_id != c.id:
 			continue
-		if int(enemy_regs[pid]) * 100 > mine * 100 * 100 / ATTACK_MIN_PCT:
+		if int(enemy_regs[pid]) * 100 > mine * 100 * 100 / int(doc["attack"]):
 			continue   # forte demais
 		var d: float = origin.distance_squared_to(g.provinces[int(pid)].center)
 		if d < best_d:
@@ -204,13 +241,13 @@ static func _invader(g: Node, a, c, enemy_regs: Dictionary, mine: int) -> int:
 	return best
 
 
-static func _best_target(g: Node, a, c, enemies: Array, enemy_regs: Dictionary, mine: int) -> int:
+static func _best_target(g: Node, a, c, enemies: Array, enemy_regs: Dictionary, mine: int, doc: Dictionary) -> int:
 	var origin: Vector2 = g.provinces[a.province_id].center
 	var cands: Array = []
 	for p in g.provinces:
 		if enemies.has(p.owner_id):
 			var garr: int = int(enemy_regs.get(p.id, 0))
-			if garr * 100 > mine * GARRISON_SKIP_PCT:
+			if garr * 100 > mine * int(doc["garrison"]):
 				continue
 			cands.append({"id": p.id, "d": origin.distance_squared_to(p.center) / maxf(1.0, float(province_value(g, p, c)) / 40.0)})
 	cands.sort_custom(func(x, y): return x["d"] < y["d"] or (x["d"] == y["d"] and x["id"] < y["id"]))

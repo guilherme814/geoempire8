@@ -9,6 +9,16 @@ var fails: int = 0
 var checks: int = 0
 
 
+## Declara a guerra a e b e descarta guerras extras (aliados/coalizoes) para isolar o cenario.
+func _war_only(a: int, b: int) -> void:
+	g._start_war(a, b)
+	var only: Array = []
+	for ww in g.wars:
+		if int(ww["a"]) == mini(a, b) and int(ww["b"]) == maxi(a, b):
+			only.append(ww)
+	g.wars = only
+
+
 func check(name: String, ok: bool, extra: String = "") -> void:
 	checks += 1
 	if ok:
@@ -422,12 +432,7 @@ func run_all() -> void:
 		var wc: Country = g.countries[int(bd["me"])]
 		var wt: int = int(bd["foe"])
 		var wsave: Dictionary = g.serialize_state()
-		g._start_war(wc.id, wt)
-		var only: Array = []   # isola a guerra do cenario (aliados/coalizoes podem ter entrado)
-		for ww in g.wars:
-			if (int(ww["a"]) == mini(wc.id, wt)) and (int(ww["b"]) == maxi(wc.id, wt)):
-				only.append(ww)
-		g.wars = only
+		_war_only(wc.id, wt)
 		var P: int = int(bd["p"])
 		var Q: int = int(bd["q"])
 		# cenario 1: potencia contra pequeno -> ofensiva
@@ -445,7 +450,7 @@ func run_all() -> void:
 				moved1 = true
 		check("o exercito marcha ao objetivo do teatro", moved1)
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		# cenario 2: inferioridade -> nao ataca
 		g.armies.clear()
 		g._add_regiments(P, wc.id, 3)
@@ -460,7 +465,7 @@ func run_all() -> void:
 				suicide = true
 		check("a IA nao ataca em grande inferioridade", not suicide)
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		# cenario 3: a mesma situacao, doutrinas diferentes -> planos diferentes
 		g.armies.clear()
 		g._add_regiments(Q, wt, 4)
@@ -469,14 +474,14 @@ func run_all() -> void:
 		var need: int = int(g.ai_theaters[wc.id][0]["needed_off"])
 		var force: int = (need * 110 + 99) / 100
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(Q, wt, 4)
 		g._add_regiments(P, wc.id, force)
 		g.ai_think(wc.id, "aggressive")
 		var plan_agg: String = str(g.ai_theaters[wc.id][0]["plan"])
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(Q, wt, 4)
 		g._add_regiments(P, wc.id, force)
@@ -485,7 +490,7 @@ func run_all() -> void:
 		check("agressivo ataca e cauteloso espera, com as mesmas tropas", plan_agg == "offensive" and plan_cau != "offensive", "%s x %s (%d tropas, precisa %d)" % [plan_agg, plan_cau, force, need])
 		# cenario 4: ameaca perto da capital eleva a prioridade
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(P, wc.id, 5)
 		g.ai_think(wc.id, "strategic")
@@ -498,14 +503,14 @@ func run_all() -> void:
 			check("inimigo perto da capital aumenta a prioridade do teatro", prio1 > prio0, "%d -> %d" % [prio0, prio1])
 		# determinismo das decisoes
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(P, wc.id, 8)
 		g._add_regiments(Q, wt, 3)
 		g.ai_think(wc.id)
 		var hash_ai: int = g.state_hash()
 		g.load_state(wsave)
-		g._start_war(wc.id, wt)
+		_war_only(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(P, wc.id, 8)
 		g._add_regiments(Q, wt, 3)

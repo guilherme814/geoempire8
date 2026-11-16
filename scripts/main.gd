@@ -12,17 +12,37 @@ var overlay: MapOverlay
 var camera: MapCamera
 var hud: HUD
 var select: CountrySelect
+var menu: MainMenu
+var _splash: SplashScreen
 
 
 func _ready() -> void:
 	if not Game.loaded:
 		push_error("GeoEmpire: mundo não carregado; verifique data/world.json")
 		return
+	var splash: SplashScreen = null
+	if not Net.is_online():
+		splash = SplashScreen.new()
+		_splash = splash
+		add_child(splash)
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_boot(splash)
 
+
+func _step(splash: SplashScreen, p: float, text: String) -> void:
+	if splash != null and is_instance_valid(splash):
+		splash.set_progress(p, text)
+
+
+func _boot(splash: SplashScreen) -> void:
+	_step(splash, 0.1, "Preparando o som…")
 	var audio := AudioManager.new()
 	audio.name = "Audio"
 	add_child(audio)
+	await get_tree().process_frame
 
+	_step(splash, 0.3, "Desenhando o mapa-múndi…")
 	map_view = MapView.new()
 	map_view.name = "MapView"
 	add_child(map_view)
@@ -30,16 +50,21 @@ func _ready() -> void:
 	overlay = MapOverlay.new()
 	overlay.name = "MapOverlay"
 	map_view.add_child(overlay)   # filho: desenhado por cima do mapa estático
+	await get_tree().process_frame
 
+	_step(splash, 0.6, "Posicionando a câmera…")
 	camera = MapCamera.new()
 	camera.name = "MapCamera"
 	camera.map_size = Game.map_size
 	add_child(camera)
+	await get_tree().process_frame
 
+	_step(splash, 0.8, "Montando a interface…")
 	hud = HUD.new()
 	hud.name = "HUD"
 	hud.map_view = map_view
 	add_child(hud)
+	await get_tree().process_frame
 
 	camera.ui_blocker = _is_over_ui
 	camera.tapped.connect(_on_map_tapped)
@@ -47,18 +72,60 @@ func _ready() -> void:
 	Events.player_country_changed.connect(_on_player_changed)
 	Events.focus_province.connect(_on_focus_province)
 	hud.country_select_requested.connect(_open_country_select)
+	hud.main_menu_requested.connect(_open_main_menu)
 
 	if Net.is_online():
 		# Online o país vem do lobby: enquadra a capital direto.
 		_on_player_changed(Game.player_country)
+	elif splash != null and is_instance_valid(splash):
+		hud.set_ui_visible(false)
+		camera.focus_rect(Rect2(Vector2.ZERO, Game.map_size), 1.0)
+		splash.set_progress(1.0, "Pronto")
+		splash.set_loaded()
+		await splash.finished
+		_open_main_menu()
 	else:
-		_open_country_select()
+		_open_main_menu()
 
 
 func _is_over_ui(pos: Vector2) -> bool:
+	if _splash != null and is_instance_valid(_splash):
+		return true
 	if hud.is_over_ui(pos):
 		return true
+	if menu != null and is_instance_valid(menu) and menu.is_over_ui(pos):
+		return true
 	return select != null and is_instance_valid(select) and select.is_over_ui(pos)
+
+
+func _open_main_menu() -> void:
+	if menu != null and is_instance_valid(menu) and menu.active:
+		return
+	if select != null and is_instance_valid(select):
+		select.queue_free()
+		select = null
+	hud.set_ui_visible(false)
+	Game.speed = 0
+	Events.speed_changed.emit(0)
+	menu = MainMenu.new()
+	menu.camera = camera
+	menu.new_game_pressed.connect(_on_menu_new_game)
+	menu.continue_pressed.connect(_on_menu_continue)
+	add_child(menu)
+	camera.focus_rect(Rect2(Vector2.ZERO, Game.map_size), 1.0)
+
+
+func _on_menu_new_game() -> void:
+	if menu != null and is_instance_valid(menu):
+		menu.close()
+	_open_country_select()
+
+
+func _on_menu_continue() -> void:
+	if menu != null and is_instance_valid(menu):
+		menu.close()
+	hud.set_ui_visible(true)
+	_on_player_changed(Game.player_country)
 
 
 func _open_country_select() -> void:
@@ -67,6 +134,7 @@ func _open_country_select() -> void:
 	select = CountrySelect.new()
 	select.hud = hud
 	select.finished.connect(_on_select_finished)
+	select.back_requested.connect(_open_main_menu)
 	add_child(select)
 	camera.focus_rect(Rect2(Vector2.ZERO, Game.map_size), 1.0)
 

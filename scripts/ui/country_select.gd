@@ -5,6 +5,7 @@ extends CanvasLayer
 ## também o escolhe. Só offline; online o país vem do lobby.
 
 signal finished
+signal back_requested
 
 var hud: HUD
 var active: bool = true
@@ -255,6 +256,11 @@ func _build_card() -> void:
 	_btn_play.add_theme_font_size_override("font_size", 26)
 	_btn_play.pressed.connect(_on_play_pressed)
 	col.add_child(_btn_play)
+	var btn_back := UIKit.button("‹ Menu principal", Vector2(0, 46))
+	btn_back.pressed.connect(func():
+		active = false
+		back_requested.emit())
+	col.add_child(btn_back)
 	_btn_load = UIKit.button("Carregar jogo salvo", Vector2(0, 46))
 	_btn_load.pressed.connect(_on_load_pressed)
 	col.add_child(_btn_load)

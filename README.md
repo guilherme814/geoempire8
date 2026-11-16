@@ -199,3 +199,6 @@ Exércitos precisam de suprimentos: a capital e os **Depósitos de suprimentos**
 
 ## Briefings por país
 `data/briefings_1836.json` (gerado por `tools/gen_briefings.py`): situação histórica em 1836 e objetivo sugerido, exibidos no cartão de seleção de país.
+
+## Tela de abertura
+`scripts/ui/splash_screen.gd`: brasão, título sobre rosa dos ventos, dicas históricas, barra de carregamento ligada às etapas reais de `main.gd` (`_boot`) e "Toque para começar" antes do menu principal. Pulada no modo online.

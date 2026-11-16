@@ -14,6 +14,7 @@ extends CanvasLayer
 ## A HUD nunca muda o estado: ela chama Game.submit_command().
 
 signal country_select_requested
+signal main_menu_requested
 
 const DEBUG_TOOLS := true
 const MARGIN := 10.0
@@ -692,6 +693,9 @@ func _build_windows() -> void:
 	var b_swap := _make_button("Trocar de país", Vector2(0, 52))
 	b_swap.pressed.connect(_on_swap_pressed)
 	menu.add_child(b_swap)
+	var b_main := _make_button("Menu principal", Vector2(0, 52))
+	b_main.pressed.connect(_on_main_menu_pressed)
+	menu.add_child(b_main)
 	var b_music := _make_button("", Vector2(0, 52))
 	b_music.text = "Música: ligada"
 	b_music.pressed.connect(_on_music_pressed.bind(b_music))
@@ -1490,6 +1494,14 @@ func _on_music_pressed(b: Button) -> void:
 func _on_sfx_pressed(b: Button) -> void:
 	AudioManager.set_sfx(not AudioManager.sfx_on)
 	b.text = "Efeitos sonoros: ligados" if AudioManager.sfx_on else "Efeitos sonoros: desligados"
+
+
+func _on_main_menu_pressed() -> void:
+	if Net.is_online():
+		_show_toast("Indisponível online.")
+		return
+	_toggle_window("menu")
+	main_menu_requested.emit()
 
 
 func _on_swap_pressed() -> void:

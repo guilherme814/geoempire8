@@ -2015,6 +2015,8 @@ func _refresh_army() -> void:
 		oc.name, a.regiments, a.men(), Game.provinces[a.province_id].name,
 	]
 	txt += "\nAbastecimento: %d%% (%s)" % [a.supply, Game.supply_label(a.supply)]
+	if Game.ai_notes.has(a.id) and mine and Game.countries[Game.player_country].auto_front:
+		txt += "\nOrdens: %s" % str(Game.ai_notes[a.id])
 	if a.is_moving():
 		txt += "\nDestino: %s (%d dias)" % [Game.provinces[a.path.back()].name, Game.eta_days(a)]
 	elif mine:

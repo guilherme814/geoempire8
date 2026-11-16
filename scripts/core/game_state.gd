@@ -157,6 +157,8 @@ var tick: int = 0     # dias simulados
 var frame: int = 0    # passos executados (inclui frames com o jogo pausado)
 var speed: int = 1
 var player_country: int = 0
+## Motivo da última ordem da IA por exército (só exibição; fora do save e do hash).
+var ai_notes: Dictionary = {}
 var lockstep: bool = false   # true quando o Net controla o avanço do tempo
 var world_seed: int = 1836
 var history: Dictionary = {}       # dados históricos de 1836 por tag (data/history_1836.json)
@@ -1849,60 +1851,7 @@ func _queued_for(cid: int) -> int:
 
 
 func _ai_war(c: Country) -> void:
-	var enemies := wars_of(c.id)
-	var ids: Array = armies.keys()
-	ids.sort()
-	for id in ids:
-		var a: Army = armies[id]
-		if a.owner_id != c.id or a.is_moving():
-			continue
-		var here := provinces[a.province_id]
-		# mantém o cerco em andamento
-		if here.owner_id != c.id and sieges.has(here.id) and int(sieges[here.id]["by"]) == c.id:
-			continue
-		var target := _ai_pick_target(a, c, enemies)
-		if target >= 0 and target != a.province_id:
-			_order_move(a, target)
-
-
-func _ai_pick_target(a: Army, c: Country, enemies: Array) -> int:
-	var origin := provinces[a.province_id].center
-	# 1) expulsa invasores que estão em terra própria (o mais próximo)
-	var best := -1
-	var best_d := INF
-	var ids: Array = armies.keys()
-	ids.sort()
-	for id in ids:
-		var e: Army = armies[id]
-		if not enemies.has(e.owner_id) or provinces[e.province_id].owner_id != c.id:
-			continue
-		var d := origin.distance_squared_to(provinces[e.province_id].center)
-		if d < best_d:
-			best_d = d
-			best = e.province_id
-	if best >= 0:
-		return best
-	# 2) ataca a província inimiga mais próxima que seja alcançável
-	var cands: Array = []
-	for p in provinces:
-		if enemies.has(p.owner_id):
-			# Objetivos de campanha: núcleos próprios, capitais, portos e recursos raros pesam mais.
-			var f := 1.0
-			if p.core_owner == c.id:
-				f = 0.25
-			elif countries[p.owner_id].capital == p.id:
-				f = 0.36
-			elif p.port >= 0:
-				f = 0.7
-			elif AiBrain.RARE.has(str(p.resource_type)):
-				f = 0.8
-			cands.append({"id": p.id, "d": origin.distance_squared_to(p.center) * f})
-	cands.sort_custom(func(x, y): return x["d"] < y["d"] or (x["d"] == y["d"] and x["id"] < y["id"]))
-	for i in mini(cands.size(), 4):
-		var pid: int = int(cands[i]["id"])
-		if not find_path(a.province_id, pid).is_empty():
-			return pid
-	return -1
+	AiWar.think(self, c)
 
 
 ## Guerra: batalhas, cercos e conquista. Ordem fixa (ids crescentes) para ser determinístico.

@@ -202,3 +202,7 @@ Exércitos precisam de suprimentos: a capital e os **Depósitos de suprimentos**
 
 ## Tela de abertura
 `scripts/ui/splash_screen.gd`: brasão, título sobre rosa dos ventos, dicas históricas, barra de carregamento ligada às etapas reais de `main.gd` (`_boot`) e "Toque para começar" antes do menu principal. Pulada no modo online.
+
+## Inteligência artificial em camadas
+- **Estratégica** (`ai_brain.gd`): objetivos de guerra com ramificações (reconquista, unificação, rivalidade, contenção do hegemon…), personalidade por país, percepção incerta da força rival, preparação e pressão diplomática.
+- **Operacional** (`ai_war.gd`, utility AI): cada exército pesa autopreservação (recua diante de força superior ou sem suprimentos), concentração (junta forças), defesa (expulsa invasores) e ofensiva (alvos pontuados por valor − distância − guarnição). Sem estado próprio, determinístico; o motivo da última ordem fica em `Game.ai_notes` e aparece no painel do exército quando a "frente automática" está ativa.

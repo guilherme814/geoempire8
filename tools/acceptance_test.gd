@@ -382,6 +382,33 @@ func run_all() -> void:
 				back = g.armies[aid2]
 		check("abastecimento sobrevive ao salvar/carregar", back != null and back.supply == 37)
 		rc = g.countries[g.player_country]
+	# IA operacional (AiWar)
+	check("IA recua diante de inimigo superior", AiWar.should_retreat(5, 8, 0, 100))
+	check("IA luta com vantagem", not AiWar.should_retreat(10, 5, 3, 100))
+	check("IA recua com vizinhanca esmagadora", AiWar.should_retreat(4, 0, 9, 100))
+	check("IA recua sem suprimentos", AiWar.should_retreat(10, 0, 0, 20))
+	check("alvo proximo vale mais que distante", AiWar.target_score(60, 1, 0) > AiWar.target_score(60, 6, 0))
+	check("alvo guarnecido vale menos", AiWar.target_score(60, 2, 3) < AiWar.target_score(60, 2, 0))
+	check("capital inimiga e mais valiosa", AiWar.province_value(g, g.provinces[g.countries[1].capital], g.countries[0]) >= 110)
+	var wc: Country = null
+	for oc in g.countries:
+		if oc.id != g.player_country and oc.is_alive() and not AiBrain.neighbors(g, oc).is_empty():
+			wc = oc
+			break
+	if wc != null:
+		var wt: int = int(AiBrain.neighbors(g, wc)[0])
+		var wsave: Dictionary = g.serialize_state()
+		g._start_war(wc.id, wt)
+		g._add_regiments(wc.capital, wc.id, 3)
+		AiWar.think(g, wc)
+		var noted: bool = false
+		for aid3 in g.armies.keys():
+			var a3: Army = g.armies[aid3]
+			if a3.owner_id == wc.id and g.ai_notes.has(a3.id):
+				noted = true
+		check("exercito da IA em guerra recebe ordens com motivo", noted)
+		g.load_state(wsave)
+		rc = g.countries[g.player_country]
 	var ai_res: int = 0
 	for cc in g.countries:
 		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:

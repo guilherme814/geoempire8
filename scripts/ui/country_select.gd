@@ -230,10 +230,10 @@ func _build_card() -> void:
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(frame)
 	_card_flag = FlagRect.new()
-	_card_flag.custom_minimum_size = Vector2(220, 140)
+	_card_flag.custom_minimum_size = Vector2(150, 94)
 	frame.add_child(_card_flag)
 
-	_card_name = UIKit.serif_label("Selecione uma nação", 30, UIKit.GOLD_BRIGHT)
+	_card_name = UIKit.serif_label("Selecione uma nação", 26, UIKit.GOLD_BRIGHT)
 	_card_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_card_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_card_name)
@@ -242,28 +242,39 @@ func _build_card() -> void:
 	col.add_child(_card_sub)
 	col.add_child(HSeparator.new())
 
+	# Dados do país rolam; o botão JOGAR fica sempre visível embaixo.
+	var stats_scroll := TouchScroll.new()
+	stats_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stats_scroll.custom_minimum_size = Vector2(0, 60)
+	stats_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(stats_scroll)
 	_card_stats = VBoxContainer.new()
 	_card_stats.add_theme_constant_override("separation", 6)
-	_card_stats.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(_card_stats)
+	_card_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_scroll.add_child(_card_stats)
 
 	_msg = UIKit.label("", 15, UIKit.WARN)
 	_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_msg)
 
-	_btn_play = UIKit.button("JOGAR", Vector2(0, 62), "PrimaryButton")
+	_btn_play = UIKit.button("JOGAR", Vector2(0, 58), "PrimaryButton")
 	_btn_play.add_theme_font_size_override("font_size", 26)
 	_btn_play.pressed.connect(_on_play_pressed)
 	col.add_child(_btn_play)
-	var btn_back := UIKit.button("‹ Menu principal", Vector2(0, 46))
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 8)
+	col.add_child(bottom)
+	var btn_back := UIKit.button("‹ Menu", Vector2(0, 46))
+	btn_back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn_back.pressed.connect(func():
 		active = false
 		back_requested.emit())
-	col.add_child(btn_back)
-	_btn_load = UIKit.button("Carregar jogo salvo", Vector2(0, 46))
+	bottom.add_child(btn_back)
+	_btn_load = UIKit.button("Carregar", Vector2(0, 46))
+	_btn_load.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_load.pressed.connect(_on_load_pressed)
-	col.add_child(_btn_load)
+	bottom.add_child(_btn_load)
 
 
 # ---------------------------------------------------------------------------

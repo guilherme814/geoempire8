@@ -3369,6 +3369,7 @@ func serialize_state() -> Dictionary:
 		"frame": frame,
 		"speed": speed,
 		"date": clock.to_dict(),
+		"player": player_country,
 		"owners": owners,
 		"cores": _province_cores(),
 		"pops": pops,
@@ -3610,6 +3611,7 @@ func load_state(d: Dictionary) -> bool:
 	frame = int(d.get("frame", 0))
 	speed = clampi(int(d.get("speed", 1)), 0, MAX_SPEED)
 	clock.from_dict(d.get("date", {}))
+	player_country = int(d.get("player", player_country))
 	_rebuild_all_countries()
 	Events.state_loaded.emit()
 	Events.speed_changed.emit(speed)

@@ -218,6 +218,15 @@ func _draw() -> void:
 			_line(Vector2(0.5, 0.24), Vector2(0.5, 0.86), 0.07, color)
 			_line(Vector2(0.32, 0.38), Vector2(0.68, 0.38), 0.06, color)
 			draw_arc(_p(0.5, 0.6), 0.34 * _s, 0.15, PI - 0.15, 16, color, maxf(1.0, 0.07 * _s), true)
+		"play":
+			_poly([Vector2(0.28, 0.14), Vector2(0.86, 0.5), Vector2(0.28, 0.86)], color)
+		"gear":
+			for i in 8:
+				var a: float = TAU * float(i) / 8.0
+				var d := Vector2(cos(a), sin(a))
+				_line(Vector2(0.5, 0.5) + d * 0.3, Vector2(0.5, 0.5) + d * 0.44, 0.14, color)
+			draw_circle(_p(0.5, 0.5), 0.33 * _s, color)
+			draw_circle(_p(0.5, 0.5), 0.14 * _s, dark)
 		"close":
 			_line(Vector2(0.24, 0.24), Vector2(0.76, 0.76), 0.1, color)
 			_line(Vector2(0.76, 0.24), Vector2(0.24, 0.76), 0.1, color)

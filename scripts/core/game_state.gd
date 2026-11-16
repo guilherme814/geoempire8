@@ -159,8 +159,8 @@ var speed: int = 1
 var player_country: int = 0
 ## Motivo da última ordem da IA por exército (só exibição; fora do save e do hash).
 var ai_notes: Dictionary = {}
-## Objetivo principal do teatro de guerra por país (província); só exibição.
-var ai_theater: Dictionary = {}
+## Teatros de guerra calculados pela IA por país (só exibição; fora do save e do hash).
+var ai_theaters: Dictionary = {}
 var lockstep: bool = false   # true quando o Net controla o avanço do tempo
 var world_seed: int = 1836
 var history: Dictionary = {}       # dados históricos de 1836 por tag (data/history_1836.json)
@@ -1857,16 +1857,20 @@ func _ai_war(c: Country) -> void:
 
 
 # Fachada para testes headless (que não compilam referências diretas a classes que usam autoloads).
-func ai_should_retreat(mine: int, enemy_here: int, ring: int, supply: int, boldness: int = 50) -> bool:
-	return AiWar.should_retreat(mine, enemy_here, ring, supply, AiWar.doctrine(boldness))
+func ai_should_retreat(mine: int, enemy_here: int, ring: int, supply: int, doctrine_key: String = "strategic") -> bool:
+	return AiWar.should_retreat(mine, enemy_here, ring, supply, AiWar.doctrine(doctrine_key))
 
 
-func ai_doctrine_name(boldness: int) -> String:
-	return str(AiWar.doctrine(boldness)["name"])
+func ai_personality(cid: int) -> String:
+	return AiWar.personality_key(self, countries[cid])
 
 
-func ai_target_score(value: int, hops: int, garrison: int) -> int:
-	return AiWar.target_score(value, hops, garrison)
+func ai_doctrine_value(key: String, field: String) -> int:
+	return int(AiWar.doctrine(key)[field])
+
+
+func ai_target_score(value: int, hops: int, garrison: int, doctrine_key: String = "strategic") -> int:
+	return AiWar.target_score(value, hops, garrison, AiWar.doctrine(doctrine_key))
 
 
 func ai_province_value(pid: int, commander: int) -> int:
@@ -1877,8 +1881,8 @@ func ai_neighbors(cid: int) -> Array:
 	return AiBrain.neighbors(self, countries[cid])
 
 
-func ai_think(cid: int) -> void:
-	AiWar.think(self, countries[cid])
+func ai_think(cid: int, doctrine_key: String = "") -> void:
+	AiWar.think(self, countries[cid], doctrine_key)
 
 
 ## Guerra: batalhas, cercos e conquista. Ordem fixa (ids crescentes) para ser determinístico.

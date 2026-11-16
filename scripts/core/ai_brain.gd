@@ -73,6 +73,7 @@ static func profile_of(c) -> Dictionary:
 		"unify": d.get("unify", []),
 		"protect": d.get("protect", []),
 		"balance": bool(d.get("balance", false)),
+		"doctrine": str(d.get("doctrine", "")),
 		"weights": d.get("weights", {}),
 	}
 

@@ -14,7 +14,8 @@
    "claim": 110,
    "expansion": 90,
    "resources": 90
-  }
+  },
+  "doctrine": "strategic"
  },
  "GBR": {
   "ambition": 55,
@@ -35,7 +36,8 @@
    "contain": 150,
    "expansion": 70,
    "rivalry": 90
-  }
+  },
+  "doctrine": "strategic"
  },
  "FRA": {
   "ambition": 60,
@@ -56,7 +58,8 @@
    "claim": 120,
    "rivalry": 110,
    "resources": 110
-  }
+  },
+  "doctrine": "aggressive"
  },
  "PRU": {
   "ambition": 65,
@@ -75,7 +78,8 @@
    "claim": 130,
    "expansion": 120,
    "unify": 130
-  }
+  },
+  "doctrine": "opportunist"
  },
  "RUS": {
   "ambition": 70,
@@ -97,7 +101,8 @@
    "claim": 120,
    "expansion": 130,
    "resources": 100
-  }
+  },
+  "doctrine": "defensive"
  },
  "USA": {
   "ambition": 60,
@@ -114,7 +119,8 @@
    "claim": 150,
    "expansion": 140,
    "resources": 120
-  }
+  },
+  "doctrine": "opportunist"
  },
  "AUT": {
   "ambition": 40,
@@ -136,7 +142,8 @@
    "contain": 130,
    "intervene": 130,
    "expansion": 60
-  }
+  },
+  "doctrine": "cautious"
  },
  "QNG": {
   "ambition": 20,
@@ -149,7 +156,8 @@
   "balance": false,
   "weights": {
    "expansion": 50
-  }
+  },
+  "doctrine": "defensive"
  },
  "OTT": {
   "ambition": 35,
@@ -167,7 +175,8 @@
    "claim": 130,
    "straits": 100,
    "expansion": 60
-  }
+  },
+  "doctrine": "defensive"
  },
  "EGY": {
   "ambition": 65,
@@ -183,7 +192,8 @@
   "weights": {
    "claim": 140,
    "expansion": 120
-  }
+  },
+  "doctrine": "aggressive"
  },
  "SAR": {
   "ambition": 50,
@@ -199,7 +209,8 @@
   "weights": {
    "claim": 130,
    "unify": 130
-  }
+  },
+  "doctrine": "opportunist"
  },
  "ARG": {
   "ambition": 45,
@@ -216,7 +227,8 @@
   "weights": {
    "claim": 120,
    "rivalry": 110
-  }
+  },
+  "doctrine": "unpredictable"
  },
  "CHL": {
   "ambition": 50,
@@ -232,7 +244,8 @@
   "weights": {
    "claim": 130,
    "rivalry": 130
-  }
+  },
+  "doctrine": "strategic"
  },
  "PER": {
   "ambition": 45,
@@ -245,7 +258,8 @@
   "balance": false,
   "weights": {
    "rivalry": 120
-  }
+  },
+  "doctrine": "unpredictable"
  },
  "NED": {
   "ambition": 35,
@@ -259,7 +273,8 @@
   "weights": {
    "claim": 140,
    "straits": 80
-  }
+  },
+  "doctrine": "strategic"
  },
  "BEL": {
   "ambition": 20,
@@ -272,7 +287,8 @@
   "balance": false,
   "weights": {
    "expansion": 40
-  }
+  },
+  "doctrine": "defensive"
  },
  "JAP": {
   "ambition": 10,
@@ -283,7 +299,8 @@
   "balance": false,
   "weights": {
    "expansion": 30
-  }
+  },
+  "doctrine": "cautious"
  },
  "MEX": {
   "ambition": 40,
@@ -296,7 +313,8 @@
   "balance": false,
   "weights": {
    "rivalry": 120
-  }
+  },
+  "doctrine": "unpredictable"
  },
  "DEN": {
   "ambition": 20,
@@ -307,7 +325,8 @@
   "balance": false,
   "weights": {
    "straits": 80
-  }
+  },
+  "doctrine": "cautious"
  },
  "SWE": {
   "ambition": 25,
@@ -320,7 +339,8 @@
   "balance": false,
   "weights": {
    "rivalry": 110
-  }
+  },
+  "doctrine": "defensive"
  },
  "ESP": {
   "ambition": 25,
@@ -329,7 +349,8 @@
   "claims": [],
   "protect": [],
   "balance": false,
-  "weights": {}
+  "weights": {},
+  "doctrine": "cautious"
  },
  "POR": {
   "ambition": 20,
@@ -338,7 +359,8 @@
   "claims": [],
   "protect": [],
   "balance": false,
-  "weights": {}
+  "weights": {},
+  "doctrine": "cautious"
  },
  "PAP": {
   "ambition": 10,
@@ -347,7 +369,8 @@
   "claims": [],
   "protect": [],
   "balance": false,
-  "weights": {}
+  "weights": {},
+  "doctrine": "defensive"
  },
  "SIC": {
   "ambition": 25,
@@ -360,7 +383,8 @@
    "PAP"
   ],
   "balance": false,
-  "weights": {}
+  "weights": {},
+  "doctrine": "cautious"
  },
  "IRN": {
   "ambition": 40,
@@ -374,7 +398,8 @@
   "balance": false,
   "weights": {
    "rivalry": 110
-  }
+  },
+  "doctrine": "opportunist"
  },
  "ABD": {
   "ambition": 30,
@@ -388,7 +413,8 @@
   "weights": {
    "rivalry": 160,
    "claim": 60
-  }
+  },
+  "doctrine": "aggressive"
  },
  "TEX": {
   "ambition": 30,
@@ -401,7 +427,8 @@
   "balance": false,
   "weights": {
    "rivalry": 140
-  }
+  },
+  "doctrine": "aggressive"
  },
  "CAU": {
   "ambition": 20,
@@ -414,7 +441,8 @@
   "balance": false,
   "weights": {
    "rivalry": 160
-  }
+  },
+  "doctrine": "defensive"
  },
  "MNE": {
   "ambition": 15,
@@ -427,6 +455,7 @@
   "balance": false,
   "weights": {
    "rivalry": 120
-  }
+  },
+  "doctrine": "defensive"
  }
 }

@@ -382,36 +382,118 @@ func run_all() -> void:
 				back = g.armies[aid2]
 		check("abastecimento sobrevive ao salvar/carregar", back != null and back.supply == 37)
 		rc = g.countries[g.player_country]
-	# IA operacional (AiWar)
+	# IA operacional (AiWar / AiTheater): regras puras
 	check("IA recua diante de inimigo superior", g.ai_should_retreat(5, 8, 0, 100))
 	check("IA luta com vantagem", not g.ai_should_retreat(10, 5, 3, 100))
 	check("IA recua com vizinhanca esmagadora", g.ai_should_retreat(4, 0, 9, 100))
 	check("IA recua sem suprimentos", g.ai_should_retreat(10, 0, 0, 20))
-	check("doutrina cautelosa recua onde a agressiva luta", g.ai_should_retreat(10, 13, 0, 100, 20) and not g.ai_should_retreat(10, 13, 0, 100, 90))
-	check("doutrinas por ousadia", g.ai_doctrine_name(10) == "cauteloso" and g.ai_doctrine_name(50) == "equilibrado" and g.ai_doctrine_name(90) == "agressivo")
+	check("doutrina cautelosa recua onde a agressiva luta", g.ai_should_retreat(10, 13, 0, 100, "cautious") and not g.ai_should_retreat(10, 13, 0, 100, "aggressive"))
+	check("oportunista pune guarnicao mais que o estrategico", g.ai_target_score(60, 2, 3, "opportunist") < g.ai_target_score(60, 2, 3, "strategic"))
+	check("estrategico valoriza mais o alvo valioso", g.ai_target_score(150, 2, 0, "strategic") > g.ai_target_score(150, 2, 0, "defensive"))
 	check("alvo proximo vale mais que distante", g.ai_target_score(60, 1, 0) > g.ai_target_score(60, 6, 0))
 	check("alvo guarnecido vale menos", g.ai_target_score(60, 2, 3) < g.ai_target_score(60, 2, 0))
 	check("capital inimiga e mais valiosa", g.ai_province_value(g.countries[1].capital, 0) >= 110)
-	var wc: Country = null
-	for oc in g.countries:
-		if oc.id != g.player_country and oc.is_alive() and not g.ai_neighbors(oc.id).is_empty():
-			wc = oc
-			break
-	if wc != null:
-		var wt: int = int(g.ai_neighbors(wc.id)[0])
+	var by_tag := {}
+	for oc2 in g.countries:
+		by_tag[oc2.tag] = oc2.id
+	check("personalidades: GBR estrategico, RUS defensivo, FRA agressivo",
+		g.ai_personality(int(by_tag["GBR"])) == "strategic" and g.ai_personality(int(by_tag["RUS"])) == "defensive" and g.ai_personality(int(by_tag["FRA"])) == "aggressive")
+	check("personalidade imprevisivel resolve para uma doutrina concreta",
+		["aggressive", "cautious", "opportunist", "strategic", "defensive"].has(g.ai_personality(int(by_tag["ARG"]))))
+	# cenarios sobre o mapa real
+	var bd: Dictionary = _find_border()
+	if not bd.is_empty():
+		var wc: Country = g.countries[int(bd["me"])]
+		var wt: int = int(bd["foe"])
 		var wsave: Dictionary = g.serialize_state()
 		g._start_war(wc.id, wt)
-		g._add_regiments(wc.capital, wc.id, 3)
+		var P: int = int(bd["p"])
+		var Q: int = int(bd["q"])
+		# cenario 1: potencia contra pequeno -> ofensiva
+		g.armies.clear()
+		g._add_regiments(P, wc.id, 12)
+		g._add_regiments(Q, wt, 2)
+		g.ai_think(wc.id, "strategic")
+		var th1: Array = g.ai_theaters[wc.id]
+		check("teatro criado contra o inimigo da guerra", th1.size() == 1 and int(th1[0]["enemy"]) == wt)
+		check("superioridade esmagadora -> plano ofensivo", th1.size() == 1 and str(th1[0]["plan"]) == "offensive", str(th1[0]["why"]) if th1.size() == 1 else "")
+		var moved1: bool = false
+		for aid in g.armies.keys():
+			var ax: Army = g.armies[aid]
+			if ax.owner_id == wc.id and ax.is_moving():
+				moved1 = true
+		check("o exercito marcha ao objetivo do teatro", moved1)
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		# cenario 2: inferioridade -> nao ataca
+		g.armies.clear()
+		g._add_regiments(P, wc.id, 3)
+		g._add_regiments(Q, wt, 10)
+		g.ai_think(wc.id, "strategic")
+		var th2: Array = g.ai_theaters[wc.id]
+		check("inferioridade -> plano defensivo", th2.size() == 1 and str(th2[0]["plan"]) == "defensive")
+		var suicide: bool = false
+		for aid in g.armies.keys():
+			var ay: Army = g.armies[aid]
+			if ay.owner_id == wc.id and ay.is_moving() and ay.path.back() == Q:
+				suicide = true
+		check("a IA nao ataca em grande inferioridade", not suicide)
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		# cenario 3: a mesma situacao, doutrinas diferentes -> planos diferentes
+		g.armies.clear()
+		g._add_regiments(Q, wt, 4)
+		g._add_regiments(P, wc.id, 1)
+		g.ai_think(wc.id, "strategic")
+		var need: int = int(g.ai_theaters[wc.id][0]["needed_off"])
+		var force: int = (need * 110 + 99) / 100
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		g.armies.clear()
+		g._add_regiments(Q, wt, 4)
+		g._add_regiments(P, wc.id, force)
+		g.ai_think(wc.id, "aggressive")
+		var plan_agg: String = str(g.ai_theaters[wc.id][0]["plan"])
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		g.armies.clear()
+		g._add_regiments(Q, wt, 4)
+		g._add_regiments(P, wc.id, force)
+		g.ai_think(wc.id, "cautious")
+		var plan_cau: String = str(g.ai_theaters[wc.id][0]["plan"])
+		check("agressivo ataca e cauteloso espera, com as mesmas tropas", plan_agg == "offensive" and plan_cau != "offensive", "%s x %s (%d tropas, precisa %d)" % [plan_agg, plan_cau, force, need])
+		# cenario 4: ameaca perto da capital eleva a prioridade
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		g.armies.clear()
+		g._add_regiments(P, wc.id, 5)
+		g.ai_think(wc.id, "strategic")
+		var prio0: int = int(g.ai_theaters[wc.id][0]["priority"])
+		var capn: Array = g.provinces[wc.capital].neighbors
+		if not capn.is_empty():
+			g._add_regiments(int(capn[0]), wt, 5)
+			g.ai_think(wc.id, "strategic")
+			var prio1: int = int(g.ai_theaters[wc.id][0]["priority"])
+			check("inimigo perto da capital aumenta a prioridade do teatro", prio1 > prio0, "%d -> %d" % [prio0, prio1])
+		# determinismo das decisoes
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		g.armies.clear()
+		g._add_regiments(P, wc.id, 8)
+		g._add_regiments(Q, wt, 3)
 		g.ai_think(wc.id)
-		var noted: bool = false
-		for aid3 in g.armies.keys():
-			var a3: Army = g.armies[aid3]
-			if a3.owner_id == wc.id and g.ai_notes.has(a3.id):
-				noted = true
-		check("exercito da IA em guerra recebe ordens com motivo", noted)
-		check("teatro de guerra define objetivo principal", g.ai_theater.has(wc.id) or not noted)
+		var h1: int = g.state_hash()
+		g.load_state(wsave)
+		g._start_war(wc.id, wt)
+		g.armies.clear()
+		g._add_regiments(P, wc.id, 8)
+		g._add_regiments(Q, wt, 3)
+		g.ai_think(wc.id)
+		check("decisoes da IA sao deterministicas", h1 == g.state_hash())
 		g.load_state(wsave)
 		rc = g.countries[g.player_country]
+	else:
+		check("existe fronteira terrestre para os cenarios", false)
 	var ai_res: int = 0
 	for cc in g.countries:
 		if cc.is_alive() and not g.is_human(cc.id) and cc.researching >= 0:
@@ -527,3 +609,16 @@ func _sane_economy() -> bool:
 		if abs(int(c.treasury)) > 1000000000 or int(c.stability) < 0 or int(c.stability) > 100:
 			return false
 	return true
+
+
+## Primeira fronteira terrestre entre dois países vivos (nenhum controlado pelo jogador).
+func _find_border() -> Dictionary:
+	for oc in g.countries:
+		if oc.id == g.player_country or not oc.is_alive():
+			continue
+		for pid in oc.province_ids:
+			for q in g.provinces[pid].neighbors:
+				var o: int = g.provinces[int(q)].owner_id
+				if o >= 0 and o != oc.id and o != g.player_country and g.countries[o].is_alive() and g.can_declare_war(oc.id, o):
+					return {"me": oc.id, "foe": o, "p": int(pid), "q": int(q)}
+	return {}

@@ -1612,9 +1612,11 @@ func _simulate_day() -> void:
 	_advance_training()
 	var t_ph: int = PerfMonitor.begin()
 	_advance_armies()
-	if tick % SUPPLY_TICK_DAYS == 0:
-		_update_supply()
 	PerfMonitor.record("armies", t_ph)
+	if tick % SUPPLY_TICK_DAYS == 0:
+		t_ph = PerfMonitor.begin()
+		_update_supply()
+		PerfMonitor.record("supply", t_ph)
 	_advance_fleets()
 	t_ph = PerfMonitor.begin()
 	_advance_war()
@@ -2015,6 +2017,7 @@ func _advance_war() -> void:
 
 @warning_ignore("integer_division")
 func _simulate_month() -> void:
+	var tm: int = PerfMonitor.begin()
 	for p in provinces:
 		# Crescimento demográfico: +0,1% ao mês.
 		var own: int = p.owner_id
@@ -2024,9 +2027,15 @@ func _simulate_month() -> void:
 		var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 		if p.manpower < mx:
 			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
+	PerfMonitor.record("m_prov", tm)
+	tm = PerfMonitor.begin()
 	_simulate_migration()
+	PerfMonitor.record("m_migr", tm)
 	_supply_attrition()
+	tm = PerfMonitor.begin()
 	_run_trade()
+	PerfMonitor.record("m_trade", tm)
+	tm = PerfMonitor.begin()
 	for c in countries:
 		if c.is_alive():
 			var edu := edu_levels(c)
@@ -2040,9 +2049,13 @@ func _simulate_month() -> void:
 			for gi in c.law_cd.size():
 				if int(c.law_cd[gi]) > 0:
 					c.law_cd[gi] = int(c.law_cd[gi]) - 1
+	PerfMonitor.record("m_countries", tm)
+	tm = PerfMonitor.begin()
 	for c in countries:
 		if c.is_alive():
 			_update_politics(c)
+	PerfMonitor.record("m_politics", tm)
+	tm = PerfMonitor.begin()
 	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
 	for c in countries:
 		if not c.is_alive():
@@ -2051,6 +2064,7 @@ func _simulate_month() -> void:
 		c.last_income = int(e["income"])
 		c.last_expense = int(e["expense"])
 		c.treasury += c.last_income - c.last_expense
+	PerfMonitor.record("m_econ", tm)
 	for c in countries:
 		if c.overlord >= 0 and c.is_alive():
 			var ov := countries[c.overlord]
@@ -2060,16 +2074,24 @@ func _simulate_month() -> void:
 			var tribute: int = maxi(0, c.last_income) * VASSAL_TRIBUTE_PCT / 100
 			c.treasury -= tribute
 			ov.treasury += tribute
+	tm = PerfMonitor.begin()
 	_ai_peace()
 	_ai_offers()
+	PerfMonitor.record("m_aipeace", tm)
 	for k in relations.keys():
 		var v: int = int(relations[k])
 		if at_war(int(k) / 1000, int(k) % 1000):
 			continue
 		relations[k] = v - signi(v) * mini(absi(v), 2)
+	tm = PerfMonitor.begin()
 	_roll_events()
+	PerfMonitor.record("m_events", tm)
+	tm = PerfMonitor.begin()
 	EconomyManager.record_month(self)
+	PerfMonitor.record("m_record", tm)
+	tm = PerfMonitor.begin()
 	Events.month_changed.emit(clock.to_dict())
+	PerfMonitor.record("m_emit", tm)
 	for c in countries:
 		Events.treasury_changed.emit(c.id)
 

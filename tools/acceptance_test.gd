@@ -423,6 +423,11 @@ func run_all() -> void:
 		var wt: int = int(bd["foe"])
 		var wsave: Dictionary = g.serialize_state()
 		g._start_war(wc.id, wt)
+		var only: Array = []   # isola a guerra do cenario (aliados/coalizoes podem ter entrado)
+		for ww in g.wars:
+			if (int(ww["a"]) == mini(wc.id, wt)) and (int(ww["b"]) == maxi(wc.id, wt)):
+				only.append(ww)
+		g.wars = only
 		var P: int = int(bd["p"])
 		var Q: int = int(bd["q"])
 		# cenario 1: potencia contra pequeno -> ofensiva

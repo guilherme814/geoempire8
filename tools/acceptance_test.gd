@@ -482,14 +482,14 @@ func run_all() -> void:
 		g._add_regiments(P, wc.id, 8)
 		g._add_regiments(Q, wt, 3)
 		g.ai_think(wc.id)
-		var h1: int = g.state_hash()
+		var hash_ai: int = g.state_hash()
 		g.load_state(wsave)
 		g._start_war(wc.id, wt)
 		g.armies.clear()
 		g._add_regiments(P, wc.id, 8)
 		g._add_regiments(Q, wt, 3)
 		g.ai_think(wc.id)
-		check("decisoes da IA sao deterministicas", h1 == g.state_hash())
+		check("decisoes da IA sao deterministicas", hash_ai == g.state_hash())
 		g.load_state(wsave)
 		rc = g.countries[g.player_country]
 	else:

@@ -141,6 +141,10 @@ func _open_country_select() -> void:
 
 func _on_select_finished() -> void:
 	select = null
+	if not Onboarding.tutorial_done():
+		get_tree().create_timer(1.2).timeout.connect(func():
+			if is_inside_tree():
+				Onboarding.show_tutorial(self))
 
 
 func _on_focus_province(pid: int) -> void:

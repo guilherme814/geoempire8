@@ -31,6 +31,8 @@ func _initialize() -> void:
 		print("ALERT ", a)
 	print("AUDIT-DONE ", alerts.size(), " alertas")
 	_worst()
+	print("--- BASELINE DE DESEMPENHO (CI, 10 anos, sem jogador) ---")
+	print(PerfMonitor.report())
 	quit(0)
 
 

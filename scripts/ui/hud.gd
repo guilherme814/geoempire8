@@ -708,14 +708,30 @@ func _build_windows() -> void:
 
 
 func _toggle_window(key: String) -> void:
+	var opening := false
 	for k in _windows.keys():
 		var w: PanelContainer = _windows[k]
 		w.visible = (not w.visible) if k == key else false
+		if k == key and w.visible:
+			opening = true
 	for k in _windows.keys():
 		var sb: Button = _side_btns.get(k)
 		if sb != null:
 			sb.set_pressed_no_signal(_windows[k].visible)
+	if not opening:
+		_refresh_windows()
+		return
+	# Abertura fluida: o toque responde no mesmo quadro (janela transparente) e o trabalho
+	# pesado de montar o conteúdo roda no quadro seguinte, com um fade curto.
+	var win: PanelContainer = _windows[key]
+	win.modulate.a = 0.0
+	await get_tree().process_frame
+	if not win.visible:
+		return
+	var t0: int = PerfMonitor.begin()
 	_refresh_windows()
+	PerfMonitor.record("panel_" + key, t0)
+	create_tween().tween_property(win, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func _refresh_windows() -> void:
@@ -2128,7 +2144,19 @@ func _on_army_removed(aid: int) -> void:
 		Events.army_selected.emit(-1)
 
 
+var _refresh_queued: bool = false
+
+
+## Vários comandos no mesmo quadro (ex.: construir em série) geram uma única atualização.
 func _on_command_applied(_cmd: Dictionary) -> void:
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	_apply_queued_refresh.call_deferred()
+
+
+func _apply_queued_refresh() -> void:
+	_refresh_queued = false
 	_refresh_windows()
 	_refresh_top()
 	_refresh_info()

@@ -6,7 +6,7 @@ extends CanvasLayer
 signal new_game_pressed
 signal continue_pressed
 
-const VERSION := "v0.12.0 · Alpha"
+const VERSION_SUFFIX := " · Notas"
 const DRIFT_SECS := 16.0
 
 var camera: MapCamera
@@ -25,6 +25,9 @@ var _msg: Label
 var _logo_box: VBoxContainer
 var _news: PanelContainer
 var _cards: Array = []
+var _ver_btn: Button
+var _badge: ColorRect
+var _pulse: Tween
 
 
 ## Fundo: céu de fim de tarde sobre o mapa, mais escuro à esquerda (onde fica o menu).
@@ -206,6 +209,7 @@ func _ready() -> void:
 	create_tween().tween_property(_root, "modulate:a", 1.0, 0.9)
 	_animate_in()
 	_start_drift()
+	_setup_onboarding_and_updates()
 
 
 func is_over_ui(_pos: Vector2) -> bool:
@@ -439,19 +443,27 @@ func _build_footer() -> void:
 	var q := UIKit.serif_label("Um simulador de estratégia global sem limites", 17, Color(UIKit.TEXT, 0.85))
 	q.position = Vector2(72, 12)
 	bar.add_child(q)
-	var v := UIKit.label(VERSION, 15, UIKit.TEXT_DIM)
-	v.anchor_left = 1.0
-	v.anchor_right = 1.0
-	v.offset_left = -170
-	v.offset_right = -22
-	v.offset_top = 14
-	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	bar.add_child(v)
+	_ver_btn = UIKit.button("v%s%s" % [str(ProjectSettings.get_setting("application/config/version", "0.0.0")), VERSION_SUFFIX], Vector2(150, 38))
+	_ver_btn.anchor_left = 1.0
+	_ver_btn.anchor_right = 1.0
+	_ver_btn.offset_left = -176
+	_ver_btn.offset_right = -22
+	_ver_btn.offset_top = 7
+	_ver_btn.offset_bottom = 45
+	_ver_btn.pressed.connect(_show_version_notes)
+	bar.add_child(_ver_btn)
+	_badge = ColorRect.new()
+	_badge.color = Color(0.95, 0.35, 0.25)
+	_badge.size = Vector2(12, 12)
+	_badge.position = Vector2(138, -4)
+	_badge.visible = false
+	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ver_btn.add_child(_badge)
 	var gh := UIKit.button("GitHub", Vector2(100, 38))
 	gh.anchor_left = 1.0
 	gh.anchor_right = 1.0
-	gh.offset_left = -290
-	gh.offset_right = -180
+	gh.offset_left = -300
+	gh.offset_right = -190
 	gh.offset_top = 7
 	gh.offset_bottom = 45
 	gh.pressed.connect(func(): OS.shell_open("https://github.com/guilherme814/geoempire8"))
@@ -494,8 +506,64 @@ func _add_close() -> void:
 	_panel_body.add_child(b)
 
 
+## Boas-vindas no primeiro acesso, pulso no "Novo Jogo" e notas de versão (offline primeiro).
+func _setup_onboarding_and_updates() -> void:
+	UpdateManager.update_check_completed.connect(_on_update_checked)
+	_badge.visible = UpdateManager.has_remote_update
+	if not Onboarding.welcomed():
+		_pulse_new_game()
+		get_tree().create_timer(1.6).timeout.connect(func():
+			if active and is_inside_tree():
+				Onboarding.show_welcome(get_parent(), Callable()))
+	elif UpdateManager.consume_just_updated():
+		get_tree().create_timer(1.6).timeout.connect(func():
+			if active and is_inside_tree():
+				_show_version_notes(true))
+
+
+func _on_update_checked(has_new: bool, _info: Dictionary) -> void:
+	if _badge != null and is_instance_valid(_badge):
+		_badge.visible = has_new
+
+
+## Brilho pulsante no cartão "Novo Jogo" até o jogador tocá-lo.
+func _pulse_new_game() -> void:
+	if _cards.size() < 2:
+		return
+	var card: Button = _cards[1]
+	_pulse = create_tween().set_loops()
+	_pulse.tween_property(card, "self_modulate", Color(1.5, 1.35, 0.9), 0.7).set_trans(Tween.TRANS_SINE)
+	_pulse.tween_property(card, "self_modulate", Color(1, 1, 1), 0.7).set_trans(Tween.TRANS_SINE)
+	card.pressed.connect(func():
+		if _pulse != null and _pulse.is_valid():
+			_pulse.kill()
+		card.self_modulate = Color(1, 1, 1))
+
+
+func _show_version_notes(just_updated: bool = false) -> void:
+	var m := ModalCard.new()
+	get_parent().add_child(m)
+	var cur: Dictionary = UpdateManager.current_notes()
+	var title := "Seu jogo foi atualizado para a v%s" % UpdateManager.current_version if just_updated else str(cur.get("title", "Notas da versão"))
+	var sub := "ATUALIZAÇÃO CONCLUÍDA" if just_updated else "NOTAS DA VERSÃO INSTALADA"
+	var body := UpdateRules.to_bbcode(str(cur.get("body", "")))
+	var buttons: Array = []
+	if UpdateManager.has_remote_update:
+		var latest: Dictionary = UpdateManager.latest_release
+		sub = "NOVA VERSÃO DISPONÍVEL: v%s" % str(latest.get("version", "?"))
+		body = UpdateRules.to_bbcode(str(latest.get("body", ""))) + "\n\n[color=#9aa7b4]— Instalada: v%s —[/color]\n" % UpdateManager.current_version + body
+		buttons.append({"text": "Ver na página oficial", "keep": true, "cb": func(): UpdateManager.open_release_page()})
+	buttons.append({"text": "Fechar", "primary": true})
+	m.show_text(title, sub, body, buttons)
+
+
 func _show_options() -> void:
 	var body := _open_panel("Opções")
+	var b_how := UIKit.button("Como jogar", Vector2(0, 56))
+	b_how.pressed.connect(func():
+		_close_panel()
+		Onboarding.show_tutorial(get_parent(), false))
+	body.add_child(b_how)
 	var b_music := UIKit.button("", Vector2(0, 56))
 	b_music.text = "Música: ligada" if AudioManager.music_on else "Música: desligada"
 	b_music.pressed.connect(func():

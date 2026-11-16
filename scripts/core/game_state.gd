@@ -17,6 +17,7 @@ const EVENT_DECISION_DAYS := 30   # sem escolha, vale a 1ª opção (também val
 ## Dias simulados por segundo em cada velocidade (0 = pausado).
 const SPEED_TPS: Array[float] = [0.0, 2.0, 5.0, 10.0, 25.0]
 const MAX_SPEED := 4
+const FRAME_BUDGET_US := 12000
 const ALLOW_DEBUG_COMMANDS := true
 const DEFAULT_PLAYER_TAG := "GBR"
 
@@ -179,13 +180,18 @@ func _process(delta: float) -> void:
 	_acc += delta
 	var interval: float = 1.0 / SPEED_TPS[speed]
 	var steps := 0
+	var t0: int = Time.get_ticks_usec()
 	while _acc >= interval and steps < 8:
 		_acc -= interval
 		step()
 		steps += 1
 		if speed <= 0:
 			break
-	if steps >= 8:
+		# Orçamento de quadro: se os dias já gastaram >12 ms, devolve o controle ao render e
+		# retoma no próximo quadro (a ordem dos passos não muda: continua determinístico).
+		if Time.get_ticks_usec() - t0 > FRAME_BUDGET_US:
+			break
+	if steps >= 8 or _acc > 1.0:
 		_acc = 0.0   # evita espiral da morte em dispositivos lentos
 
 
@@ -1600,20 +1606,30 @@ func step(cmds: Array = []) -> void:
 
 
 func _simulate_day() -> void:
+	var t_day: int = PerfMonitor.begin()
 	tick += 1
 	var month_rolled := clock.advance_day()
 	_advance_training()
+	var t_ph: int = PerfMonitor.begin()
 	_advance_armies()
 	if tick % SUPPLY_TICK_DAYS == 0:
 		_update_supply()
+	PerfMonitor.record("armies", t_ph)
 	_advance_fleets()
+	t_ph = PerfMonitor.begin()
 	_advance_war()
+	PerfMonitor.record("war", t_ph)
+	t_ph = PerfMonitor.begin()
 	_advance_ai()
+	PerfMonitor.record("ai", t_ph)
 	_advance_events()
 	Events.day_changed.emit(clock.to_dict())
 	if month_rolled:
+		t_ph = PerfMonitor.begin()
 		_simulate_month()
+		PerfMonitor.record("month", t_ph)
 	Events.tick_advanced.emit(tick)
+	PerfMonitor.record("day", t_day)
 
 
 func _advance_training() -> void:

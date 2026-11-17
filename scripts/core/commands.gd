@@ -40,7 +40,30 @@ const SET_RESEARCH := "set_research"
 const SET_RESEARCH_TARGET := "set_research_target"
 const SET_IMMIGRATION := "set_immigration"
 const SET_AUTO_FRONT := "set_auto_front"
+const TAKE_LOAN := "take_loan"
+const REPAY_LOAN := "repay_loan"
+const SET_DRILL := "set_drill"
+const SEND_AID := "send_aid"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
+
+
+## Empréstimo de um degrau (Game.LOAN_STEP) e amortização do mesmo valor.
+static func take_loan() -> Dictionary:
+	return {"type": TAKE_LOAN}
+
+
+static func repay_loan() -> Dictionary:
+	return {"type": REPAY_LOAN}
+
+
+## Instrução das tropas: 0 recrutas, 1 regulares, 2 elite.
+static func set_drill(level: int) -> Dictionary:
+	return {"type": SET_DRILL, "level": level}
+
+
+## Ajuda financeira a outro país (melhora a opinião).
+static func send_aid(target: int) -> Dictionary:
+	return {"type": SEND_AID, "target": target}
 
 
 static func set_speed(speed: int) -> Dictionary:

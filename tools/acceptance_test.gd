@@ -645,6 +645,62 @@ func run_all() -> void:
 	g.countries[a].province_ids.clear()   # simula país sem províncias
 	g._simulate_month()
 	check("queda do suserano liberta vassalos", g.countries[b].overlord == -1)
+	_new_features()
+
+
+## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
+func _new_features() -> void:
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.debt = 0
+	c.treasury = 1000
+	c.last_income = 100
+	var pre := c.treasury
+	g.apply_command({"type": "take_loan", "issuer": me})
+	check("empréstimo soma ao tesouro e à dívida", c.debt == g.LOAN_STEP and c.treasury == pre + g.LOAN_STEP)
+	check("juros entram na despesa mensal", int(g.estimate_monthly(c)["upkeep_debt"]) == g.LOAN_STEP * g.LOAN_RATE_PCT / 100)
+	for i in 30:
+		g.apply_command({"type": "take_loan", "issuer": me})
+	check("dívida respeita o limite de crédito", c.debt <= g.loan_limit(c))
+	var d0: int = c.debt
+	g.apply_command({"type": "repay_loan", "issuer": me})
+	check("amortização reduz dívida", c.debt == d0 - g.LOAN_STEP)
+	c.treasury = 0
+	var d1: int = c.debt
+	g.apply_command({"type": "repay_loan", "issuer": me})
+	check("sem ouro não amortiza", c.debt == d1)
+	c.debt = 0
+	c.treasury = 1000
+	# instrução
+	var up0: int = int(g.estimate_monthly(c)["upkeep_army"])
+	g.apply_command({"type": "set_drill", "level": 2, "issuer": me})
+	check("instrução de elite custa mais", c.drill == 2 and int(g.estimate_monthly(c)["upkeep_army"]) >= up0)
+	g.apply_command({"type": "set_drill", "level": 9, "issuer": me})
+	check("instrução limitada a 0..2", c.drill == 2)
+	g.apply_command({"type": "set_drill", "level": 0, "issuer": me})
+	# ajuda
+	var other := -1
+	for o in g.countries:
+		if o.id != me and o.is_alive() and not g.at_war(me, o.id) and g.opinion(me, o.id) < 70:
+			other = o.id
+			break
+	if other >= 0:
+		var t0: int = g.countries[other].treasury
+		var op0: int = g.opinion(me, other)
+		g.apply_command({"type": "send_aid", "target": other, "issuer": me})
+		check("ajuda financeira transfere ouro e melhora opinião",
+			c.treasury == 1000 - g.AID_COST and g.countries[other].treasury == t0 + g.AID_GIFT and g.opinion(me, other) == op0 + g.AID_OPINION)
+	# ciência
+	var sci0: int = g.tech_gain(c)
+	check("cooperação científica sem aliados não muda a pesquisa", g.science_allies(c) >= 0 and sci0 >= g.tech_gain_base(c))
+	# persistência
+	c.debt = 700
+	c.drill = 1
+	var st: Dictionary = g.serialize_state()
+	c.debt = 0
+	c.drill = 0
+	g.load_state(st)
+	check("dívida e instrução persistem no save", g.countries[me].debt == 700 and g.countries[me].drill == 1)
 
 
 func _sane_economy() -> bool:

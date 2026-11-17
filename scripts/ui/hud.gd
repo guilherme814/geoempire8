@@ -828,7 +828,9 @@ func _refresh_tech() -> void:
 	left.add_child(UIKit.kv_row("Escolas (%d) e universidades (%d)" % [edu.x, edu.y], "+%d" % (3 * edu.x + 10 * edu.y)))
 	left.add_child(UIKit.kv_row("Leis", "%+d" % int(lm["tech"]), _signed_color(int(lm["tech"]))))
 	left.add_child(UIKit.kv_row("Tecnologias de Sociedade", "+%d%%" % int(tfx["tech"]), UIKit.POS if int(tfx["tech"]) > 0 else UIKit.TEXT_DIM))
-	left.add_child(UIKit.kv_row("Financiamento (%d%% da renda)" % c.research_pct, "+%d" % (gain - base), UIKit.POS if gain > base else UIKit.TEXT_DIM))
+	var sci_n: int = Game.science_allies(c)
+	left.add_child(UIKit.kv_row("Cooperação científica (%d aliado%s mais avançado%s)" % [sci_n, "" if sci_n == 1 else "s", "" if sci_n == 1 else "s"], "+%d%%" % (Game.SCIENCE_ALLY_PCT * sci_n), UIKit.POS if sci_n > 0 else UIKit.TEXT_DIM))
+	left.add_child(UIKit.kv_row("Financiamento (%d%% da renda)" % c.research_pct, "+%d" % (base * c.research_pct / 20), UIKit.POS if c.research_pct > 0 else UIKit.TEXT_DIM))
 
 	var right := _card(cols, "Financiamento", "coin")
 	right.add_child(UIKit.label("Cada 20%% da renda dobra os pontos por mês.", 15, UIKit.TEXT_DIM))
@@ -1002,6 +1004,8 @@ func _refresh_economy() -> void:
 		left.add_child(UIKit.kv_row("Hospitais, mercados e cais", Money.signed(-int(e["upkeep_infra"])), UIKit.NEG))
 	if int(e["upkeep_barracks"]) > 0:
 		left.add_child(UIKit.kv_row("Quartéis (instrutores)", Money.signed(-int(e["upkeep_barracks"])), UIKit.NEG))
+	if int(e["upkeep_debt"]) > 0:
+		left.add_child(UIKit.kv_row("Juros da dívida (%s)" % Money.fmt(c.debt), Money.signed(-int(e["upkeep_debt"])), UIKit.NEG))
 	if net < 0 and c.treasury > 0:
 		left.add_child(UIKit.label("Tesouro acaba em ~%d meses." % (c.treasury / -net), 16, UIKit.WARN))
 
@@ -1023,6 +1027,7 @@ func _refresh_economy() -> void:
 	plus.pressed.connect(_on_tax_pressed.bind(5))
 	trow.add_child(plus)
 	right.add_child(UIKit.kv_row("Produção bruta", "%d/mês" % int(e["production"])))
+	_build_finance_cards(body, c)
 	var cap := Game.sea_capacity(c.id)
 	var blocked := Game.is_blockaded(c.id)
 	right.add_child(UIKit.kv_row("Comércio marítimo", "%d/mês%s" % [cap, "  BLOQUEADO" if blocked else ""], UIKit.NEG if blocked else UIKit.TEXT))
@@ -1055,6 +1060,38 @@ func _refresh_economy() -> void:
 		var gnote := UIKit.label("Quem controla um estreito cobra pedágio e pode fechá-lo a países em guerra ou embargo com ele.", 14, UIKit.TEXT_DIM)
 		gnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		gcard.add_child(gnote)
+
+
+## Empréstimos e instrução das tropas (cartões do painel de economia).
+func _build_finance_cards(body: Control, c: Country) -> void:
+	var lc := _card(body, "Empréstimos", "coin")
+	lc.add_child(UIKit.kv_row("Dívida atual", Money.fmt(c.debt), UIKit.NEG if c.debt > 0 else UIKit.TEXT_DIM))
+	lc.add_child(UIKit.kv_row("Limite de crédito", Money.fmt(Game.loan_limit(c))))
+	lc.add_child(UIKit.kv_row("Juros", "%d%% ao mês" % Game.LOAN_RATE_PCT, UIKit.WARN))
+	var lr := HBoxContainer.new()
+	lr.add_theme_constant_override("separation", 8)
+	lc.add_child(lr)
+	var tb := _info_button("Tomar %s" % Money.fmt(Game.LOAN_STEP), Vector2(210, 46), _on_loan_pressed.bind(true), lr)
+	tb.disabled = not Game.can_take_loan(c.id)
+	var rb := _info_button("Amortizar %s" % Money.fmt(mini(Game.LOAN_STEP, maxi(c.debt, 1))), Vector2(210, 46), _on_loan_pressed.bind(false), lr)
+	rb.disabled = not Game.can_repay_loan(c.id)
+	var dc := _card(body, "Instrução das tropas", "sword")
+	dc.add_child(UIKit.label("Tropas treinadas perdem menos em batalha, mas custam mais manutenção (+%d%% por nível)." % Game.DRILL_UPKEEP_PCT, 15, UIKit.TEXT_DIM))
+	var dr := HBoxContainer.new()
+	dr.add_theme_constant_override("separation", 8)
+	dc.add_child(dr)
+	for lv in 3:
+		var db := _info_button(str(Game.DRILL_NAMES[lv]), Vector2(150, 46), _on_drill_pressed.bind(lv), dr)
+		db.disabled = lv == c.drill
+		db.tooltip_text = "Perdas em batalha -%d%%" % (Game.DRILL_LOSS_PCT * lv)
+
+
+func _on_loan_pressed(take: bool) -> void:
+	Game.submit_command(Cmd.take_loan() if take else Cmd.repay_loan())
+
+
+func _on_drill_pressed(level: int) -> void:
+	Game.submit_command(Cmd.set_drill(level))
 
 
 ## Painel de indicadores: PIB (valor agregado), inflação, comércio, emprego, gráficos e rankings.
@@ -2373,6 +2410,9 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 	var at_war := Game.at_war(me, t)
 	var b1 := _info_button("Melhorar relações (%d)" % Game.IMPROVE_COST, bs, _diplo_cmd.bind(Cmd.improve_relations(t)), grid)
 	b1.disabled = not Game.can_improve(me, t)
+	var b1b := _info_button("Enviar ajuda (%d)" % Game.AID_COST, bs, _diplo_cmd.bind(Cmd.send_aid(t)), grid)
+	b1b.disabled = not Game.can_send_aid(me, t)
+	b1b.tooltip_text = "O país recebe %d de ouro e a opinião dele sobre você sobe %d." % [Game.AID_GIFT, Game.AID_OPINION]
 	var is_ally := Game.allied(me, t)
 	var vassal_pair := tc.overlord == me or Game.countries[me].overlord == t
 	var b2 := _info_button("Romper aliança" if is_ally else "Propor aliança", bs,

@@ -101,6 +101,15 @@ const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor i
 
 # Diplomacia
 const IMPROVE_COST := 50
+const LOAN_STEP := 500           # valor de cada empréstimo/amortização
+const LOAN_RATE_PCT := 2         # juros mensais sobre a dívida
+const DRILL_NAMES := ["Recrutas", "Regulares", "Elite"]
+const DRILL_UPKEEP_PCT := 20     # +% de manutenção do exército por nível de instrução
+const DRILL_LOSS_PCT := 10       # -% de perdas em batalha por nível de instrução
+const AID_COST := 200            # custo da ajuda financeira
+const AID_GIFT := 120            # o que o país ajudado recebe
+const AID_OPINION := 25
+const SCIENCE_ALLY_PCT := 10     # +% de pesquisa por aliado mais avançado (até 3)
 const ALLIANCE_MIN_OPINION := 40
 const VASSAL_TRIBUTE_PCT := 25     # % da renda do vassalo enviada ao suserano
 const ANNEX_MIN_DAYS := 360        # tempo mínimo como vassalo antes de poder ser anexado
@@ -992,6 +1001,38 @@ func apply_command(cmd: Dictionary) -> void:
 		Events.treasury_changed.emit(issuer)
 		Events.war_changed.emit()
 
+	elif t == Cmd.TAKE_LOAN:
+		if not can_take_loan(issuer):
+			return
+		countries[issuer].debt += LOAN_STEP
+		countries[issuer].treasury += LOAN_STEP
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.REPAY_LOAN:
+		if not can_repay_loan(issuer):
+			return
+		var pay := mini(LOAN_STEP, countries[issuer].debt)
+		countries[issuer].debt -= pay
+		countries[issuer].treasury -= pay
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.SET_DRILL:
+		if issuer < 0 or issuer >= countries.size():
+			return
+		countries[issuer].drill = clampi(int(cmd.get("level", 0)), 0, 2)
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.SEND_AID:
+		var target: int = int(cmd.get("target", -1))
+		if not can_send_aid(issuer, target):
+			return
+		countries[issuer].treasury -= AID_COST
+		countries[target].treasury += AID_GIFT
+		relations[_pair(issuer, target)] = mini(100, opinion(issuer, target) + AID_OPINION)
+		Events.treasury_changed.emit(issuer)
+		Events.treasury_changed.emit(target)
+		Events.war_changed.emit()
+
 	elif t == Cmd.PROPOSE_ALLIANCE:
 		var target: int = int(cmd.get("target", -1))
 		if not can_ally(issuer, target):
@@ -1315,6 +1356,41 @@ func is_blockaded(cid: int) -> bool:
 	for o in wars_of(cid):
 		enemy_ships += countries[o].ships
 	return enemy_ships > countries[cid].ships
+
+
+## Aliados com mais tecnologias que o país (até 3): cooperação científica.
+func science_allies(c: Country) -> int:
+	var n := 0
+	for a in allies_of(c.id):
+		if countries[a].is_alive() and countries[a].techs.size() > c.techs.size():
+			n += 1
+			if n >= 3:
+				break
+	return n
+
+
+## Teto de dívida: cresce com a renda do país.
+func loan_limit(c: Country) -> int:
+	return 2000 + maxi(0, c.last_income) * 8
+
+
+func can_take_loan(cid: int) -> bool:
+	if cid < 0 or cid >= countries.size() or not countries[cid].is_alive():
+		return false
+	return countries[cid].debt + LOAN_STEP <= loan_limit(countries[cid])
+
+
+func can_repay_loan(cid: int) -> bool:
+	if cid < 0 or cid >= countries.size():
+		return false
+	return countries[cid].debt > 0 and countries[cid].treasury >= mini(LOAN_STEP, countries[cid].debt)
+
+
+func can_send_aid(issuer: int, target: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	return countries[target].is_alive() and not at_war(issuer, target) \
+		and countries[issuer].treasury >= AID_COST and opinion(issuer, target) < 100
 
 
 func can_improve(issuer: int, target: int) -> bool:
@@ -1955,8 +2031,8 @@ func _advance_war() -> void:
 					continue
 				var fx_x: Dictionary = tech_fx(countries[x.owner_id])
 				var fx_y: Dictionary = tech_fx(countries[y.owner_id])
-				var mod_x: int = clampi(100 + int(fx_y["atk"]) - int(fx_x["def"]) + (100 - x.supply) * 35 / 100, 50, 250)   # perdas de x
-				var mod_y: int = clampi(100 + int(fx_x["atk"]) - int(fx_y["def"]) + (100 - y.supply) * 35 / 100, 50, 250)
+				var mod_x: int = clampi((100 + int(fx_y["atk"]) - int(fx_x["def"]) + (100 - x.supply) * 35 / 100) * (100 - DRILL_LOSS_PCT * countries[x.owner_id].drill) / 100, 40, 250)   # perdas de x
+				var mod_y: int = clampi((100 + int(fx_x["atk"]) - int(fx_y["def"]) + (100 - y.supply) * 35 / 100) * (100 - DRILL_LOSS_PCT * countries[y.owner_id].drill) / 100, 40, 250)
 				var loss_x := (y.regiments * BATTLE_LOSS_PCT * mod_x + 9999) / 10000
 				var loss_y := (x.regiments * BATTLE_LOSS_PCT * mod_y + 9999) / 10000
 				if x.regiments == y.regiments and loss_x == loss_y:
@@ -2519,7 +2595,7 @@ func tech_gain_base(c: Country) -> int:
 ## Pontos por mês com o financiamento atual (cada 20% da renda dobram a pesquisa).
 func tech_gain(c: Country) -> int:
 	var b := tech_gain_base(c)
-	return b + b * c.research_pct / 20
+	return b + b * c.research_pct / 20 + b * SCIENCE_ALLY_PCT * science_allies(c) / 100
 
 
 const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot"]
@@ -2571,18 +2647,20 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var arsenal_pct: int = mini(20, 2 * bld_total(c, "arsenal"))
 	var up_army: int = regs * REGIMENT_UPKEEP * (100 + int(lm["army"])) / 100 * (100 - mini(80, tech_army_discount(c) + arsenal_pct)) / 100
+	up_army = up_army * (100 + DRILL_UPKEEP_PCT * c.drill) / 100
 	var up_navy: int = c.ships * SHIP_UPKEEP * (100 - mini(50, 10 * bld_total(c, "shipyard"))) / 100
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
 	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
 	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
+	var up_debt: int = c.debt * LOAN_RATE_PCT / 100
 	return {
 		"upkeep_research": up_research,
 		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
-		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -3330,6 +3408,7 @@ func state_hash() -> int:
 		h = _mix(h, c.literacy)
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.research_pct)
+		h = _mix(h, c.debt * 5 + c.drill)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -3501,6 +3580,8 @@ func serialize_state() -> Dictionary:
 		"overlord": _country_ints("overlord"),
 		"overlord_since": _country_ints("overlord_since"),
 		"research_pct": _country_ints("research_pct"),
+		"debt": _country_ints("debt"),
+		"drill": _country_ints("drill"),
 		"immigration": _country_ints("immigration"),
 		"migr_in": _country_ints("migr_in"),
 		"migr_out": _country_ints("migr_out"),
@@ -3664,6 +3745,11 @@ func load_state(d: Dictionary) -> bool:
 	var rsp: Array = d.get("research_pct", [])
 	for i in countries.size():
 		countries[i].research_pct = int(rsp[i]) if i < rsp.size() else 0
+	var dbt: Array = d.get("debt", [])
+	var drl: Array = d.get("drill", [])
+	for i in countries.size():
+		countries[i].debt = int(dbt[i]) if i < dbt.size() else 0
+		countries[i].drill = int(drl[i]) if i < drl.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

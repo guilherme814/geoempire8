@@ -2183,13 +2183,13 @@ func pending_event_for(cid: int) -> Dictionary:
 
 
 func _event_ok(d: Dictionary, c: Country, ctx: Dictionary = {}) -> bool:
-	if bool(d.get("once", false)) and fired_events.has("%d|%s" % [c.id, str(d["id"])]):
+	if clock.year < int(d.get("min_year", 0)) or clock.year > int(d.get("max_year", 9999)):
 		return false
 	if d.has("tags"):
 		var tags: Array = d["tags"]
 		if not tags.has(c.tag):
 			return false
-	if clock.year < int(d.get("min_year", 0)) or clock.year > int(d.get("max_year", 9999)):
+	if bool(d.get("once", false)) and fired_events.has("%d|%s" % [c.id, str(d["id"])]):
 		return false
 	if d.has("date"):
 		var dt: Array = d["date"]
@@ -2381,13 +2381,28 @@ func politics_of(c: Country) -> Dictionary:
 		"stability": ssum / maxi(1, wsum)}
 
 
+## Estabilidade a partir de uma previsão já calculada (pesos e poder não dependem de `sat`).
+## Idêntica ao campo "stability" de politics_of com a satisfação atual, sem refazer a economia.
+@warning_ignore("integer_division")
+func _stability_from(c: Country, pol: Dictionary) -> int:
+	var sh: Array = pol["share"]
+	var pw: Array = pol["power"]
+	var wsum := 0
+	var ssum := 0
+	for i in 6:
+		var w: int = int(sh[i]) + int(pw[i]) / 50
+		wsum += w
+		ssum += int(c.sat[i]) * w
+	return ssum / maxi(1, wsum)
+
+
 ## Atualização mensal: a satisfação anda até 2 pontos rumo ao alvo; instabilidade gera revoltas.
 @warning_ignore("integer_division")
 func _update_politics(c: Country) -> void:
 	var pol := politics_of(c)
 	for i in 6:
 		c.sat[i] = int(c.sat[i]) + clampi(int(pol["target"][i]) - int(c.sat[i]), -2, 2)
-	c.stability = int(politics_of(c)["stability"])
+	c.stability = _stability_from(c, pol)
 	if c.stability < REVOLT_STABILITY and not c.province_ids.is_empty():
 		if rng.randi_range(0, 99) < (REVOLT_STABILITY - c.stability) * 2:
 			var pid: int = c.province_ids[rng.randi_range(0, c.province_ids.size() - 1)]
@@ -2507,6 +2522,9 @@ func tech_gain(c: Country) -> int:
 	return b + b * c.research_pct / 20
 
 
+const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot"]
+
+
 func estimate_monthly(c: Country) -> Dictionary:
 	var tax := 0
 	var flat := 0
@@ -2521,9 +2539,13 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_infra := 0
 	for pid in c.province_ids:
 		var p := provinces[pid]
-		for ik in ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot"]:
-			up_infra += int(p.bld.get(ik, 0)) * int(Province.GOV_UPKEEP[ik])
-		tax += p.monthly_tax(c.tax_pct)
+		for ik in INFRA_UPKEEP_KINDS:
+			var lv: int = int(p.bld.get(ik, 0))
+			if lv > 0:
+				up_infra += lv * int(Province.GOV_UPKEEP[ik])
+		var pprod: int = p.production()
+		var base_tax: int = pprod * c.tax_pct / 100
+		tax += Province.FLAT_TAX + base_tax * (100 + 8 * int(p.bld.get("market", 0)) + 6 * int(p.bld.get("bank", 0))) / 100
 		industry += p.factory_profit()
 		up_barracks += p.barracks * int(Province.GOV_UPKEEP["barracks"])
 		if p.factory != "" and p.factory_level > 0:
@@ -2534,7 +2556,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 			f_wages += int(rp["wages"])
 			f_tax += int(rp["tax"])
 		flat += Province.FLAT_TAX
-		prod += p.production()
+		prod += pprod
 	var lm := law_mods(c)
 	var tf: Dictionary = tech_fx(c)
 	tax = tax * (100 + int(tf["prod"])) / 100       # tecnologias de produção

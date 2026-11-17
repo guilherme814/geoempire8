@@ -303,9 +303,18 @@ func _draw() -> void:
 	draw_multiline(_coast_lines, Color(0.04, 0.12, 0.18, 0.85), 1.3 / z)
 	if mode == Mode.POLITICAL:
 		if z >= 2.0:
-			draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, 0.35), -1.0)
+			_draw_sea_routes(z)
 		if z <= 3.0:
 			_draw_country_labels(z)
+
+
+## Rotas marítimas tracejadas (mais legíveis que um traço contínuo sobre o mar e a terra).
+func _draw_sea_routes(z: float) -> void:
+	var col := Color(0.85, 0.92, 1.0, clampf((z - 2.0) / 0.6, 0.0, 1.0) * 0.45)
+	var i := 0
+	while i + 1 < _sea_lines.size():
+		draw_dashed_line(_sea_lines[i], _sea_lines[i + 1], col, 1.6 / z, 9.0 / z)
+		i += 2
 
 
 const OCEAN_NAMES := [
@@ -368,5 +377,10 @@ func _draw_country_labels(z: float) -> void:
 			continue
 		ts = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 		var pos := c.label_pos - Vector2(ts.x * 0.5, -ts.y * 0.3)
-		draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.10)), Color(0, 0, 0, 0.45))
-		draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.92))
+		# Entrada suave: o rótulo aparece de 9 a 14 px na tela e some ao afastar (zoom > 2,4x).
+		var fade := clampf((float(fs) * z - 9.0) / 5.0, 0.0, 1.0) * clampf((3.0 - z) / 0.6, 0.0, 1.0)
+		if fade <= 0.01:
+			continue
+		var ol := maxi(2, int(fs * 0.12))
+		draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ol, Color(0.02, 0.04, 0.07, 0.62 * fade))
+		draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95 * fade))

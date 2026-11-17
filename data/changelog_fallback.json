@@ -1,8 +1,13 @@
 {
- "version": "0.12.0",
- "title": "GeoEmpire 8 — v0.12 Base Histórica",
- "body": "## Novidades\n- **Tecnologia:** árvore com 36 tecnologias em 6 eras e 11 construções liberadas por tecnologia.\n- **Mundo vivo:** migração e imigração, logística de suprimentos com depósitos e desgaste de tropas.\n- **História:** governantes com retratos e sucessores, nomes de época e briefing de cada país em 1836.\n- **IA (GEAI):** teatros de guerra, doutrinas por personalidade, economia própria e coalizões entre potências.\n- **Interface:** abertura e menu principal novos, tutorial de primeiro acesso, painéis mais fluidos e notas de versão no menu.",
+ "version": "0.12.1",
+ "title": "GeoEmpire 8 — v0.12.1",
+ "body": "## Novidades\n- **Economia:** empréstimos (tomar e amortizar, juros de 2% ao mês, limite pela renda).\n- **Exército:** instrução das tropas (Recrutas, Regulares, Elite): menos perdas em batalha, mais manutenção.\n- **Diplomacia:** enviar ajuda financeira melhora a opinião de outro país.\n- **Pesquisa:** cooperação científica, aliados mais avançados aceleram seus pontos.\n- **Mapa:** halo de costa mais suave, rotas marítimas tracejadas e rótulos de país com entrada gradual e melhor contraste.\n- **Desempenho:** política e imposto mensais mais rápidos, com resultado idêntico.",
  "history": [
+  {
+   "version": "0.12.1",
+   "title": "GeoEmpire 8 — v0.12.1",
+   "body": "## Novidades\n- **Economia:** empréstimos (tomar e amortizar, juros de 2% ao mês, limite pela renda).\n- **Exército:** instrução das tropas (Recrutas, Regulares, Elite): menos perdas em batalha, mais manutenção.\n- **Diplomacia:** enviar ajuda financeira melhora a opinião de outro país.\n- **Pesquisa:** cooperação científica, aliados mais avançados aceleram seus pontos.\n- **Mapa:** halo de costa mais suave, rotas marítimas tracejadas e rótulos de país com entrada gradual e melhor contraste.\n- **Desempenho:** política e imposto mensais mais rápidos, com resultado idêntico."
+  },
   {
    "version": "0.12.0",
    "title": "GeoEmpire 8 — v0.12 Base Histórica",

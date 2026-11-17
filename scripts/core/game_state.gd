@@ -2182,7 +2182,7 @@ func pending_event_for(cid: int) -> Dictionary:
 	return {}
 
 
-func _event_ok(d: Dictionary, c: Country) -> bool:
+func _event_ok(d: Dictionary, c: Country, ctx: Dictionary = {}) -> bool:
 	if bool(d.get("once", false)) and fired_events.has("%d|%s" % [c.id, str(d["id"])]):
 		return false
 	if d.has("tags"):
@@ -2201,7 +2201,9 @@ func _event_ok(d: Dictionary, c: Country) -> bool:
 		return false
 	if d.has("min_ideo"):
 		var need: Dictionary = d["min_ideo"]
-		var pol := politics_of(c)
+		if not ctx.has("pol"):
+			ctx["pol"] = politics_of(c)
+		var pol: Dictionary = ctx["pol"]
 		for k in need.keys():
 			var idx := IDEOLOGIES.find(str(k))
 			if idx < 0 or int(pol["ideo"][idx]) < int(need[k]):
@@ -2218,8 +2220,11 @@ func _event_ok(d: Dictionary, c: Country) -> bool:
 			if c.id >= local_price.size() or int(local_price[c.id].get(str(k), 100)) < int(mp[k]):
 				return false
 	var need_regs: int = int(d.get("min_regiments", 0))
-	if need_regs > 0 and regiments_of(c.id) < need_regs:
-		return false
+	if need_regs > 0:
+		if not ctx.has("regs"):
+			ctx["regs"] = regiments_of(c.id)
+		if int(ctx["regs"]) < need_regs:
+			return false
 	return true
 
 
@@ -2230,8 +2235,9 @@ func _roll_events() -> void:
 	for c in countries:
 		if not c.is_alive() or not pending_event_for(c.id).is_empty():
 			continue
+		var ectx: Dictionary = {}   # politics_of/regiments_of caros: calculados no máximo uma vez por país
 		for d in event_defs:
-			if not _event_ok(d, c):
+			if not _event_ok(d, c, ectx):
 				continue
 			if not d.has("date"):
 				var mtth: int = maxi(1, int(d.get("mtth_months", 120)))
@@ -2645,51 +2651,80 @@ func _supply_step_cost(q: Province, owner: int) -> int:
 	return mult * 2
 
 
-## Melhor fonte para o exército: Dijkstra limitado a partir da província do exército.
-## Devolve {"src": id ou -1, "ratio": 0..100}.
-func _supply_route(a: Army) -> Dictionary:
-	var owner: int = a.owner_id
-	var dist: Dictionary = {a.province_id: 0}
-	var open: Array = [a.province_id]
-	var done: Dictionary = {}
-	var best_src: int = -1
-	var best_ratio: int = -1
-	while not open.is_empty():
-		var bi: int = 0
-		for i in open.size():
-			if int(dist[open[i]]) < int(dist[open[bi]]):
-				bi = i
-		var cur: int = int(open[bi])
-		open.remove_at(bi)
-		if done.has(cur):
-			continue
-		done[cur] = true
-		var cd: int = int(dist[cur])
-		if cd > SUPPLY_LIMIT:
+func _heap_push(h: Array, v: int) -> void:
+	h.append(v)
+	var i: int = h.size() - 1
+	while i > 0:
+		var parent: int = (i - 1) / 2
+		if int(h[parent]) <= v:
 			break
-		var sr: int = _supply_range_at(cur, owner)
-		if sr > 0:
-			var r: int = _supply_ratio(cd, sr)
-			if r > best_ratio:
-				best_ratio = r
-				best_src = cur
-		for qi in provinces[cur].neighbors:
-			var qn: int = int(qi)
-			if done.has(qn):
+		h[i] = h[parent]
+		i = parent
+	h[i] = v
+
+
+func _heap_pop(h: Array) -> int:
+	var top: int = int(h[0])
+	var last: int = int(h.pop_back())
+	var n: int = h.size()
+	if n > 0:
+		var i: int = 0
+		while true:
+			var l: int = 2 * i + 1
+			if l >= n:
+				break
+			var r: int = l + 1
+			var m: int = r if (r < n and int(h[r]) < int(h[l])) else l
+			if int(h[m]) >= last:
+				break
+			h[i] = h[m]
+			i = m
+		h[i] = last
+	return top
+
+
+## Campo de abastecimento de um dono: para cada província, a melhor fonte (capital/depósito) e a
+## razão 0..100. Um Dijkstra com heap por FONTE (poucas) em vez de um por exército; vale para todos
+## os exércitos do dono. Desempate pelo menor id de fonte (determinístico).
+func _supply_field(owner: int) -> Dictionary:
+	var best: Dictionary = {}   # pid -> [ratio, src]
+	var srcs: Array = []
+	for pid in countries[owner].province_ids:
+		if _supply_range_at(int(pid), owner) > 0:
+			srcs.append(int(pid))
+	srcs.sort()
+	for src in srcs:
+		var rng_: int = _supply_range_at(src, owner)
+		var limit: int = mini(SUPPLY_LIMIT, rng_ * 3 / 2)
+		var dist: Dictionary = {src: 0}
+		var heap: Array = []
+		_heap_push(heap, src)   # custo 0 << 16 | id
+		var done: Dictionary = {}
+		while not heap.is_empty():
+			var top: int = _heap_pop(heap)
+			var cur: int = top & 0xFFFF
+			var cd: int = top >> 16
+			if done.has(cur):
 				continue
-			var nd: int = cd + _supply_step_cost(provinces[qn], owner)
-			if nd < int(dist.get(qn, 1 << 30)):
-				dist[qn] = nd
-				open.append(qn)
-		for qi in provinces[cur].sea_links:
-			var qs: int = int(qi)
-			if done.has(qs):
-				continue
-			var nd2: int = cd + 2 * _supply_step_cost(provinces[qs], owner)
-			if nd2 < int(dist.get(qs, 1 << 30)):
-				dist[qs] = nd2
-				open.append(qs)
-	return {"src": best_src, "ratio": maxi(0, best_ratio)}
+			done[cur] = true
+			var r: int = _supply_ratio(cd, rng_)
+			if r > 0:
+				var prev: Array = best.get(cur, [-1, -1])
+				if r > int(prev[0]):
+					best[cur] = [r, src]
+			for qi in provinces[cur].neighbors:
+				var qn: int = int(qi)
+				var nd: int = cd + _supply_step_cost(provinces[qn], owner)
+				if nd <= limit and nd < int(dist.get(qn, 1 << 30)):
+					dist[qn] = nd
+					_heap_push(heap, (nd << 16) | qn)
+			for qi in provinces[cur].sea_links:
+				var qs: int = int(qi)
+				var nd2: int = cd + 2 * _supply_step_cost(provinces[qs], owner)
+				if nd2 <= limit and nd2 < int(dist.get(qs, 1 << 30)):
+					dist[qs] = nd2
+					_heap_push(heap, (nd2 << 16) | qs)
+	return best
 
 
 ## Recalcula o abastecimento de todos os exércitos (a cada 5 dias). Exércitos que dividem a mesma
@@ -2698,12 +2733,17 @@ func _supply_route(a: Army) -> Dictionary:
 func _update_supply() -> void:
 	var rows: Array = []
 	var demand: Dictionary = {}
-	for id in armies.keys():
+	var fields: Dictionary = {}
+	var ids: Array = armies.keys()
+	ids.sort()
+	for id in ids:
 		var a: Army = armies[id]
-		var r: Dictionary = _supply_route(a)
-		rows.append([a, int(r["src"]), int(r["ratio"])])
-		if int(r["src"]) >= 0:
-			demand[int(r["src"])] = int(demand.get(int(r["src"]), 0)) + a.regiments
+		if not fields.has(a.owner_id):
+			fields[a.owner_id] = _supply_field(a.owner_id)
+		var hit: Array = (fields[a.owner_id] as Dictionary).get(a.province_id, [0, -1])
+		rows.append([a, int(hit[1]), int(hit[0])])
+		if int(hit[1]) >= 0:
+			demand[int(hit[1])] = int(demand.get(int(hit[1]), 0)) + a.regiments
 	for row in rows:
 		var ar: Army = row[0]
 		var ratio: int = int(row[2])

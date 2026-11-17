@@ -647,6 +647,7 @@ func run_all() -> void:
 	check("queda do suserano liberta vassalos", g.countries[b].overlord == -1)
 	_new_features()
 	_log_buffer()
+	_annex_batch_geometry()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -762,4 +763,34 @@ func _log_buffer() -> void:
 	PerfMonitor.record("m_b", Time.get_ticks_usec() - 20000)
 	check("PerfMonitor.slowest ordena etapas", PerfMonitor.slowest("m_", 1).begins_with("m_b") and PerfMonitor.last("m_a") > 0.0)
 	PerfMonitor.clear()
+	var got := []
+	var b2 := LogBuffer.new()
+	b2.on_important = func(lvl, tag, msg, _t): got.append([lvl, tag, msg])
+	b2.add(LogBuffer.INFO, "x", "info")
+	b2.add(LogBuffer.WARN, "x", "aviso")
+	b2.add(LogBuffer.ERROR, "x", "erro")
+	check("gancho do diário só recebe aviso e erro", got.size() == 2 and int(got[0][0]) == LogBuffer.WARN)
 	check("formata o tempo da sessão", LogBuffer.fmt_time(3723004) == "01:02:03.004")
+
+
+## Anexação refaz a geometria uma vez no fim: o resultado tem de ser igual a recalcular de novo.
+func _annex_batch_geometry() -> void:
+	var a := -1
+	var v := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != g.player_country and c.province_ids.size() >= 2:
+			if a < 0:
+				a = c.id
+			elif v < 0:
+				v = c.id
+	if a < 0 or v < 0:
+		return
+	var nv: int = g.countries[v].province_ids.size()
+	var na: int = g.countries[a].province_ids.size()
+	g._annex_country(a, v)
+	check("anexação move todas as províncias", g.countries[v].province_ids.is_empty() and g.countries[a].province_ids.size() == na + nv)
+	var b1: Rect2 = g.countries[a].bounds
+	var lp1: Vector2 = g.countries[a].label_pos
+	g._refresh_country_geometry(g.countries[a])
+	check("geometria em lote igual à recalculada", b1 == g.countries[a].bounds and lp1 == g.countries[a].label_pos)
+	check("país anexado fica sem geometria", g.countries[v].bounds == Rect2())

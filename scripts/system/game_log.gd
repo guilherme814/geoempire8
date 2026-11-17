@@ -29,6 +29,13 @@ var _started := false
 var _period_t := 0.0
 var _dl_ok := true                       # o último envio para Downloads funcionou (ou nunca foi tentado)
 var _prev_session_text := ""             # resumo da sessão anterior, se terminou de forma anormal
+var _journal: FileAccess
+var _speed_ms: Dictionary = {}           # velocidade -> ms reais de jogo
+var _prev_stab: Dictionary = {}
+var _prev_overlord: Dictionary = {}
+var _month_moves := 0                    # trocas de dono no mês (contexto dos gargalos)
+var _month_extinct := 0
+const STEP_LIMITS := {"m_aipeace": 100.0, "m_trade": 150.0, "m_record": 200.0, "m_migr": 120.0, "m_events": 120.0, "m_politics": 120.0, "m_econ": 80.0, "m_prov": 40.0, "m_countries": 60.0, "m_emit": 60.0}
 var _primed := false                     # a 1ª comparação mensal só guarda a foto inicial
 var _prev_wars: Dictionary = {}
 var _prev_alive: Dictionary = {}
@@ -47,6 +54,8 @@ func _ready() -> void:
 	buf.add(LogBuffer.INFO, "sessao", "Início da sessão %s" % session_stamp)
 	buf.add(LogBuffer.INFO, "aparelho", device_summary())
 	_check_previous_session()
+	_open_journal()
+	buf.on_important = _on_important
 	_write_lock("running")
 	get_tree().node_added.connect(_on_node_added)
 	if OS.get_name() == "Android" and downloads_enabled():
@@ -86,10 +95,12 @@ func device_summary() -> String:
 	var renderer := str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "?"))
 	var scr := DisplayServer.screen_get_size()
 	var gpu := "%s / %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_vendor()]
-	return "%s | modelo %s | SO %s | Godot %s | %s | GPU %s | tela %dx%d @%.0f Hz, %d dpi | CPUs %d | debug=%s | idioma %s" % [
-		OS.get_name(), OS.get_model_name(), OS.get_version(), Engine.get_version_info().get("string", "?"),
+	var mem := OS.get_memory_info()
+	return "%s | modelo %s | CPU %s | Godot %s | %s | GPU %s | tela %dx%d @%.0f Hz, %d dpi | CPUs %d | RAM %.0f MB (livre %.0f) | debug=%s | idioma %s" % [
+		OS.get_name(), OS.get_model_name(), OS.get_processor_name(), Engine.get_version_info().get("string", "?"),
 		renderer, gpu, scr.x, scr.y, DisplayServer.screen_get_refresh_rate(), DisplayServer.screen_get_dpi(),
-		OS.get_processor_count(), str(OS.is_debug_build()), OS.get_locale()]
+		OS.get_processor_count(), float(mem.get("physical", 0)) / 1048576.0, float(mem.get("free", 0)) / 1048576.0,
+		str(OS.is_debug_build()), OS.get_locale()]
 
 
 func _process(dt: float) -> void:
@@ -97,6 +108,8 @@ func _process(dt: float) -> void:
 		return
 	buf.frame(dt)
 	buf.frame_ctx(_ctx(), dt)
+	var spd := -1 if (Game == null or not Game.loaded) else Game.speed
+	_speed_ms[spd] = int(_speed_ms.get(spd, 0)) + int(dt * 1000.0)
 	_hitch_cool = maxf(0.0, _hitch_cool - dt)
 	if dt * 1000.0 > HITCH_MS and _hitch_cool <= 0.0:
 		_hitch_cool = 1.0
@@ -129,7 +142,12 @@ func _sample_resources() -> void:
 	var objs := int(Performance.get_monitor(Performance.OBJECT_COUNT))
 	var fps := int(Performance.get_monitor(Performance.TIME_FPS))
 	var peak := float(OS.get_static_memory_peak_usage()) / 1048576.0
-	buf.add(LogBuffer.INFO, "recursos", "mem %.1f MB (pico %.1f) | nós %d | objetos %d | fps %d | %s" % [mem, peak, nodes, objs, fps, _game_stamp()])
+	var orphans := int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
+	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var prims := int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+	var vram := float(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)) / 1048576.0
+	buf.add(LogBuffer.INFO, "recursos", "mem %.1f MB (pico %.1f) | nós %d (órfãos %d) | objetos %d | fps %d | draw calls %d | primitivas %d | vram %.1f MB | gfx %s | %s" % [
+		mem, peak, nodes, orphans, objs, fps, draws, prims, vram, AppSettings.GFX_NAMES[AppSettings.gfx_quality()], _game_stamp()])
 
 
 func _on_notice(text: String) -> void:
@@ -157,17 +175,128 @@ func _compact(cmd: Dictionary) -> String:
 
 func _on_month(_date: Dictionary) -> void:
 	buf.bump("meses")
-	_timeline_line()
 	_world_diff()
-	var ms := PerfMonitor.summary("month")
-	if int(ms["n"]) > 0 and float(ms["p95"]) > 400.0:
-		buf.add(LogBuffer.WARN, "desempenho", "Turno mensal lento: p95 %.0f ms, máx %.0f ms (%s)" % [ms["p95"], ms["max"], _game_stamp()])
+	_state_audit()
+	_integrity_audit()
+	# o tempo do mês só é gravado no PerfMonitor depois deste sinal: lê no fim do quadro
+	_after_month.call_deferred()
+
+
+func _after_month() -> void:
+	_timeline_line()
+	_month_profile()
+	_month_moves = 0
+	_month_extinct = 0
+
+
+## Gargalos do turno mensal: cada etapa acima do seu orçamento é registrada com o contexto
+## (guerras ativas, extinções e trocas de província no mês) para apontar a causa.
+func _month_profile() -> void:
+	if Game == null or not Game.loaded:
+		return
+	var ctx := "guerras %d, países %d, extinções no mês %d, províncias trocadas %d" % [Game.wars.size(), _prev_alive.size(), _month_extinct, _month_moves]
+	for step in STEP_LIMITS.keys():
+		var v := PerfMonitor.last(str(step))
+		if v >= float(STEP_LIMITS[step]):
+			buf.add(LogBuffer.WARN, "gargalo", "%s levou %.0f ms (limite %.0f) | %s | %s" % [step, v, float(STEP_LIMITS[step]), ctx, _game_stamp()])
+	var m := PerfMonitor.last("month")
+	if m >= 1500.0:
+		buf.add(LogBuffer.WARN, "gargalo", "Turno mensal inteiro levou %.0f ms | piores: %s | %s" % [m, PerfMonitor.slowest("m_", 4), ctx])
+
+
+## Auditoria de transições (ideia do PDF de telemetria): quedas bruscas de estabilidade,
+## mudanças de suserania e morte do país do jogador, comparando com o mês anterior.
+func _state_audit() -> void:
+	if Game == null or not Game.loaded:
+		return
+	var stab_now: Dictionary = {}
+	var ov_now: Dictionary = {}
+	for c in Game.countries:
+		if not c.is_alive():
+			continue
+		stab_now[c.tag] = c.stability
+		ov_now[c.tag] = c.overlord
+		if _prev_stab.has(c.tag) and int(_prev_stab[c.tag]) - c.stability >= 10:
+			buf.add(LogBuffer.WARN, "auditoria", "Queda brusca de estabilidade em %s: %d -> %d (%s)" % [c.tag, int(_prev_stab[c.tag]), c.stability, _game_stamp()])
+		if _prev_overlord.has(c.tag) and int(_prev_overlord[c.tag]) != c.overlord:
+			var from_tag := "independente" if int(_prev_overlord[c.tag]) < 0 else Game.countries[int(_prev_overlord[c.tag])].tag
+			var to_tag := "independente" if c.overlord < 0 else Game.countries[c.overlord].tag
+			buf.add(LogBuffer.INFO, "auditoria", "Suserania de %s: %s -> %s (%s)" % [c.tag, from_tag, to_tag, _game_stamp()])
+	_prev_stab = stab_now
+	_prev_overlord = ov_now
+
+
+## Integridade estrutural mensal (ideia do PDF): países vivos sem província, extintos com província,
+## exércitos fantasmas e rotas de exército anormalmente longas.
+func _integrity_audit() -> int:
+	if Game == null or not Game.loaded:
+		return 0
+	var bad := 0
+	var owned: Dictionary = {}
+	for p in Game.provinces:
+		owned[p.owner_id] = int(owned.get(p.owner_id, 0)) + 1
+	for c in Game.countries:
+		var n := int(owned.get(c.id, 0))
+		if c.is_alive() and n == 0:
+			bad += 1
+			buf.add(LogBuffer.ERROR, "integridade", "%s está vivo com 0 províncias (%s)" % [c.tag, _game_stamp()])
+		elif not c.is_alive() and n > 0:
+			bad += 1
+			buf.add(LogBuffer.ERROR, "integridade", "%s extinto ainda controla %d províncias (%s)" % [c.tag, n, _game_stamp()])
+	for id in Game.armies.keys():
+		var a: Army = Game.armies[id]
+		if a.path.size() > 40:
+			bad += 1
+			buf.add(LogBuffer.WARN, "integridade", "Exército %d (dono %d) com rota de %d passos: possível laço (%s)" % [id, a.owner_id, a.path.size(), _game_stamp()])
+	return bad
+
+
+func _open_journal() -> void:
+	_journal = FileAccess.open("%s/journal_%s.log" % [LOG_DIR, session_stamp], FileAccess.WRITE)
+	_prune_journals()
+
+
+## Diário à prova de falha: avisos e erros vão para o disco na hora (flush), para sobreviver a um crash.
+func _on_important(lvl: int, tag: String, msg: String, t_ms: int) -> void:
+	if _journal == null:
+		return
+	_journal.store_line("[%s] %s %s %s" % [LogBuffer.fmt_time(t_ms), LogBuffer.LEVELS[lvl], tag, msg])
+	_journal.flush()
+
+
+func _prune_journals() -> void:
+	var mine: Array = []
+	for fn in DirAccess.get_files_at(LOG_DIR):
+		if fn.begins_with("journal_") and fn.ends_with(".log"):
+			mine.append(fn)
+	mine.sort()
+	while mine.size() > 6:
+		DirAccess.remove_absolute(LOG_DIR.path_join(str(mine[0])))
+		mine.remove_at(0)
+
+
+## Log nativo: no Android o arquivo do Godot pode não existir; então lê o logcat do próprio app.
+func _logcat_tail() -> String:
+	if OS.get_name() != "Android":
+		return ""
+	var out: Array = []
+	var code := OS.execute("logcat", ["-d", "-t", "1200", "-v", "time", "godot:V", "AndroidRuntime:E", "*:S"], out, true)
+	if code != 0 or out.is_empty():
+		return "logcat indisponível (código %d)." % code
+	var lines := str(out[0]).split("\n")
+	var keep := PackedStringArray()
+	for ln in lines:
+		if ln.contains("ERROR") or ln.contains("SCRIPT") or ln.contains("WARNING") or ln.contains("Failed") or ln.contains("FATAL") or ln.contains("Exception"):
+			keep.append(ln)
+	if keep.is_empty():
+		return "logcat lido (%d linhas): nenhum erro/aviso do Godot." % lines.size()
+	return "logcat: %d linha(s) de erro/aviso (últimas 80):\n%s" % [keep.size(), "\n".join(keep.slice(maxi(0, keep.size() - 80)))]
 
 
 func _ctx() -> String:
 	if Game == null or not Game.loaded:
-		return "menu_ou_carregando"
-	return "jogo_pausado" if Game.speed == 0 else "jogo_vel%d" % Game.speed
+		return "menu_ou_carregando|gfx%d" % AppSettings.gfx_quality()
+	return ("jogo_pausado" if Game.speed == 0 else "jogo_vel%d" % Game.speed) + "|gfx%d" % AppSettings.gfx_quality()
 
 
 func _on_trace(tag: String, msg: String) -> void:
@@ -189,7 +318,8 @@ func _on_button(b: BaseButton) -> void:
 	if label == "":
 		label = b.tooltip_text
 	buf.bump("botoes")
-	buf.add(LogBuffer.INFO, "botao", "'%s' (%s)" % [label.replace("\n", " ").strip_edges(), b.name])
+	var parent_name := str(b.get_parent().name) if b.get_parent() != null else "?"
+	buf.add(LogBuffer.INFO, "botao", "'%s' (%s em %s)" % [label.replace("\n", " ").strip_edges(), b.name, parent_name])
 
 
 ## Marca de sessão: "running" em primeiro plano, "background" ao pausar; apagada ao sair normalmente.
@@ -215,6 +345,10 @@ func _check_previous_session() -> void:
 			_prev_session_text = "Sessão %s (últimas 80 linhas):\n%s" % [prev, "\n".join(lines.slice(from))]
 		else:
 			_prev_session_text = "Sessão %s: sem arquivo salvo." % prev
+		var jpath := "%s/journal_%s.log" % [LOG_DIR, prev]
+		if FileAccess.file_exists(jpath):
+			var jl := FileAccess.get_file_as_string(jpath).split("\n")
+			_prev_session_text += "\n\nDIÁRIO (avisos/erros gravados na hora, últimas 60):\n%s" % "\n".join(jl.slice(maxi(0, jl.size() - 60)))
 	else:
 		buf.add(LogBuffer.INFO, "sessao", "A sessão anterior (%s) foi encerrada em segundo plano (comum no Android)." % prev)
 
@@ -275,7 +409,10 @@ func _world_diff() -> void:
 				tax_changes += 1
 	for t in _prev_alive.keys():
 		if not alive_now.has(t):
-			buf.add(LogBuffer.INFO, "mundo", "País deixou de existir: %s (%s)" % [t, _game_stamp()])
+			_month_extinct += 1
+			var dead_lvl := LogBuffer.ERROR if (Game.player_country >= 0 and Game.countries[Game.player_country].tag == t) else LogBuffer.INFO
+			var who := "PAÍS DO JOGADOR DEIXOU DE EXISTIR: " if dead_lvl == LogBuffer.ERROR else "País deixou de existir: "
+			buf.add(dead_lvl, "mundo", "%s%s (%s)" % [who, t, _game_stamp()])
 			buf.bump("paises_extintos")
 	for t in alive_now.keys():
 		if _primed and not _prev_alive.has(t):
@@ -285,6 +422,7 @@ func _world_diff() -> void:
 		owner_now[p.id] = p.owner_id
 		if _prev_owner_of.has(p.id) and int(_prev_owner_of[p.id]) != p.owner_id:
 			owner_changes += 1
+	_month_moves = owner_changes
 	if owner_changes > 0:
 		buf.add(LogBuffer.INFO, "mundo", "%d província(s) trocaram de dono no mês (%s)" % [owner_changes, _game_stamp()])
 		buf.bump("trocas_de_dono")
@@ -310,7 +448,9 @@ func _pair_names(key: String) -> String:
 ## Erros do log nativo do Godot (arquivo inteiro, até 60 distintos, com a linha seguinte de contexto).
 func _godot_errors() -> String:
 	if not FileAccess.file_exists(GODOT_LOG):
-		return "Log nativo indisponível."
+		var lc := _logcat_tail()
+		var files := ", ".join(PackedStringArray(DirAccess.get_files_at(LOG_DIR)))
+		return "Arquivo do log nativo não existe. Arquivos em user://logs: %s\n%s" % [files, lc]
 	var all := FileAccess.get_file_as_string(GODOT_LOG).split("\n")
 	var seen: Dictionary = {}
 	var order: Array = []
@@ -382,6 +522,7 @@ func build_report(reason: String) -> String:
 	}
 	var sections := {}
 	sections["Estado do jogo"] = _game_state_text()
+	sections["Tempo real por velocidade"] = _speed_report()
 	sections["Tempo de quadro por contexto"] = buf.ctx_report()
 	sections["Linha do tempo (uma linha por mês de jogo)"] = "\n".join(PackedStringArray(buf.timeline)) if not buf.timeline.is_empty() else "Nenhum mês simulado nesta sessão."
 	if _prev_session_text != "":
@@ -392,6 +533,16 @@ func build_report(reason: String) -> String:
 	sections["Últimos avisos do jogo"] = "\n".join(PackedStringArray(_notices)) if not _notices.is_empty() else "Nenhum."
 	sections["Log nativo do Godot (final)"] = _godot_log_tail()
 	return buf.render(header, sections)
+
+
+func _speed_report() -> String:
+	var keys: Array = _speed_ms.keys()
+	keys.sort()
+	var parts := PackedStringArray()
+	for k in keys:
+		var name_k := "menu/carregando" if int(k) < 0 else ("pausado" if int(k) == 0 else "vel %d" % int(k))
+		parts.append("%s: %.1f s" % [name_k, float(_speed_ms[k]) / 1000.0])
+	return " | ".join(parts) if not parts.is_empty() else "Sem dados."
 
 
 func _game_state_text() -> String:

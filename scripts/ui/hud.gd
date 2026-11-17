@@ -2150,7 +2150,18 @@ func _on_province_selected(pid: int) -> void:
 	_refresh_info()
 
 
+var _prov_refresh_queued := false
+
+
 func _on_province_updated(_pid: int) -> void:
+	if _prov_refresh_queued:
+		return
+	_prov_refresh_queued = true
+	_apply_province_refresh.call_deferred()
+
+
+func _apply_province_refresh() -> void:
+	_prov_refresh_queued = false
 	_refresh_top()
 	_refresh_info()
 

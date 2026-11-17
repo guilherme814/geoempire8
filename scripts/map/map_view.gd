@@ -89,6 +89,7 @@ func _ready() -> void:
 	_build_coast_and_sea()
 	_refresh_all()
 	Events.province_changed.connect(_on_province_changed)
+	Events.gfx_changed.connect(_on_gfx_changed)
 	Events.month_changed.connect(_on_month_changed)
 	Events.state_loaded.connect(_refresh_all)
 	Events.war_changed.connect(_refresh_all)
@@ -139,8 +140,27 @@ func _refresh_all() -> void:
 	queue_redraw()
 
 
+## Várias províncias mudam de dono no mesmo instante (anexação, paz): refaz fronteiras e cores
+## UMA vez por quadro, e não uma por província (no celular isso passava de 1 s).
+var _refresh_pending := false
+
+
 func _on_province_changed(_pid: int) -> void:
+	if _refresh_pending:
+		return
+	_refresh_pending = true
+	_flush_refresh.call_deferred()
+
+
+func _flush_refresh() -> void:
+	_refresh_pending = false
 	_refresh_all()
+
+
+func _on_gfx_changed() -> void:
+	if _halo != null:
+		_halo.queue_redraw()
+	queue_redraw()
 
 
 func _on_month_changed(_date: Dictionary) -> void:
@@ -302,7 +322,7 @@ func _draw() -> void:
 		draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
 	draw_multiline(_coast_lines, Color(0.04, 0.12, 0.18, 0.85), 1.3 / z)
 	if mode == Mode.POLITICAL:
-		if z >= 2.0:
+		if z >= 2.0 and AppSettings.gfx_quality() >= 1:
 			_draw_sea_routes(z)
 		if z <= 3.0:
 			_draw_country_labels(z)
@@ -311,6 +331,10 @@ func _draw() -> void:
 ## Rotas marítimas tracejadas (mais legíveis que um traço contínuo sobre o mar e a terra).
 func _draw_sea_routes(z: float) -> void:
 	var col := Color(0.85, 0.92, 1.0, clampf((z - 2.0) / 0.6, 0.0, 1.0) * 0.45)
+	if AppSettings.gfx_quality() == 1:
+		# Média: um único draw_multiline contínuo (centenas de segmentos tracejados custam caro).
+		draw_multiline(_sea_lines, Color(0.85, 0.92, 1.0, col.a * 0.8), -1.0)
+		return
 	var i := 0
 	while i + 1 < _sea_lines.size():
 		draw_dashed_line(_sea_lines[i], _sea_lines[i + 1], col, 1.6 / z, 9.0 / z)

@@ -20,6 +20,7 @@ var hitches_100: int = 0
 var worst_ms: float = 0.0
 var total_frames: int = 0
 var tag_counts: Dictionary = {}        # contagem por etiqueta (ex.: comandos por tipo)
+var on_important: Callable = Callable()   # chamado a cada AVISO/ERRO (diário gravado na hora)
 var timeline: Array = []               # uma linha por mês de jogo (não é descartada pelo limite de eventos)
 var ctx_frames: Dictionary = {}        # contexto -> {n, hitches, arr}
 const MAX_TIMELINE := 720
@@ -31,6 +32,8 @@ func add(level: int, tag: String, msg: String, t_ms: int = -1) -> void:
 	var lvl := clampi(level, 0, 2)
 	counts[lvl] = int(counts[lvl]) + 1
 	var t := t_ms if t_ms >= 0 else Time.get_ticks_msec()
+	if lvl >= WARN and on_important.is_valid():
+		on_important.call(lvl, tag, msg, t)
 	if not lines.is_empty():
 		var last: Dictionary = lines[-1]
 		if str(last["tag"]) == tag and str(last["msg"]) == msg and int(last["lvl"]) == lvl:

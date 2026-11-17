@@ -1239,7 +1239,9 @@ func _free_vassal(v: int, friendly: bool) -> void:
 ## Anexa o país inteiro: províncias, exércitos e frota passam ao anexador.
 func _annex_country(o: int, v: int) -> void:
 	for pid in countries[v].province_ids.duplicate():
-		transfer_province(int(pid), o)
+		transfer_province(int(pid), o, false)   # geometria refeita uma vez no fim (resultado idêntico)
+	_refresh_country_geometry(countries[v])
+	_refresh_country_geometry(countries[o])
 	for id in armies.keys():
 		var a: Army = armies[id]
 		if a.owner_id == v:
@@ -1489,7 +1491,7 @@ func _end_war(x: int, y: int) -> void:
 			Events.province_updated.emit(int(pid))
 
 
-func transfer_province(pid: int, to_country: int) -> void:
+func transfer_province(pid: int, to_country: int, refresh: bool = true) -> void:
 	if pid < 0 or pid >= provinces.size():
 		return
 	if to_country < 0 or to_country >= countries.size():
@@ -1501,9 +1503,11 @@ func transfer_province(pid: int, to_country: int) -> void:
 	p.owner_id = to_country
 	if old >= 0 and old < countries.size():
 		countries[old].province_ids.erase(pid)
-		_refresh_country_geometry(countries[old])
+		if refresh:
+			_refresh_country_geometry(countries[old])
 	countries[to_country].province_ids.append(pid)
-	_refresh_country_geometry(countries[to_country])
+	if refresh:
+		_refresh_country_geometry(countries[to_country])
 	Events.province_changed.emit(pid)
 
 

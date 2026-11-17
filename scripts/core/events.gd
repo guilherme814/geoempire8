@@ -34,6 +34,9 @@ signal notice(text: String)
 ## Rastro de diagnóstico (só para o log da sessão; nunca afeta a simulação).
 signal trace(tag: String, msg: String)
 
+## Qualidade gráfica mudou (0 baixa, 1 média, 2 alta): o mapa redesenha.
+signal gfx_changed
+
 ## Pede à câmera para enquadrar uma província (ex.: clique na lista de exércitos).
 signal focus_province(province_id: int)
 

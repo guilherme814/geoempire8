@@ -576,6 +576,14 @@ func _show_options() -> void:
 		AudioManager.set_sfx(not AudioManager.sfx_on)
 		b_sfx.text = "Efeitos sonoros: ligados" if AudioManager.sfx_on else "Efeitos sonoros: desligados")
 	body.add_child(b_sfx)
+	var b_gfx := UIKit.button("", Vector2(0, 56))
+	b_gfx.text = "Qualidade gráfica do mapa: " + str(AppSettings.GFX_NAMES[AppSettings.gfx_quality()])
+	b_gfx.pressed.connect(func():
+		AppSettings.set_gfx_quality((AppSettings.gfx_quality() + 1) % 3)
+		b_gfx.text = "Qualidade gráfica do mapa: " + str(AppSettings.GFX_NAMES[AppSettings.gfx_quality()])
+		Events.gfx_changed.emit()
+		Events.trace.emit("graficos", "Qualidade do mapa: " + str(AppSettings.GFX_NAMES[AppSettings.gfx_quality()])))
+	body.add_child(b_gfx)
 	_add_log_options(body)
 	_add_close()
 

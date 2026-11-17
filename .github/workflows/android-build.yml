@@ -8,6 +8,9 @@ on:
 env:
   GODOT_VERSION: "4.3.0"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -101,3 +104,16 @@ jobs:
         name: geoempire-apk
         path: build/*.apk
         if-no-files-found: warn
+
+    - name: Publish APK as release (download direto no celular)
+      if: success()
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        VER=$(grep -oP 'config/version="\K[^"]+' project.godot)
+        cp build/geoempire-debug.apk "build/GeoEmpire-$VER-build${{ github.run_number }}.apk"
+        gh release delete latest-apk --cleanup-tag -y || true
+        gh release create latest-apk "build/GeoEmpire-$VER-build${{ github.run_number }}.apk" \
+          --prerelease --target "$GITHUB_SHA" \
+          --title "APK mais recente ($VER, build ${{ github.run_number }})" \
+          --notes "APK de debug assinado com a chave fixa do projeto. Baixe o arquivo .apk abaixo e instale."

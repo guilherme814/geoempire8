@@ -14,3 +14,4 @@ build/
 __pycache__/
 *.pyc
 tools/preview*.png
+!tools/signing/debug.keystore

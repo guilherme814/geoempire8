@@ -36,12 +36,18 @@ jobs:
         use-dotnet: false
         include-templates: true
 
-    - name: Create debug keystore
+    - name: Use fixed debug keystore
+      # Chave de debug FIXA (não é segredo): todas as builds saem com a mesma assinatura,
+      # então o Android aceita atualizar por cima da versão instalada.
       run: |
-        keytool -keyalg RSA -genkeypair -alias androiddebugkey \
-          -keypass android -keystore "$GITHUB_WORKSPACE/debug.keystore" \
-          -storepass android -dname "CN=Android Debug,O=Android,C=US" \
-          -validity 9999 -deststoretype pkcs12
+        cp tools/signing/debug.keystore "$GITHUB_WORKSPACE/debug.keystore"
+
+    - name: Set Android version from project
+      run: |
+        VER=$(grep -oP 'config/version="\K[^"]+' project.godot)
+        sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/" export_presets.cfg
+        sed -i "s/^version\/name=.*/version\/name=\"$VER\"/" export_presets.cfg
+        grep -E "^version/" export_presets.cfg
 
     - name: Configure Godot editor settings
       run: |

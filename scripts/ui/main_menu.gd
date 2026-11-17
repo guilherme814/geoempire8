@@ -576,7 +576,36 @@ func _show_options() -> void:
 		AudioManager.set_sfx(not AudioManager.sfx_on)
 		b_sfx.text = "Efeitos sonoros: ligados" if AudioManager.sfx_on else "Efeitos sonoros: desligados")
 	body.add_child(b_sfx)
+	_add_log_options(body)
 	_add_close()
+
+
+## Logs de diagnóstico: exportação automática ao sair, exportação manual e cópia para a área de transferência.
+func _add_log_options(body: Control) -> void:
+	var status := UIKit.label(GameLog.last_export_status, 15, UIKit.TEXT_DIM)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var b_auto := UIKit.button("", Vector2(0, 56))
+	b_auto.text = "Enviar log para Downloads ao sair: " + ("ligado" if GameLog.downloads_enabled() else "desligado")
+	b_auto.pressed.connect(func():
+		GameLog.set_downloads_enabled(not GameLog.downloads_enabled())
+		b_auto.text = "Enviar log para Downloads ao sair: " + ("ligado" if GameLog.downloads_enabled() else "desligado"))
+	body.add_child(b_auto)
+	var b_now := UIKit.button("Exportar log agora", Vector2(0, 56))
+	b_now.pressed.connect(func(): status.text = GameLog.export_now("manual"))
+	body.add_child(b_now)
+	var b_copy := UIKit.button("Copiar log (colar no chat)", Vector2(0, 56))
+	b_copy.pressed.connect(func():
+		var txt: String = GameLog.build_report("cópia manual")
+		DisplayServer.clipboard_set(txt.substr(maxi(0, txt.length() - 60000)))
+		status.text = "Log copiado (últimos 60 mil caracteres).")
+	body.add_child(b_copy)
+	if OS.get_name() == "Android":
+		var b_perm := UIKit.button("Permitir acesso a arquivos", Vector2(0, 56))
+		b_perm.pressed.connect(func():
+			OS.request_permissions()
+			status.text = "Se o Android abrir a tela de acesso a arquivos, ative para o GeoEmpire.")
+		body.add_child(b_perm)
+	body.add_child(status)
 
 
 func _show_credits() -> void:

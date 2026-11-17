@@ -19,6 +19,13 @@ EconomyManager="*res://scripts/core/economy_manager.gd"
 Game="*res://scripts/core/game_state.gd"
 Net="*res://scripts/net/p2p_network.gd"
 UpdateManager="*res://scripts/system/update_manager.gd"
+GameLog="*res://scripts/system/game_log.gd"
+
+[debug]
+
+file_logging/enable_file_logs=true
+file_logging/enable_file_logs.mobile=true
+file_logging/max_log_files=5
 
 [display]
 

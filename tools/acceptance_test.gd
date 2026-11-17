@@ -646,6 +646,7 @@ func run_all() -> void:
 	g._simulate_month()
 	check("queda do suserano liberta vassalos", g.countries[b].overlord == -1)
 	_new_features()
+	_log_buffer()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -723,3 +724,30 @@ func _find_border() -> Dictionary:
 				if o >= 0 and o != oc.id and o != g.player_country and g.countries[o].is_alive() and g.can_declare_war(oc.id, o):
 					return {"me": oc.id, "foe": o, "p": int(pid), "q": int(q)}
 	return {}
+
+
+## Registro de sessão: agrupamento, limites, estatísticas de quadro e relatório.
+func _log_buffer() -> void:
+	var b := LogBuffer.new()
+	b.add(LogBuffer.INFO, "teste", "mensagem", 1000)
+	b.add(LogBuffer.INFO, "teste", "mensagem", 1500)
+	b.add(LogBuffer.ERROR, "sanidade", "falha", 2000)
+	check("log agrupa repetições consecutivas", b.lines.size() == 2 and int(b.lines[0]["n"]) == 2)
+	check("log conta por nível", b.counts[0] == 2 and b.counts[2] == 1)
+	for i in LogBuffer.MAX_LINES + 50:
+		b.add(LogBuffer.INFO, "enc", "linha %d" % i, i)
+	check("log respeita o limite de linhas", b.lines.size() <= LogBuffer.MAX_LINES and b.dropped > 0)
+	var has_err := false
+	for ln in b.lines:
+		if int(ln["lvl"]) == LogBuffer.ERROR:
+			has_err = true
+	check("log nunca descarta erros", has_err)
+	for i in 100:
+		b.frame(0.016)
+	b.frame(0.2)
+	var fs: Dictionary = b.frame_stats()
+	check("estatísticas de quadro (p50 e pior)", absf(float(fs["p50"]) - 16.0) < 0.5 and b.worst_ms >= 199.0 and b.hitches_100 == 1)
+	b.bump("cmd_x")
+	var txt: String = b.render({"Versão": "t"}, {"Seção": "conteúdo"})
+	check("relatório traz resumo, seção e eventos", txt.contains("RESUMO") and txt.contains("SEÇÃO") and txt.contains("EVENTOS") and txt.contains("cmd_x=1") and txt.contains("falha"))
+	check("formata o tempo da sessão", LogBuffer.fmt_time(3723004) == "01:02:03.004")

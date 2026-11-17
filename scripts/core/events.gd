@@ -31,6 +31,9 @@ signal war_changed
 ## Aviso curto para o jogador local (ex.: paz recusada).
 signal notice(text: String)
 
+## Rastro de diagnóstico (só para o log da sessão; nunca afeta a simulação).
+signal trace(tag: String, msg: String)
+
 ## Pede à câmera para enquadrar uma província (ex.: clique na lista de exércitos).
 signal focus_province(province_id: int)
 

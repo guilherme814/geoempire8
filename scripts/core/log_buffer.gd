@@ -20,6 +20,10 @@ var hitches_100: int = 0
 var worst_ms: float = 0.0
 var total_frames: int = 0
 var tag_counts: Dictionary = {}        # contagem por etiqueta (ex.: comandos por tipo)
+var timeline: Array = []               # uma linha por mês de jogo (não é descartada pelo limite de eventos)
+var ctx_frames: Dictionary = {}        # contexto -> {n, hitches, arr}
+const MAX_TIMELINE := 720
+const MAX_CTX_FRAMES := 400
 
 
 ## Adiciona uma linha. Mensagens idênticas e consecutivas (mesma etiqueta) viram "xN".
@@ -60,6 +64,42 @@ func frame(dt: float) -> void:
 	_frames.append(ms)
 	if _frames.size() > MAX_FRAMES:
 		_frames.remove_at(0)
+
+
+## Tempo de quadro separado por contexto (menu, jogo pausado, jogo em velocidade N, painel aberto…).
+func frame_ctx(ctx: String, dt: float) -> void:
+	var d: Dictionary = ctx_frames.get(ctx, {"n": 0, "hitches": 0, "worst": 0.0, "arr": []})
+	var ms := dt * 1000.0
+	d["n"] = int(d["n"]) + 1
+	if ms > 50.0:
+		d["hitches"] = int(d["hitches"]) + 1
+	d["worst"] = maxf(float(d["worst"]), ms)
+	var arr: Array = d["arr"]
+	arr.append(ms)
+	if arr.size() > MAX_CTX_FRAMES:
+		arr.remove_at(0)
+	ctx_frames[ctx] = d
+
+
+func ctx_report() -> String:
+	if ctx_frames.is_empty():
+		return "Sem dados."
+	var keys: Array = ctx_frames.keys()
+	keys.sort()
+	var out := ""
+	for k in keys:
+		var d: Dictionary = ctx_frames[k]
+		var s: Array = (d["arr"] as Array).duplicate()
+		s.sort()
+		out += "%-22s quadros %6d | p50 %5.1f | p95 %5.1f | p99 %5.1f ms | pior %6.1f ms | >50 ms: %d\n" % [
+			k, d["n"], _pct(s, 0.5), _pct(s, 0.95), _pct(s, 0.99), d["worst"], d["hitches"]]
+	return out
+
+
+func add_timeline(line: String) -> void:
+	timeline.append(line)
+	if timeline.size() > MAX_TIMELINE:
+		timeline.remove_at(0)
 
 
 ## p50/p95/p99/máximo dos últimos quadros e FPS médio equivalente.

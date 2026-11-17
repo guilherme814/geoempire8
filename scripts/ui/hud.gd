@@ -720,6 +720,7 @@ func _toggle_window(key: String) -> void:
 			sb.set_pressed_no_signal(_windows[k].visible)
 	if not opening:
 		_refresh_windows()
+		Events.trace.emit("ui", "Painel '%s' fechado" % key)
 		return
 	# Abertura fluida: o toque responde no mesmo quadro (janela transparente) e o trabalho
 	# pesado de montar o conteúdo roda no quadro seguinte, com um fade curto.
@@ -731,6 +732,7 @@ func _toggle_window(key: String) -> void:
 	var t0: int = PerfMonitor.begin()
 	_refresh_windows()
 	PerfMonitor.record("panel_" + key, t0)
+	Events.trace.emit("ui", "Painel '%s' aberto (montagem %.0f ms)" % [key, PerfMonitor.last("panel_" + key)])
 	create_tween().tween_property(win, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 

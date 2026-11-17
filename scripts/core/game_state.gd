@@ -3820,21 +3820,32 @@ func load_state(d: Dictionary) -> bool:
 
 
 func save_game(path: String = SAVE_PATH) -> bool:
+	var t0 := Time.get_ticks_usec()
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
+		Events.trace.emit("save", "FALHA ao abrir %s para gravar (erro %d)" % [path, FileAccess.get_open_error()])
 		return false
-	file.store_string(JSON.stringify(serialize_state()))
+	var text := JSON.stringify(serialize_state())
+	file.store_string(text)
+	Events.trace.emit("save", "Gravado %s: %d KB em %.0f ms" % [path, text.length() / 1024, float(Time.get_ticks_usec() - t0) / 1000.0])
 	return true
 
 
 func load_game(path: String = SAVE_PATH) -> bool:
+	var t0 := Time.get_ticks_usec()
 	if not FileAccess.file_exists(path):
+		Events.trace.emit("load", "Save inexistente: %s" % path)
 		return false
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
+		Events.trace.emit("load", "FALHA ao abrir %s (erro %d)" % [path, FileAccess.get_open_error()])
 		return false
-	var data: Variant = JSON.parse_string(file.get_as_text())
+	var raw := file.get_as_text()
+	var data: Variant = JSON.parse_string(raw)
 	if typeof(data) != TYPE_DICTIONARY:
+		Events.trace.emit("load", "FALHA: save corrompido ou não é JSON (%d KB)" % [raw.length() / 1024])
 		return false
 	var dict: Dictionary = data
-	return load_state(dict)
+	var ok := load_state(dict)
+	Events.trace.emit("load", "%s: %d KB em %.0f ms" % ["Carregado" if ok else "FALHA em load_state", raw.length() / 1024, float(Time.get_ticks_usec() - t0) / 1000.0])
+	return ok

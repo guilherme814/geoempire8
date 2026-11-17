@@ -31,6 +31,7 @@ func _ready() -> void:
 
 
 func _step(splash: SplashScreen, p: float, text: String) -> void:
+	Events.trace.emit("boot", "%s (%.0f%%, %d ms desde o início)" % [text, p * 100.0, Time.get_ticks_msec()])
 	if splash != null and is_instance_valid(splash):
 		splash.set_progress(p, text)
 
@@ -99,6 +100,7 @@ func _is_over_ui(pos: Vector2) -> bool:
 
 
 func _open_main_menu() -> void:
+	Events.trace.emit("tela", "Menu principal")
 	if menu != null and is_instance_valid(menu) and menu.active:
 		return
 	if select != null and is_instance_valid(select):
@@ -116,12 +118,14 @@ func _open_main_menu() -> void:
 
 
 func _on_menu_new_game() -> void:
+	Events.trace.emit("tela", "Novo jogo")
 	if menu != null and is_instance_valid(menu):
 		menu.close()
 	_open_country_select()
 
 
 func _on_menu_continue() -> void:
+	Events.trace.emit("tela", "Continuar jogo salvo")
 	if menu != null and is_instance_valid(menu):
 		menu.close()
 	hud.set_ui_visible(true)
@@ -140,6 +144,7 @@ func _open_country_select() -> void:
 
 
 func _on_select_finished() -> void:
+	Events.trace.emit("tela", "País escolhido: %s" % Game.countries[Game.player_country].tag)
 	select = null
 	if not Onboarding.tutorial_done():
 		get_tree().create_timer(1.2).timeout.connect(func():
@@ -159,6 +164,12 @@ func _on_zoom_changed(z: float) -> void:
 
 
 func _on_map_tapped(world_pos: Vector2) -> void:
+	var tpid: int = map_view.province_at(world_pos)
+	if tpid >= 0 and tpid < Game.provinces.size():
+		var tp: Province = Game.provinces[tpid]
+		Events.trace.emit("mapa", "Toque na província %d (%s, dono %s)" % [tpid, tp.name, Game.countries[tp.owner_id].tag if tp.owner_id >= 0 else "-"])
+	else:
+		Events.trace.emit("mapa", "Toque no mar/vazio")
 	# Na tela de escolha de nação, tocar no mapa escolhe o país dono da província.
 	if select != null and is_instance_valid(select) and select.active:
 		select.pick_province(map_view.province_at(world_pos))

@@ -20,6 +20,25 @@ static func record(label: String, t0: int) -> void:
 	_samples[label] = arr
 
 
+## Última amostra de uma etapa (0 se não houver).
+static func last(label: String) -> float:
+	var arr: Array = _samples.get(label, [])
+	return 0.0 if arr.is_empty() else float(arr[-1])
+
+
+## As `n` etapas mais lentas (pela última amostra): "etapa 12.3 ms, ...".
+static func slowest(prefix: String, n: int) -> String:
+	var items: Array = []
+	for k in _samples.keys():
+		if str(k).begins_with(prefix):
+			items.append([last(str(k)), str(k)])
+	items.sort_custom(func(a, b): return a[0] > b[0])
+	var parts := PackedStringArray()
+	for i in mini(n, items.size()):
+		parts.append("%s %.0f ms" % [str(items[i][1]), float(items[i][0])])
+	return ", ".join(parts)
+
+
 static func clear() -> void:
 	_samples.clear()
 

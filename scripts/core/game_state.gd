@@ -2683,64 +2683,78 @@ func _heap_pop(h: Array) -> int:
 	return top
 
 
-## Campo de abastecimento de um dono: para cada província, a melhor fonte (capital/depósito) e a
-## razão 0..100. Um Dijkstra com heap por FONTE (poucas) em vez de um por exército; vale para todos
-## os exércitos do dono. Desempate pelo menor id de fonte (determinístico).
-func _supply_field(owner: int) -> Dictionary:
-	var best: Dictionary = {}   # pid -> [ratio, src]
-	var srcs: Array = []
+## Fontes de abastecimento de um dono: {província: alcance} (capital e depósitos).
+func _supply_sources(owner: int) -> Dictionary:
+	var out: Dictionary = {}
 	for pid in countries[owner].province_ids:
-		if _supply_range_at(int(pid), owner) > 0:
-			srcs.append(int(pid))
-	srcs.sort()
-	for src in srcs:
-		var rng_: int = _supply_range_at(src, owner)
-		var limit: int = mini(SUPPLY_LIMIT, rng_ * 3 / 2)
-		var dist: Dictionary = {src: 0}
-		var heap: Array = []
-		_heap_push(heap, src)   # custo 0 << 16 | id
-		var done: Dictionary = {}
-		while not heap.is_empty():
-			var top: int = _heap_pop(heap)
-			var cur: int = top & 0xFFFF
-			var cd: int = top >> 16
-			if done.has(cur):
-				continue
-			done[cur] = true
-			var r: int = _supply_ratio(cd, rng_)
-			if r > 0:
-				var prev: Array = best.get(cur, [-1, -1])
-				if r > int(prev[0]):
-					best[cur] = [r, src]
-			for qi in provinces[cur].neighbors:
-				var qn: int = int(qi)
-				var nd: int = cd + _supply_step_cost(provinces[qn], owner)
-				if nd <= limit and nd < int(dist.get(qn, 1 << 30)):
-					dist[qn] = nd
-					_heap_push(heap, (nd << 16) | qn)
-			for qi in provinces[cur].sea_links:
-				var qs: int = int(qi)
-				var nd2: int = cd + 2 * _supply_step_cost(provinces[qs], owner)
-				if nd2 <= limit and nd2 < int(dist.get(qs, 1 << 30)):
-					dist[qs] = nd2
-					_heap_push(heap, (nd2 << 16) | qs)
-	return best
+		var r: int = _supply_range_at(int(pid), owner)
+		if r > 0:
+			out[int(pid)] = r
+	return out
+
+
+## Melhor fonte para um exército que está em `start`: Dijkstra com heap saindo dele, limitado a 1,5x
+## o maior alcance e encerrado assim que acha uma fonte com abastecimento pleno (100%).
+## Devolve [razão 0..100, província da fonte ou -1]. Desempate: primeira fonte no menor custo/id.
+@warning_ignore("integer_division")
+func _supply_route(start: int, owner: int, srcs: Dictionary) -> Array:
+	var maxr: int = 0
+	for r in srcs.values():
+		maxr = maxi(maxr, int(r))
+	var limit: int = mini(SUPPLY_LIMIT, maxr * 3 / 2)
+	var best_ratio: int = 0
+	var best_src: int = -1
+	var dist: Dictionary = {start: 0}
+	var heap: Array = []
+	_heap_push(heap, start)
+	var done: Dictionary = {}
+	while not heap.is_empty():
+		var top: int = _heap_pop(heap)
+		var cur: int = top & 0xFFFF
+		var cd: int = top >> 16
+		if done.has(cur):
+			continue
+		done[cur] = true
+		if srcs.has(cur):
+			var r2: int = _supply_ratio(cd, int(srcs[cur]))
+			if r2 > best_ratio:
+				best_ratio = r2
+				best_src = cur
+				if r2 >= 100:
+					break
+		for qi in provinces[cur].neighbors:
+			var qn: int = int(qi)
+			var nd: int = cd + _supply_step_cost(provinces[qn], owner)
+			if nd <= limit and nd < int(dist.get(qn, 1 << 30)):
+				dist[qn] = nd
+				_heap_push(heap, (nd << 16) | qn)
+		for qi in provinces[cur].sea_links:
+			var qs: int = int(qi)
+			var nd2: int = cd + 2 * _supply_step_cost(provinces[qs], owner)
+			if nd2 <= limit and nd2 < int(dist.get(qs, 1 << 30)):
+				dist[qs] = nd2
+				_heap_push(heap, (nd2 << 16) | qs)
+	return [best_ratio, best_src]
 
 
 ## Recalcula o abastecimento de todos os exércitos (a cada 5 dias). Exércitos que dividem a mesma
-## fonte repartem a capacidade dela.
+## fonte repartem a capacidade dela. Resultados por (dono, província) são reaproveitados.
 @warning_ignore("integer_division")
 func _update_supply() -> void:
 	var rows: Array = []
 	var demand: Dictionary = {}
-	var fields: Dictionary = {}
+	var srcs_by_owner: Dictionary = {}
+	var cache: Dictionary = {}
 	var ids: Array = armies.keys()
 	ids.sort()
 	for id in ids:
 		var a: Army = armies[id]
-		if not fields.has(a.owner_id):
-			fields[a.owner_id] = _supply_field(a.owner_id)
-		var hit: Array = (fields[a.owner_id] as Dictionary).get(a.province_id, [0, -1])
+		if not srcs_by_owner.has(a.owner_id):
+			srcs_by_owner[a.owner_id] = _supply_sources(a.owner_id)
+		var key: int = a.owner_id * 65536 + a.province_id
+		if not cache.has(key):
+			cache[key] = _supply_route(a.province_id, a.owner_id, srcs_by_owner[a.owner_id])
+		var hit: Array = cache[key]
 		rows.append([a, int(hit[1]), int(hit[0])])
 		if int(hit[1]) >= 0:
 			demand[int(hit[1])] = int(demand.get(int(hit[1]), 0)) + a.regiments

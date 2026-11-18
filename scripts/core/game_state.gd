@@ -2247,24 +2247,28 @@ func _simulate_month() -> void:
 
 @warning_ignore("integer_division")
 ## Condições de vitória e derrota do jogador local (determinísticas, inteiras).
-func _check_outcome() -> void:
+func _check_outcome() -> Array:
+	var fresh: Array = []
 	if lockstep or player_country < 0 or player_country >= countries.size():
-		return
+		return fresh
 	var me := countries[player_country]
 	if not me.is_alive():
 		if not defeated:
 			defeated = true
+			fresh.append("defeat")
 			Events.outcome_reached.emit("defeat")
-		return
+		return fresh
 	var owned := 0
 	for p in provinces:
 		if p.owner_id >= 0:
 			owned += 1
 	if "hegemony" not in victories and owned > 0 and me.province_ids.size() * 100 >= owned * HEGEMONY_PCT:
 		victories.append("hegemony")
+		fresh.append("hegemony")
 		Events.outcome_reached.emit("hegemony")
 	if "science" not in victories and me.tech_level() >= MAX_TECH:
 		victories.append("science")
+		fresh.append("science")
 		Events.outcome_reached.emit("science")
 	if "great_power" not in victories and clock.year >= GREAT_POWER_YEAR and clock.month == 1:
 		var rank := 1
@@ -2273,7 +2277,9 @@ func _check_outcome() -> void:
 				rank += 1
 		if rank <= 5:
 			victories.append("great_power")
+			fresh.append("great_power")
 			Events.outcome_reached.emit("great_power")
+	return fresh
 
 
 func _month_run_stage(i: int) -> void:

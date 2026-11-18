@@ -177,6 +177,15 @@ var history: Dictionary = {}       # dados históricos de 1836 por tag (data/his
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _acc: float = 0.0
+## Turno mensal fatiado: só no jogo local (não em lockstep). -1 = nenhum pendente.
+## Enquanto pendente, os dias não avançam e os comandos esperam na fila; o resultado é idêntico
+## ao turno síncrono (mesma ordem das etapas), só distribuído em vários quadros.
+var slice_months: bool = false
+var _month_stage: int = -1
+var _month_t0: int = 0
+var _cmd_queue: Array = []
+const MONTH_STAGES := 10
+const MONTH_BUDGET_US := 9000
 
 
 func _ready() -> void:
@@ -184,6 +193,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if loaded and _month_stage >= 0:
+		_run_month_slice()
+		return
 	if not loaded or lockstep or speed <= 0:
 		return
 	_acc += delta
@@ -779,6 +791,9 @@ func submit_command(cmd: Dictionary) -> void:
 
 ## Executa um comando. Chamado em todos os pares, na mesma ordem.
 func apply_command(cmd: Dictionary) -> void:
+	if _month_stage >= 0:
+		_cmd_queue.append(cmd)   # espera o fim do mês fatiado (ordem preservada)
+		return
 	var t: String = str(cmd.get("type", ""))
 	var issuer: int = int(cmd.get("issuer", -1))
 
@@ -1680,9 +1695,48 @@ func _merge_stationary(a: Army) -> void:
 func step(cmds: Array = []) -> void:
 	for c in cmds:
 		apply_command(c)
+	if _month_stage >= 0:
+		return   # mês em andamento: o tempo espera
 	frame += 1
 	if speed > 0:
 		_simulate_day()
+
+
+## Executa etapas do mês dentro de um orçamento de tempo por quadro.
+func _run_month_slice() -> void:
+	var t0: int = Time.get_ticks_usec()
+	while _month_stage >= 0:
+		_month_run_stage(_month_stage)
+		_month_stage += 1
+		if _month_stage >= MONTH_STAGES:
+			_month_stage = -1
+			PerfMonitor.record("month", _month_t0)
+			_flush_cmd_queue()
+			_acc = 0.0
+			break
+		if Time.get_ticks_usec() - t0 > MONTH_BUDGET_US:
+			break
+
+
+## Conclui na hora o mês pendente (salvar, hash, testes).
+func finish_month() -> void:
+	while _month_stage >= 0:
+		_month_run_stage(_month_stage)
+		_month_stage += 1
+		if _month_stage >= MONTH_STAGES:
+			_month_stage = -1
+	_flush_cmd_queue()
+
+
+func month_pending() -> bool:
+	return _month_stage >= 0
+
+
+func _flush_cmd_queue() -> void:
+	var q := _cmd_queue
+	_cmd_queue = []
+	for c in q:
+		apply_command(c)
 
 
 func _simulate_day() -> void:
@@ -1707,9 +1761,13 @@ func _simulate_day() -> void:
 	_advance_events()
 	Events.day_changed.emit(clock.to_dict())
 	if month_rolled:
-		t_ph = PerfMonitor.begin()
-		_simulate_month()
-		PerfMonitor.record("month", t_ph)
+		if slice_months and not lockstep:
+			_month_stage = 0
+			_month_t0 = PerfMonitor.begin()
+		else:
+			t_ph = PerfMonitor.begin()
+			_simulate_month()
+			PerfMonitor.record("month", t_ph)
 	Events.tick_advanced.emit(tick)
 	PerfMonitor.record("day", t_day)
 
@@ -2095,85 +2153,92 @@ func _advance_war() -> void:
 			Events.province_updated.emit(int(pid))
 
 
-@warning_ignore("integer_division")
 func _simulate_month() -> void:
+	for i in MONTH_STAGES:
+		_month_run_stage(i)
+
+
+@warning_ignore("integer_division")
+func _month_run_stage(i: int) -> void:
 	var tm: int = PerfMonitor.begin()
-	for p in provinces:
-		# Crescimento demográfico: +0,1% ao mês.
-		var own: int = p.owner_id
-		var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
-		p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
-		# Recuperação de mão de obra.
-		var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
-		if p.manpower < mx:
-			p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
-	PerfMonitor.record("m_prov", tm)
-	tm = PerfMonitor.begin()
-	_simulate_migration()
-	PerfMonitor.record("m_migr", tm)
-	_supply_attrition()
-	tm = PerfMonitor.begin()
-	_run_trade()
-	PerfMonitor.record("m_trade", tm)
-	tm = PerfMonitor.begin()
-	for c in countries:
-		if c.is_alive():
-			var edu := edu_levels(c)
-			var lmod := law_mods(c)
-			var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
-			c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
-			c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
-			c.lit_acc = c.lit_acc % 100
-			c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
-			_research_step(c)
-			for gi in c.law_cd.size():
-				if int(c.law_cd[gi]) > 0:
-					c.law_cd[gi] = int(c.law_cd[gi]) - 1
-	PerfMonitor.record("m_countries", tm)
-	tm = PerfMonitor.begin()
-	for c in countries:
-		if c.is_alive():
-			_update_politics(c)
-	PerfMonitor.record("m_politics", tm)
-	tm = PerfMonitor.begin()
-	# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
-	for c in countries:
-		if not c.is_alive():
-			continue
-		var e := estimate_monthly(c)
-		c.last_income = int(e["income"])
-		c.last_expense = int(e["expense"])
-		c.treasury += c.last_income - c.last_expense
-	PerfMonitor.record("m_econ", tm)
-	for c in countries:
-		if c.overlord >= 0 and c.is_alive():
-			var ov := countries[c.overlord]
-			if not ov.is_alive() or ov.stability < 15:
-				_free_vassal(c.id, false)
-				continue
-			var tribute: int = maxi(0, c.last_income) * VASSAL_TRIBUTE_PCT / 100
-			c.treasury -= tribute
-			ov.treasury += tribute
-	tm = PerfMonitor.begin()
-	_ai_peace()
-	_ai_offers()
-	PerfMonitor.record("m_aipeace", tm)
-	for k in relations.keys():
-		var v: int = int(relations[k])
-		if at_war(int(k) / 1000, int(k) % 1000):
-			continue
-		relations[k] = v - signi(v) * mini(absi(v), 2)
-	tm = PerfMonitor.begin()
-	_roll_events()
-	PerfMonitor.record("m_events", tm)
-	tm = PerfMonitor.begin()
-	EconomyManager.record_month(self)
-	PerfMonitor.record("m_record", tm)
-	tm = PerfMonitor.begin()
-	Events.month_changed.emit(clock.to_dict())
-	PerfMonitor.record("m_emit", tm)
-	for c in countries:
-		Events.treasury_changed.emit(c.id)
+	match i:
+		0:
+			for p in provinces:
+				# Crescimento demográfico: +0,1% ao mês.
+				var own: int = p.owner_id
+				var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
+				p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
+				# Recuperação de mão de obra.
+				var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
+				if p.manpower < mx:
+					p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
+			PerfMonitor.record("m_prov", tm)
+		1:
+			_simulate_migration()
+			PerfMonitor.record("m_migr", tm)
+			_supply_attrition()
+		2:
+			_run_trade()
+			PerfMonitor.record("m_trade", tm)
+		3:
+			for c in countries:
+				if c.is_alive():
+					var edu := edu_levels(c)
+					var lmod := law_mods(c)
+					var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
+					c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
+					c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
+					c.lit_acc = c.lit_acc % 100
+					c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
+					_research_step(c)
+					for gi in c.law_cd.size():
+						if int(c.law_cd[gi]) > 0:
+							c.law_cd[gi] = int(c.law_cd[gi]) - 1
+			PerfMonitor.record("m_countries", tm)
+		4:
+			for c in countries:
+				if c.is_alive():
+					_update_politics(c)
+			PerfMonitor.record("m_politics", tm)
+		5:
+			# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
+			for c in countries:
+				if not c.is_alive():
+					continue
+				var e := estimate_monthly(c)
+				c.last_income = int(e["income"])
+				c.last_expense = int(e["expense"])
+				c.treasury += c.last_income - c.last_expense
+			PerfMonitor.record("m_econ", tm)
+			for c in countries:
+				if c.overlord >= 0 and c.is_alive():
+					var ov := countries[c.overlord]
+					if not ov.is_alive() or ov.stability < 15:
+						_free_vassal(c.id, false)
+						continue
+					var tribute: int = maxi(0, c.last_income) * VASSAL_TRIBUTE_PCT / 100
+					c.treasury -= tribute
+					ov.treasury += tribute
+		6:
+			_ai_peace()
+			_ai_offers()
+			PerfMonitor.record("m_aipeace", tm)
+		7:
+			for k in relations.keys():
+				var v: int = int(relations[k])
+				if at_war(int(k) / 1000, int(k) % 1000):
+					continue
+				relations[k] = v - signi(v) * mini(absi(v), 2)
+			_roll_events()
+			PerfMonitor.record("m_events", tm)
+		8:
+			EconomyManager.record_month(self)
+			PerfMonitor.record("m_record", tm)
+		9:
+			Events.month_changed.emit(clock.to_dict())
+			PerfMonitor.record("m_emit", tm)
+			for c in countries:
+				Events.treasury_changed.emit(c.id)
 
 
 # ---------------------------------------------------------------------------
@@ -3332,6 +3397,7 @@ func _most_populous(c: Country) -> int:
 ## Hash FNV-1a do estado relevante. Todos os pares devem obter o mesmo valor
 ## no mesmo frame; se divergir, houve dessincronização.
 func state_hash() -> int:
+	finish_month()
 	var h: int = 2166136261
 	h = _mix(h, tick)
 	h = _mix(h, frame)
@@ -3629,6 +3695,8 @@ func _province_cores() -> Array:
 
 
 func load_state(d: Dictionary) -> bool:
+	_month_stage = -1
+	_cmd_queue.clear()
 	var cores: Array = d.get("cores", [])
 	for i in mini(cores.size(), provinces.size()):
 		provinces[i].core_owner = int(cores[i])
@@ -3824,6 +3892,7 @@ func load_state(d: Dictionary) -> bool:
 
 
 func save_game(path: String = SAVE_PATH) -> bool:
+	finish_month()
 	var t0 := Time.get_ticks_usec()
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

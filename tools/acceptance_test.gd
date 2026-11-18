@@ -648,6 +648,7 @@ func run_all() -> void:
 	_new_features()
 	_log_buffer()
 	_annex_batch_geometry()
+	_sliced_month()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -794,3 +795,27 @@ func _annex_batch_geometry() -> void:
 	g._refresh_country_geometry(g.countries[a])
 	check("geometria em lote igual à recalculada", b1 == g.countries[a].bounds and lp1 == g.countries[a].label_pos)
 	check("país anexado fica sem geometria", g.countries[v].bounds == Rect2())
+
+
+## Turno mensal fatiado deve dar exatamente o mesmo estado que o turno síncrono.
+func _sliced_month() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g._simulate_month()
+	var h_sync: int = g.state_hash()
+	g.load_state(blob)
+	g._month_stage = 0
+	var guard := 0
+	while g.month_pending() and guard < 50:
+		g._run_month_slice()
+		guard += 1
+	var h_sliced: int = g.state_hash()
+	check("mes fatiado gera o mesmo hash do sincrono", h_sync == h_sliced, "%d vs %d" % [h_sync, h_sliced])
+	# comandos durante o mes ficam na fila e sao aplicados depois, na ordem
+	g.load_state(blob)
+	g._month_stage = 0
+	var tax0: int = g.countries[g.player_country].tax_pct
+	g.apply_command({"type": "set_tax", "country": g.player_country, "pct": 77, "issuer": g.player_country})
+	check("comando durante o mes espera na fila", g.countries[g.player_country].tax_pct == tax0 and g._cmd_queue.size() == 1)
+	g.finish_month()
+	check("comando enfileirado e aplicado ao fim do mes", g.countries[g.player_country].tax_pct == 77 and not g.month_pending())
+	g.load_state(blob)

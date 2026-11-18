@@ -28,6 +28,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 	_boot(splash)
+	Game.slice_months = not Net.is_online()   # turno mensal fatiado só no jogo local
 
 
 func _step(splash: SplashScreen, p: float, text: String) -> void:

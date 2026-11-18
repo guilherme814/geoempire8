@@ -280,17 +280,52 @@ func _logcat_tail() -> String:
 	if OS.get_name() != "Android":
 		return ""
 	var out: Array = []
-	var code := OS.execute("logcat", ["-d", "-t", "1200", "-v", "time", "godot:V", "AndroidRuntime:E", "*:S"], out, true)
+	var code := OS.execute("logcat", ["-d", "-t", "2500", "-v", "time", "godot:V", "AndroidRuntime:E", "*:S"], out, true)
 	if code != 0 or out.is_empty():
 		return "logcat indisponível (código %d)." % code
 	var lines := str(out[0]).split("\n")
-	var keep := PackedStringArray()
-	for ln in lines:
-		if ln.contains("ERROR") or ln.contains("SCRIPT") or ln.contains("WARNING") or ln.contains("Failed") or ln.contains("FATAL") or ln.contains("Exception"):
-			keep.append(ln)
-	if keep.is_empty():
+	# Cada erro vira um bloco: a linha do erro + as linhas seguintes de pilha ("at:", GDScript backtrace…).
+	# Blocos iguais (ignorando a hora) são agrupados com contagem; guardamos a primeira e a última hora.
+	var blocks: Dictionary = {}
+	var order: Array = []
+	var i := 0
+	while i < lines.size():
+		var ln: String = lines[i]
+		if _is_err_line(ln):
+			var blk := PackedStringArray([ln.substr(19) if ln.length() > 19 else ln])
+			var j := i + 1
+			while j < lines.size() and j < i + 9 and _is_stack_line(lines[j]):
+				blk.append(lines[j].substr(19) if lines[j].length() > 19 else lines[j])
+				j += 1
+			var key := "\n".join(blk)
+			var stamp := ln.substr(0, 18) if ln.length() > 18 else ""
+			if blocks.has(key):
+				blocks[key]["n"] = int(blocks[key]["n"]) + 1
+				blocks[key]["last"] = stamp
+			else:
+				blocks[key] = {"n": 1, "first": stamp, "last": stamp}
+				order.append(key)
+			i = j
+		else:
+			i += 1
+	if order.is_empty():
 		return "logcat lido (%d linhas): nenhum erro/aviso do Godot." % lines.size()
-	return "logcat: %d linha(s) de erro/aviso (últimas 80):\n%s" % [keep.size(), "\n".join(keep.slice(maxi(0, keep.size() - 80)))]
+	var res := "logcat: %d erro(s) distinto(s) com pilha:\n" % order.size()
+	for k in order.slice(0, 40):
+		var d: Dictionary = blocks[k]
+		res += "[%s → %s] x%d\n%s\n" % [d["first"], d["last"], d["n"], k]
+	return res
+
+
+func _is_err_line(ln: String) -> bool:
+	return ln.contains("ERROR") or ln.contains("SCRIPT") or ln.contains("WARNING") or ln.contains("Failed") or ln.contains("FATAL") or ln.contains("Exception")
+
+
+func _is_stack_line(ln: String) -> bool:
+	var t := ln.strip_edges()
+	if _is_err_line(ln):
+		return false
+	return t.contains("at:") or t.contains("GDScript") or t.contains("<C++") or t.contains("<Stack") or t.contains("Source>") or t.contains("Error>") or t.begins_with("[")
 
 
 func _ctx() -> String:
@@ -516,6 +551,7 @@ func build_report(reason: String) -> String:
 	var header := {
 		"Versão": str(ProjectSettings.get_setting("application/config/version", "?")),
 		"Sessão": session_stamp,
+		"Relógio (hora do aparelho = tempo do log + deslocamento)": "log 00:00:00.000 = %s − %d ms" % [Time.get_time_string_from_system(), Time.get_ticks_msec()],
 		"Motivo da exportação": reason,
 		"Tempo de sessão": LogBuffer.fmt_time(Time.get_ticks_msec()),
 		"Aparelho": device_summary(),

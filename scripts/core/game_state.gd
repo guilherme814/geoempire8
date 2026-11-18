@@ -109,6 +109,13 @@ const DRILL_LOSS_PCT := 10       # -% de perdas em batalha por nível de instru�
 const AID_COST := 200            # custo da ajuda financeira
 const AID_GIFT := 120            # o que o país ajudado recebe
 const AID_OPINION := 25
+const SPY_COST := 300            # custo de uma operação de espionagem
+const SPY_COOLDOWN := 6          # meses entre operações
+const SPY_CHANCE := [55, 50, 50] # chance de sucesso (%) por operação
+const SPY_TECH_GAIN := 60        # pontos de tecnologia roubados
+const SPY_SABOTAGE_PCT := 12     # % do tesouro do alvo destruído
+const SPY_UNREST := 8            # queda de satisfação de todos os grupos
+const SPY_CAUGHT_OPINION := 30   # perda de opinião se o agente é capturado
 const SCIENCE_ALLY_PCT := 10     # +% de pesquisa por aliado mais avançado (até 3)
 const ALLIANCE_MIN_OPINION := 40
 const VASSAL_TRIBUTE_PCT := 25     # % da renda do vassalo enviada ao suserano
@@ -184,6 +191,8 @@ var slice_months: bool = false
 var _month_stage: int = -1
 var _month_t0: int = 0
 var _cmd_queue: Array = []
+## Contador de comandos aplicados (só para a interface saber se algo mudou; fora do save e do hash).
+var cmd_seq: int = 0
 const MONTH_STAGES := 10
 const MONTH_BUDGET_US := 9000
 
@@ -794,6 +803,7 @@ func apply_command(cmd: Dictionary) -> void:
 	if _month_stage >= 0:
 		_cmd_queue.append(cmd)   # espera o fim do mês fatiado (ordem preservada)
 		return
+	cmd_seq += 1
 	var t: String = str(cmd.get("type", ""))
 	var issuer: int = int(cmd.get("issuer", -1))
 
@@ -1044,6 +1054,35 @@ func apply_command(cmd: Dictionary) -> void:
 		countries[issuer].treasury -= AID_COST
 		countries[target].treasury += AID_GIFT
 		relations[_pair(issuer, target)] = mini(100, opinion(issuer, target) + AID_OPINION)
+		Events.treasury_changed.emit(issuer)
+		Events.treasury_changed.emit(target)
+		Events.war_changed.emit()
+
+	elif t == Cmd.SPY:
+		var target: int = int(cmd.get("target", -1))
+		var op: int = clampi(int(cmd.get("op", 0)), 0, 2)
+		if not can_spy(issuer, target):
+			return
+		var spy_me := countries[issuer]
+		var spy_tg := countries[target]
+		spy_me.treasury -= SPY_COST
+		spy_me.spy_cd = SPY_COOLDOWN
+		var win := rng.randi_range(0, 99) < int(SPY_CHANCE[op]) + mini(15, spy_me.literacy / 8) - mini(15, spy_tg.literacy / 8)
+		if win:
+			if op == 0:
+				spy_me.tech_pts = mini(TECH_BANK_MAX, spy_me.tech_pts + SPY_TECH_GAIN)
+			elif op == 1:
+				spy_tg.treasury -= maxi(0, spy_tg.treasury) * SPY_SABOTAGE_PCT / 100
+			else:
+				for gi in 6:
+					spy_tg.sat[gi] = clampi(int(spy_tg.sat[gi]) - SPY_UNREST, 0, 100)
+				spy_tg.stability = int(politics_of(spy_tg)["stability"])
+		else:
+			relations[_pair(issuer, target)] = maxi(-100, opinion(issuer, target) - SPY_CAUGHT_OPINION)
+		if is_human(issuer):
+			Events.notice.emit(("Operação bem-sucedida contra %s." if win else "Seu agente foi capturado em %s!") % spy_tg.name)
+		elif is_human(target) and not win:
+			Events.notice.emit("Agentes de %s foram capturados em seu território." % spy_me.name)
 		Events.treasury_changed.emit(issuer)
 		Events.treasury_changed.emit(target)
 		Events.war_changed.emit()
@@ -1403,6 +1442,13 @@ func can_repay_loan(cid: int) -> bool:
 	return countries[cid].debt > 0 and countries[cid].treasury >= mini(LOAN_STEP, countries[cid].debt)
 
 
+func can_spy(issuer: int, target: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	return countries[issuer].is_alive() and countries[target].is_alive() \
+		and countries[issuer].spy_cd <= 0 and countries[issuer].treasury >= SPY_COST
+
+
 func can_send_aid(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
@@ -1632,13 +1678,13 @@ func eta_days(a: Army) -> int:
 	return days
 
 
-func _order_move(a: Army, dest: int) -> void:
+func _order_move(a: Army, dest: int, max_hops: int = 0) -> void:
 	var start := a.province_id
 	if a.is_moving():
 		start = a.path[0]   # só dá para redirecionar a partir da próxima província
 	var ids := find_path(start, dest)
-	if ids.is_empty():
-		return
+	if ids.is_empty() or (max_hops > 0 and ids.size() > max_hops):
+		return   # IA: não marcha por rotas absurdamente longas
 	if a.is_moving():
 		a.path = ids        # ids[0] == start == path[0]; o trecho atual continua
 	else:
@@ -2191,6 +2237,7 @@ func _month_run_stage(i: int) -> void:
 					c.lit_acc = c.lit_acc % 100
 					c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
 					_research_step(c)
+					c.spy_cd = maxi(0, c.spy_cd - 1)
 					for gi in c.law_cd.size():
 						if int(c.law_cd[gi]) > 0:
 							c.law_cd[gi] = int(c.law_cd[gi]) - 1
@@ -3479,6 +3526,7 @@ func state_hash() -> int:
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.research_pct)
 		h = _mix(h, c.debt * 5 + c.drill)
+		h = _mix(h, c.spy_cd)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -3652,6 +3700,7 @@ func serialize_state() -> Dictionary:
 		"research_pct": _country_ints("research_pct"),
 		"debt": _country_ints("debt"),
 		"drill": _country_ints("drill"),
+		"spy_cd": _country_ints("spy_cd"),
 		"immigration": _country_ints("immigration"),
 		"migr_in": _country_ints("migr_in"),
 		"migr_out": _country_ints("migr_out"),
@@ -3819,9 +3868,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].research_pct = int(rsp[i]) if i < rsp.size() else 0
 	var dbt: Array = d.get("debt", [])
 	var drl: Array = d.get("drill", [])
+	var spc: Array = d.get("spy_cd", [])
 	for i in countries.size():
 		countries[i].debt = int(dbt[i]) if i < dbt.size() else 0
 		countries[i].drill = int(drl[i]) if i < drl.size() else 0
+		countries[i].spy_cd = int(spc[i]) if i < spc.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

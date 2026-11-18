@@ -78,6 +78,8 @@ var _speed_buttons: Array[Button] = []
 # Barra lateral e janelas
 var _side_btns: Dictionary = {}
 var _windows: Dictionary = {}
+var _win_sig: Dictionary = {}   # assinatura do estado quando cada painel foi montado
+var _world_rev: int = 0
 var _win_bodies: Dictionary = {}
 
 # Lista de exércitos / guerras
@@ -730,15 +732,27 @@ func _toggle_window(key: String) -> void:
 	if not win.visible:
 		return
 	var t0: int = PerfMonitor.begin()
-	_refresh_windows()
-	PerfMonitor.record("panel_" + key, t0)
-	Events.trace.emit("ui", "Painel '%s' aberto (montagem %.0f ms)" % [key, PerfMonitor.last("panel_" + key)])
+	if _win_sig.get(key) == _state_sig():
+		PerfMonitor.record("panel_" + key, t0)
+		Events.trace.emit("ui", "Painel '%s' aberto (cache, estado inalterado)" % key)
+	else:
+		_refresh_windows()
+		PerfMonitor.record("panel_" + key, t0)
+		Events.trace.emit("ui", "Painel '%s' aberto (montagem %.0f ms)" % [key, PerfMonitor.last("panel_" + key)])
 	create_tween().tween_property(win, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _state_sig() -> Array:
+	return [Game.cmd_seq, Game.clock.year, Game.clock.month, Game.clock.day, _world_rev, Game.player_country]
 
 
 func _refresh_windows() -> void:
 	if _windows.is_empty():
 		return
+	var sig := _state_sig()
+	for k in _windows.keys():
+		if _windows[k].visible:
+			_win_sig[k] = sig
 	if _windows["tech"].visible:
 		_refresh_tech()
 	if _windows["eco"].visible:
@@ -2154,6 +2168,7 @@ var _prov_refresh_queued := false
 
 
 func _on_province_updated(_pid: int) -> void:
+	_world_rev += 1
 	if _prov_refresh_queued:
 		return
 	_prov_refresh_queued = true
@@ -2426,6 +2441,11 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 	var b1b := _info_button("Enviar ajuda (%d)" % Game.AID_COST, bs, _diplo_cmd.bind(Cmd.send_aid(t)), grid)
 	b1b.disabled = not Game.can_send_aid(me, t)
 	b1b.tooltip_text = "O país recebe %d de ouro e a opinião dele sobre você sobe %d." % [Game.AID_GIFT, Game.AID_OPINION]
+	var spy_names := ["Roubar tecnologia", "Sabotar economia", "Insuflar revolta"]
+	for oi in 3:
+		var sb := _info_button("%s (%d)" % [spy_names[oi], Game.SPY_COST], bs, _diplo_cmd.bind(Cmd.spy(t, oi)), grid)
+		sb.disabled = not Game.can_spy(me, t)
+		sb.tooltip_text = "Espionagem: chance base %d%% (alfabetização pesa). Falhar custa %d de opinião. Espera: %d meses (restam %d)." % [int(Game.SPY_CHANCE[oi]), Game.SPY_CAUGHT_OPINION, Game.SPY_COOLDOWN, Game.countries[me].spy_cd]
 	var is_ally := Game.allied(me, t)
 	var vassal_pair := tc.overlord == me or Game.countries[me].overlord == t
 	var b2 := _info_button("Romper aliança" if is_ally else "Propor aliança", bs,

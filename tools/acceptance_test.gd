@@ -649,6 +649,7 @@ func run_all() -> void:
 	_log_buffer()
 	_annex_batch_geometry()
 	_sliced_month()
+	_espionage()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -819,3 +820,29 @@ func _sliced_month() -> void:
 	g.finish_month()
 	check("comando enfileirado e aplicado ao fim do mes", g.countries[g.player_country].tax_pct == 77 and not g.month_pending())
 	g.load_state(blob)
+
+
+func _espionage() -> void:
+	var me: int = g.player_country
+	var other := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != me:
+			other = c.id
+			break
+	if other < 0:
+		return
+	var c: Country = g.countries[me]
+	c.treasury = 1000
+	c.spy_cd = 0
+	var op0: int = g.opinion(me, other)
+	g.apply_command({"type": "spy", "target": other, "op": 0, "issuer": me})
+	check("espionagem cobra custo e inicia espera", c.treasury == 1000 - g.SPY_COST and c.spy_cd == g.SPY_COOLDOWN)
+	var t1: int = c.treasury
+	g.apply_command({"type": "spy", "target": other, "op": 1, "issuer": me})
+	check("espionagem bloqueada durante a espera", c.treasury == t1)
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.load_state(blob)
+	check("espera de espionagem persiste no save", g.countries[me].spy_cd == g.SPY_COOLDOWN)
+	g._simulate_month()
+	check("espera de espionagem diminui por mes", g.countries[me].spy_cd == g.SPY_COOLDOWN - 1)
+	g.countries[me].spy_cd = 0

@@ -44,6 +44,7 @@ const TAKE_LOAN := "take_loan"
 const REPAY_LOAN := "repay_loan"
 const SET_DRILL := "set_drill"
 const SEND_AID := "send_aid"
+const SPY := "spy"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
@@ -59,6 +60,11 @@ static func repay_loan() -> Dictionary:
 ## Instrução das tropas: 0 recrutas, 1 regulares, 2 elite.
 static func set_drill(level: int) -> Dictionary:
 	return {"type": SET_DRILL, "level": level}
+
+
+## Operação de espionagem contra outro país (op: 0 roubar tecnologia, 1 sabotar economia, 2 insuflar descontentamento).
+static func spy(target: int, op: int) -> Dictionary:
+	return {"type": SPY, "target": target, "op": op}
 
 
 ## Ajuda financeira a outro país (melhora a opinião).

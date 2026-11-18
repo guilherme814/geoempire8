@@ -146,10 +146,13 @@ static func _fallback(g: Node, a, c, own_regs: Dictionary, enemy_regs: Dictionar
 	return best
 
 
+const AI_MAX_HOPS := 30
+
+
 static func _go(g: Node, a, dest: int, why: String) -> void:
 	if dest < 0 or dest == a.province_id:
 		return
-	g._order_move(a, dest)
+	g._order_move(a, dest, AI_MAX_HOPS)
 	g.ai_notes[a.id] = why
 
 

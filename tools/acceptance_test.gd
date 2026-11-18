@@ -879,11 +879,14 @@ func _infamy_and_outcomes() -> void:
 			break
 	if other >= 0:
 		g.countries[me].treasury = 100000
-		check("paria nao consegue melhorar relacoes nem ajudar", not g.can_improve(me, other) and not g.can_send_aid(me, other) and not g.can_ally(me, other))
-		var op0: int = g.opinion(me, other)
+		g.countries[other].treasury = 100000
+		check("ninguem melhora relacoes, ajuda ou alia com um paria", not g.can_improve(other, me) and not g.can_send_aid(other, me) and not g.can_ally(other, me))
+		g.countries[me].infamy = 10
+		check("sem infamia alta, melhorar relacoes volta a ser possivel", g.can_improve(other, me) or g.opinion(other, me) >= 100)
+		g.relations[g._pair(me, other)] = 50
 		g.countries[me].infamy = g.INFAMY_BAD
 		g._simulate_month()
-		check("mal visto perde opiniao a cada mes", g.opinion(me, other) < op0 or op0 <= -100)
+		check("mal visto perde 1 de opiniao por mes alem do decaimento", g.opinion(me, other) == 50 - 2 - 1, "%d" % g.opinion(me, other))
 	g.countries[me].infamy = 10
 	g._simulate_month()
 	check("infamia decai por mes", g.countries[me].infamy == 10 - g.INFAMY_DECAY)

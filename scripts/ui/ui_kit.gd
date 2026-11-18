@@ -187,8 +187,11 @@ static func kv_row(key: String, value: String, color: Color = TEXT, size: int = 
 
 
 static func clear(node: Node) -> void:
+	# Esconde e libera no fim do quadro, sem tirar da árvore antes: nós "soltos" ainda não liberados
+	# recebiam chamadas do motor fora da árvore (erro nativo !is_inside_tree em can_process).
 	for ch in node.get_children():
-		node.remove_child(ch)
+		if ch is CanvasItem:
+			(ch as CanvasItem).hide()
 		ch.queue_free()
 
 

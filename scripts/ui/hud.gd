@@ -198,6 +198,7 @@ func _ready() -> void:
 	Events.army_removed.connect(_on_army_removed)
 	Events.command_applied.connect(_on_command_applied)
 	Events.state_loaded.connect(_refresh_all)
+	Events.outcome_reached.connect(_on_outcome, CONNECT_DEFERRED)
 	_refresh_all()
 
 
@@ -2121,9 +2122,48 @@ func _input(event: InputEvent) -> void:
 		Game.submit_command(Cmd.set_speed(clampi(Game.speed - 1, 1, Game.MAX_SPEED)))
 
 
+func _notification(what: int) -> void:
+	# O Android pode encerrar o app em segundo plano: grava um autosave ao sair para o fundo.
+	if what == NOTIFICATION_APPLICATION_PAUSED and _root != null and _root.visible and Game.loaded and not Net.is_online():
+		_autosave_deferred()
+
+
+const OUTCOME_TEXT := {
+	"defeat": ["Fim de jogo", "Seu país foi extinto.", "Seu último território caiu. A história seguiu sem você, mas você pode observar o mundo ou recomeçar."],
+	"hegemony": ["Vitória: Hegemonia", "Você domina o mundo.", "Seu país controla um quarto de todas as províncias do planeta. Nenhuma potência ousa desafiá-lo."],
+	"science": ["Vitória: Era da Ciência", "Seu povo alcançou o ápice do conhecimento.", "Você dominou todas as eras de tecnologia. O futuro pertence ao seu país."],
+	"great_power": ["Vitória: Grande Potência", "Entre as cinco maiores nações.", "Na virada do século, seu país figura entre as cinco maiores potências do mundo em território."],
+}
+
+
+func _on_outcome(kind: String) -> void:
+	if not OUTCOME_TEXT.has(kind) or Game.lockstep:
+		return
+	Game.submit_command(Cmd.set_speed(0))
+	var t: Array = OUTCOME_TEXT[kind]
+	var m := ModalCard.new()
+	add_child(m)
+	var btns: Array = []
+	if kind == "defeat":
+		btns.append({"text": "Menu principal", "primary": true, "cb": func(): main_menu_requested.emit()})
+		btns.append({"text": "Observar o mundo", "cb": func(): pass})
+	else:
+		btns.append({"text": "Continuar jogando", "primary": true, "cb": func(): pass})
+	m.show_text(str(t[0]), str(t[1]), str(t[2]), btns)
+	Events.trace.emit("ui", "Resultado: %s" % kind)
+
+
+func _autosave_deferred() -> void:
+	if Game.month_pending():
+		return   # nunca grava com o mês pela metade; o próximo trimestre tenta de novo
+	var t0: int = PerfMonitor.begin()
+	Game.autosave()
+	PerfMonitor.record("autosave", t0)
+
+
 func _on_month_changed(_date: Dictionary) -> void:
-	if int(_date.get("month", 0)) == 1 and not Net.is_online() and _root.visible:
-		Game.save_game("user://autosave.json")   # autosave anual (só local)
+	if int(_date.get("month", 0)) % 3 == 1 and not Net.is_online() and _root.visible:
+		_autosave_deferred.call_deferred()   # trimestral (só local); fora do sinal para não reentrar no mês
 	_check_succession()
 	_refresh_top()
 	_refresh_info()
@@ -2421,6 +2461,9 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 	card.add_child(UIKit.kv_row("Situação", str(st[0]), st[1]))
 	var op := Game.opinion(me, t)
 	card.add_child(UIKit.kv_row("Opinião sobre você", "%+d" % op, UIKit.POS if op > 10 else (UIKit.NEG if op < -10 else UIKit.TEXT)))
+	var inf: int = tc.infamy
+	var inf_state := "pária" if inf >= Game.INFAMY_PARIAH else ("mal visto" if inf >= Game.INFAMY_BAD else "respeitado")
+	card.add_child(UIKit.kv_row("Infâmia", "%d (%s)" % [inf, inf_state], UIKit.NEG if inf >= Game.INFAMY_BAD else UIKit.TEXT))
 	card.add_child(UIKit.kv_row("Províncias · exércitos · navios", "%d · %d · %d" % [tc.province_ids.size(), Game.regiments_of(t), tc.ships]))
 	card.add_child(UIKit.kv_row("Seu exército · navios", "%d · %d" % [Game.regiments_of(me), Game.countries[me].ships]))
 	if tc.overlord == me:

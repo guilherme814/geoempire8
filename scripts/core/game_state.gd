@@ -12,6 +12,8 @@ extends Node
 const WORLD_PATH := "res://data/world.json"
 const EVENTS_PATH := "res://data/events.json"
 const SAVE_PATH := "user://savegame.json"
+const AUTOSAVE_PATH := "user://autosave.json"
+const AUTOSAVE_PREV := "user://autosave_prev.json"
 const EVENT_DECISION_DAYS := 30   # sem escolha, vale a 1ª opção (também vale para países sem jogador)
 
 ## Dias simulados por segundo em cada velocidade (0 = pausado).
@@ -109,6 +111,14 @@ const DRILL_LOSS_PCT := 10       # -% de perdas em batalha por nível de instru�
 const AID_COST := 200            # custo da ajuda financeira
 const AID_GIFT := 120            # o que o país ajudado recebe
 const AID_OPINION := 25
+const INFAMY_WAR := 20           # declarar guerra
+const INFAMY_ANNEX := 30         # anexar um país na paz
+const INFAMY_DECAY := 2          # queda mensal
+const INFAMY_BAD := 50           # mal visto: todos perdem opinião sobre o país a cada mês
+const INFAMY_PARIAH := 100       # pária: ninguém aceita aliança, ajuda ou melhora de relações
+const INFAMY_MAX := 300
+const HEGEMONY_PCT := 25         # % das províncias do mundo para a vitória por hegemonia
+const GREAT_POWER_YEAR := 1900   # ano em que se avalia a vitória "Grande Potência" (top 5 em províncias)
 const SPY_COST := 300            # custo de uma operação de espionagem
 const SPY_COOLDOWN := 6          # meses entre operações
 const SPY_CHANCE := [55, 50, 50] # chance de sucesso (%) por operação
@@ -189,8 +199,13 @@ var _acc: float = 0.0
 ## ao turno síncrono (mesma ordem das etapas), só distribuído em vários quadros.
 var slice_months: bool = false
 var _month_stage: int = -1
+var _month_running: bool = false   # true enquanto uma etapa do mês executa (proteção contra reentrada)
+var month_hook: Callable = Callable()   # só para testes: chamado ao fim da última etapa
 var _month_t0: int = 0
 var _cmd_queue: Array = []
+## Conquistas do jogador local (vitórias já alcançadas e derrota); fazem parte do save e do hash.
+var victories: Array = []
+var defeated: bool = false
 ## Contador de comandos aplicados (só para a interface saber se algo mudou; fora do save e do hash).
 var cmd_seq: int = 0
 const MONTH_STAGES := 10
@@ -1292,6 +1307,7 @@ func _free_vassal(v: int, friendly: bool) -> void:
 
 ## Anexa o país inteiro: províncias, exércitos e frota passam ao anexador.
 func _annex_country(o: int, v: int) -> void:
+	_add_infamy(o, INFAMY_ANNEX)
 	for pid in countries[v].province_ids.duplicate():
 		transfer_province(int(pid), o, false)   # geometria refeita uma vez no fim (resultado idêntico)
 	_refresh_country_geometry(countries[v])
@@ -1452,14 +1468,14 @@ func can_spy(issuer: int, target: int) -> bool:
 func can_send_aid(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
-	return countries[target].is_alive() and not at_war(issuer, target) \
+	return countries[target].is_alive() and not at_war(issuer, target) and countries[target].infamy < INFAMY_PARIAH \
 		and countries[issuer].treasury >= AID_COST and opinion(issuer, target) < 100
 
 
 func can_improve(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
-	return countries[target].is_alive() and not at_war(issuer, target) \
+	return countries[target].is_alive() and not at_war(issuer, target) and countries[target].infamy < INFAMY_PARIAH \
 		and countries[issuer].treasury >= IMPROVE_COST and opinion(issuer, target) < 100
 
 
@@ -1467,11 +1483,26 @@ func can_ally(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
 	return countries[target].is_alive() and not at_war(issuer, target) and not allied(issuer, target) \
-		and countries[issuer].overlord < 0 and countries[target].overlord < 0
+		and countries[issuer].overlord < 0 and countries[target].overlord < 0 \
+		and countries[issuer].infamy < INFAMY_PARIAH and countries[target].infamy < INFAMY_PARIAH
 
 
 ## Declara a guerra e chama os aliados do alvo (defensivo).
+func _add_infamy(cid: int, amount: int) -> void:
+	if cid < 0 or cid >= countries.size():
+		return
+	var c := countries[cid]
+	var before := c.infamy
+	c.infamy = clampi(c.infamy + amount, 0, INFAMY_MAX)
+	if cid == player_country and before < INFAMY_PARIAH and c.infamy >= INFAMY_PARIAH:
+		Events.notice.emit("Sua infâmia chegou a %d: você é um pária internacional!" % c.infamy)
+	elif cid == player_country and before < INFAMY_BAD and c.infamy >= INFAMY_BAD:
+		Events.notice.emit("Sua infâmia chegou a %d: o mundo desconfia de você." % c.infamy)
+
+
 func _start_war(attacker: int, target: int) -> void:
+	if loaded:
+		_add_infamy(attacker, INFAMY_WAR)
 	wars.append(_new_war(attacker, target))
 	relations[_pair(attacker, target)] = -100
 	if attacker == player_country or target == player_country:
@@ -1750,28 +1781,38 @@ func step(cmds: Array = []) -> void:
 
 ## Executa etapas do mês dentro de um orçamento de tempo por quadro.
 func _run_month_slice() -> void:
+	if _month_running:
+		return
 	var t0: int = Time.get_ticks_usec()
-	while _month_stage >= 0:
-		_month_run_stage(_month_stage)
-		_month_stage += 1
-		if _month_stage >= MONTH_STAGES:
-			_month_stage = -1
-			PerfMonitor.record("month", _month_t0)
-			_flush_cmd_queue()
+	while _month_stage >= 0 and not _month_running:
+		_step_month_stage()
+		if _month_stage < 0:
 			_acc = 0.0
 			break
 		if Time.get_ticks_usec() - t0 > MONTH_BUDGET_US:
 			break
 
 
-## Conclui na hora o mês pendente (salvar, hash, testes).
+## Roda UMA etapa. O índice avança ANTES de executar: se algo chamado durante a etapa
+## (ouvintes de sinal, autosave, hash) pedir finish_month(), não reexecuta a etapa em curso
+## (isso causava recursão infinita no autosave de janeiro).
+func _step_month_stage() -> void:
+	var i := _month_stage
+	_month_stage = i + 1 if i + 1 < MONTH_STAGES else -1
+	_month_running = true
+	_month_run_stage(i)
+	_month_running = false
+	if _month_stage < 0:
+		PerfMonitor.record("month", _month_t0)
+		_flush_cmd_queue()
+
+
+## Conclui na hora o mês pendente (salvar, hash, testes). Sem efeito se chamado de dentro de uma etapa.
 func finish_month() -> void:
+	if _month_running:
+		return
 	while _month_stage >= 0:
-		_month_run_stage(_month_stage)
-		_month_stage += 1
-		if _month_stage >= MONTH_STAGES:
-			_month_stage = -1
-	_flush_cmd_queue()
+		_step_month_stage()
 
 
 func month_pending() -> bool:
@@ -2205,6 +2246,36 @@ func _simulate_month() -> void:
 
 
 @warning_ignore("integer_division")
+## Condições de vitória e derrota do jogador local (determinísticas, inteiras).
+func _check_outcome() -> void:
+	if lockstep or player_country < 0 or player_country >= countries.size():
+		return
+	var me := countries[player_country]
+	if not me.is_alive():
+		if not defeated:
+			defeated = true
+			Events.outcome_reached.emit("defeat")
+		return
+	var owned := 0
+	for p in provinces:
+		if p.owner_id >= 0:
+			owned += 1
+	if "hegemony" not in victories and owned > 0 and me.province_ids.size() * 100 >= owned * HEGEMONY_PCT:
+		victories.append("hegemony")
+		Events.outcome_reached.emit("hegemony")
+	if "science" not in victories and me.tech_level() >= MAX_TECH:
+		victories.append("science")
+		Events.outcome_reached.emit("science")
+	if "great_power" not in victories and clock.year >= GREAT_POWER_YEAR and clock.month == 1:
+		var rank := 1
+		for c in countries:
+			if c.id != me.id and c.is_alive() and c.province_ids.size() > me.province_ids.size():
+				rank += 1
+		if rank <= 5:
+			victories.append("great_power")
+			Events.outcome_reached.emit("great_power")
+
+
 func _month_run_stage(i: int) -> void:
 	var tm: int = PerfMonitor.begin()
 	match i:
@@ -2238,6 +2309,7 @@ func _month_run_stage(i: int) -> void:
 					c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
 					_research_step(c)
 					c.spy_cd = maxi(0, c.spy_cd - 1)
+					c.infamy = maxi(0, c.infamy - INFAMY_DECAY)
 					for gi in c.law_cd.size():
 						if int(c.law_cd[gi]) > 0:
 							c.law_cd[gi] = int(c.law_cd[gi]) - 1
@@ -2276,13 +2348,21 @@ func _month_run_stage(i: int) -> void:
 				if at_war(int(k) / 1000, int(k) % 1000):
 					continue
 				relations[k] = v - signi(v) * mini(absi(v), 2)
+			for c in countries:
+				if c.is_alive() and c.infamy >= INFAMY_BAD:
+					for o in countries:
+						if o.id != c.id and o.is_alive():
+							relations[_pair(c.id, o.id)] = maxi(-100, opinion(c.id, o.id) - 1)
 			_roll_events()
 			PerfMonitor.record("m_events", tm)
 		8:
 			EconomyManager.record_month(self)
 			PerfMonitor.record("m_record", tm)
 		9:
+			_check_outcome()
 			Events.month_changed.emit(clock.to_dict())
+			if month_hook.is_valid():
+				month_hook.call()
 			PerfMonitor.record("m_emit", tm)
 			for c in countries:
 				Events.treasury_changed.emit(c.id)
@@ -3526,7 +3606,7 @@ func state_hash() -> int:
 		h = _mix(h, c.tech_pts)
 		h = _mix(h, c.research_pct)
 		h = _mix(h, c.debt * 5 + c.drill)
-		h = _mix(h, c.spy_cd)
+		h = _mix(h, c.spy_cd * 7 + c.infamy)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -3551,6 +3631,7 @@ func state_hash() -> int:
 		h = _mix(h, int(e["days"]))
 	h = _mix(h, next_event_uid)
 	h = _mix(h, rng.state & 0xFFFFFFFF)
+	h = _mix(h, victories.size() * 2 + (1 if defeated else 0))
 	return h
 
 
@@ -3701,6 +3782,9 @@ func serialize_state() -> Dictionary:
 		"debt": _country_ints("debt"),
 		"drill": _country_ints("drill"),
 		"spy_cd": _country_ints("spy_cd"),
+		"infamy": _country_ints("infamy"),
+		"victories": victories.duplicate(),
+		"defeated": defeated,
 		"immigration": _country_ints("immigration"),
 		"migr_in": _country_ints("migr_in"),
 		"migr_out": _country_ints("migr_out"),
@@ -3745,6 +3829,7 @@ func _province_cores() -> Array:
 
 func load_state(d: Dictionary) -> bool:
 	_month_stage = -1
+	_month_running = false
 	_cmd_queue.clear()
 	var cores: Array = d.get("cores", [])
 	for i in mini(cores.size(), provinces.size()):
@@ -3869,10 +3954,14 @@ func load_state(d: Dictionary) -> bool:
 	var dbt: Array = d.get("debt", [])
 	var drl: Array = d.get("drill", [])
 	var spc: Array = d.get("spy_cd", [])
+	var inf: Array = d.get("infamy", [])
+	victories = (d.get("victories", []) as Array).duplicate()
+	defeated = bool(d.get("defeated", false))
 	for i in countries.size():
 		countries[i].debt = int(dbt[i]) if i < dbt.size() else 0
 		countries[i].drill = int(drl[i]) if i < drl.size() else 0
 		countries[i].spy_cd = int(spc[i]) if i < spc.size() else 0
+		countries[i].infamy = int(inf[i]) if i < inf.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():
@@ -3945,14 +4034,57 @@ func load_state(d: Dictionary) -> bool:
 func save_game(path: String = SAVE_PATH) -> bool:
 	finish_month()
 	var t0 := Time.get_ticks_usec()
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	# Gravação atômica: escreve num arquivo temporário e só então troca pelo definitivo; um
+	# fechamento no meio da escrita nunca corrompe o save existente.
+	var tmp := path + ".tmp"
+	var file := FileAccess.open(tmp, FileAccess.WRITE)
 	if file == null:
-		Events.trace.emit("save", "FALHA ao abrir %s para gravar (erro %d)" % [path, FileAccess.get_open_error()])
+		Events.trace.emit("save", "FALHA ao abrir %s para gravar (erro %d)" % [tmp, FileAccess.get_open_error()])
 		return false
 	var text := JSON.stringify(serialize_state())
 	file.store_string(text)
+	var werr := file.get_error()
+	file.flush()
+	file.close()
+	if werr != OK:
+		Events.trace.emit("save", "FALHA ao gravar %s (erro %d)" % [tmp, werr])
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+		return false
+	var rerr := DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+	if rerr != OK:
+		# alguns sistemas não sobrescrevem no rename: remove o antigo e tenta de novo
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		rerr = DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+		if rerr != OK:
+			Events.trace.emit("save", "FALHA ao trocar %s (erro %d)" % [path, rerr])
+			return false
 	Events.trace.emit("save", "Gravado %s: %d KB em %.0f ms" % [path, text.length() / 1024, float(Time.get_ticks_usec() - t0) / 1000.0])
 	return true
+
+
+## Save mais recente entre o manual e os dois autosaves (rodízio). "" se não houver.
+func latest_save_path() -> String:
+	var best := ""
+	var best_t := -1
+	for p in [SAVE_PATH, AUTOSAVE_PATH, AUTOSAVE_PREV]:
+		if FileAccess.file_exists(p):
+			var mt: int = int(FileAccess.get_modified_time(p))
+			if mt > best_t:
+				best_t = mt
+				best = p
+	return best
+
+
+## Autosave com rodízio de 2 arquivos: o anterior vira _prev (troca de nome, sem copiar), então
+## nunca falta um save íntegro, mesmo se o app fechar no meio.
+func autosave() -> bool:
+	var had := FileAccess.file_exists(AUTOSAVE_PATH)
+	if had:
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(AUTOSAVE_PATH), ProjectSettings.globalize_path(AUTOSAVE_PREV))
+	var ok := save_game(AUTOSAVE_PATH)
+	if not ok and had and not FileAccess.file_exists(AUTOSAVE_PATH):
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(AUTOSAVE_PREV), ProjectSettings.globalize_path(AUTOSAVE_PATH))
+	return ok
 
 
 func load_game(path: String = SAVE_PATH) -> bool:

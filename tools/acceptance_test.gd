@@ -650,6 +650,7 @@ func run_all() -> void:
 	_annex_batch_geometry()
 	_sliced_month()
 	_espionage()
+	_infamy_and_outcomes()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -814,6 +815,15 @@ func _sliced_month() -> void:
 	# comandos durante o mes ficam na fila e sao aplicados depois, na ordem
 	g.load_state(blob)
 	g._month_stage = 0
+	# Regressao: autosave/hash chamados DURANTE a ultima etapa (ouvinte de month_changed) nao podem recursar.
+	g.load_state(blob)
+	g._month_stage = 0
+	g.month_hook = func(): g.state_hash(); g.save_game("user://_t_reentry.json")
+	g.finish_month()
+	g.month_hook = Callable()
+	check("autosave durante o mes nao recursa (reentrada)", not g.month_pending() and not g._month_running)
+	g.load_state(blob)
+	g._month_stage = 0
 	var tax0: int = g.countries[g.player_country].tax_pct
 	g.apply_command({"type": "set_tax", "country": g.player_country, "pct": 77, "issuer": g.player_country})
 	check("comando durante o mes espera na fila", g.countries[g.player_country].tax_pct == tax0 and g._cmd_queue.size() == 1)
@@ -846,3 +856,70 @@ func _espionage() -> void:
 	g._simulate_month()
 	check("espera de espionagem diminui por mes", g.countries[me].spy_cd == g.SPY_COOLDOWN - 1)
 	g.countries[me].spy_cd = 0
+
+
+func _infamy_and_outcomes() -> void:
+	var me: int = g.player_country
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	# --- infamia
+	var tgt := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != me and not g.at_war(me, c.id) and g.can_declare_war(me, c.id):
+			tgt = c.id
+			break
+	if tgt >= 0:
+		var i0: int = g.countries[me].infamy
+		g._start_war(me, tgt)
+		check("declarar guerra aumenta a infamia", g.countries[me].infamy == i0 + g.INFAMY_WAR)
+	g.countries[me].infamy = 120
+	var other := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != me and not g.at_war(me, c.id):
+			other = c.id
+			break
+	if other >= 0:
+		g.countries[me].treasury = 100000
+		check("paria nao consegue melhorar relacoes nem ajudar", not g.can_improve(me, other) and not g.can_send_aid(me, other) and not g.can_ally(me, other))
+		var op0: int = g.opinion(me, other)
+		g.countries[me].infamy = g.INFAMY_BAD
+		g._simulate_month()
+		check("mal visto perde opiniao a cada mes", g.opinion(me, other) < op0 or op0 <= -100)
+	g.countries[me].infamy = 10
+	g._simulate_month()
+	check("infamia decai por mes", g.countries[me].infamy == 10 - g.INFAMY_DECAY)
+	var blob_i: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.countries[me].infamy = 77
+	g.load_state(blob_i)
+	check("infamia persiste no save", g.countries[me].infamy == 10 - g.INFAMY_DECAY)
+	# --- vitorias / derrota
+	g.load_state(blob)
+	var got: Array = []
+	var cb := func(k: String): got.append(k)
+	Events.outcome_reached.connect(cb)
+	var n := 0
+	for p in g.provinces:
+		if p.owner_id >= 0 and p.owner_id != me:
+			g.transfer_province(p.id, me, false)
+			n += 1
+			if g.countries[me].province_ids.size() * 100 >= g.provinces.size() * g.HEGEMONY_PCT:
+				break
+	g._check_outcome()
+	check("vitoria por hegemonia ao dominar 25% do mundo", got.has("hegemony") and g.victories.has("hegemony"))
+	got.clear()
+	g._check_outcome()
+	check("vitoria so e anunciada uma vez", got.is_empty())
+	var blob_v: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.victories.clear()
+	g.load_state(blob_v)
+	check("vitorias persistem no save", g.victories.has("hegemony"))
+	g.load_state(blob)
+	for pid in g.countries[me].province_ids.duplicate():
+		g.transfer_province(int(pid), (me + 1) % g.countries.size(), false)
+	g._check_outcome()
+	check("derrota ao perder todas as provincias", got.has("defeat") and g.defeated)
+	Events.outcome_reached.disconnect(cb)
+	g.load_state(blob)
+	# --- save atomico
+	var path := "user://_t_atomic.json"
+	check("save atomico grava e nao deixa .tmp", g.save_game(path) and FileAccess.file_exists(path) and not FileAccess.file_exists(path + ".tmp"))
+	g.load_state(blob)

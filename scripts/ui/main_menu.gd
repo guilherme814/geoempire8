@@ -223,9 +223,10 @@ func _exit_tree() -> void:
 
 # ---------------------------------------------------------------------------
 func _save_subtitle() -> String:
-	if not FileAccess.file_exists(Game.SAVE_PATH):
+	var sp: String = Game.latest_save_path()
+	if sp == "":
 		return "Nenhuma campanha salva"
-	var f := FileAccess.open(Game.SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(sp, FileAccess.READ)
 	if f == null:
 		return "Retome sua campanha"
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
@@ -279,7 +280,7 @@ func _build_menu() -> void:
 	sp.custom_minimum_size = Vector2(0, 8)
 	col.add_child(sp)
 
-	var has_save: bool = FileAccess.file_exists(Game.SAVE_PATH)
+	var has_save: bool = Game.latest_save_path() != ""
 	_btn_continue = _menu_card("play", "Continuar Jogo", _save_subtitle(), has_save)
 	_btn_continue.disabled = not has_save
 	_btn_continue.pressed.connect(_on_continue)
@@ -638,9 +639,17 @@ func _show_credits() -> void:
 
 
 func _on_continue() -> void:
-	if Game.load_game():
-		continue_pressed.emit()
-	else:
+	# Tenta o save mais recente; se estiver corrompido (ex.: travou ao gravar), tenta os outros.
+	var tried: Array = []
+	var first: String = Game.latest_save_path()
+	for p in [first, Game.AUTOSAVE_PATH, Game.AUTOSAVE_PREV, Game.SAVE_PATH]:
+		if p == "" or tried.has(p) or not FileAccess.file_exists(p):
+			continue
+		tried.append(p)
+		if Game.load_game(p):
+			continue_pressed.emit()
+			return
+	if true:
 		_msg.text = "Não foi possível carregar o save."
 
 

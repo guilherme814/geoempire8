@@ -51,6 +51,15 @@ func add(level: int, tag: String, msg: String, t_ms: int = -1) -> void:
 		dropped += 1
 
 
+## Últimas n linhas já formatadas (para o arquivo de pistas gravado a cada poucos segundos).
+func tail(n: int) -> String:
+	var out := ""
+	for ln in lines.slice(maxi(0, lines.size() - n)):
+		var rep := "" if int(ln["n"]) <= 1 else " (x%d)" % int(ln["n"])
+		out += "[%s] %s %s %s%s\n" % [fmt_time(int(ln["t"])), LEVELS[int(ln["lvl"])], str(ln["tag"]), str(ln["msg"]), rep]
+	return out
+
+
 func bump(tag: String) -> void:
 	tag_counts[tag] = int(tag_counts.get(tag, 0)) + 1
 

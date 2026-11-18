@@ -25,6 +25,9 @@ signal game_event_changed                    # a lista de eventos pendentes mudo
 
 signal command_applied(cmd: Dictionary)
 
+## Fim de jogo ou conquista de vitória do jogador local ("defeat", "hegemony", "science", "great_power").
+signal outcome_reached(kind: String)
+
 ## Guerras declaradas ou encerradas.
 signal war_changed
 

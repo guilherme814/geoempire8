@@ -12,6 +12,8 @@ const GODOT_LOG := "user://logs/godot.log"
 const SETTINGS_SECTION := "logs"
 const SETTINGS_KEY := "export_downloads"
 const AUTOSAVE_SECS := 60.0
+const CRUMB_SECS := 3.0
+const CRUMB_PATH := "user://logs/breadcrumb.txt"
 const SANITY_SECS := 20.0
 const HITCH_MS := 120.0
 const GODOT_LOG_TAIL := 400
@@ -21,6 +23,7 @@ var session_stamp := ""
 var last_export_status := "Ainda não exportado."
 var last_export_path := ""
 var _autosave_t := 0.0
+var _crumb_t := 0.0
 var _sanity_t := 0.0
 var _hitch_cool := 0.0
 var _last_export_ms := -100000
@@ -119,6 +122,10 @@ func _process(dt: float) -> void:
 		_sanity_t = 0.0
 		_sample_resources()
 		check_sanity()
+	_crumb_t += dt
+	if _crumb_t >= CRUMB_SECS:
+		_crumb_t = 0.0
+		_write_crumb()
 	_autosave_t += dt
 	if _autosave_t >= AUTOSAVE_SECS:
 		_autosave_t = 0.0
@@ -128,6 +135,27 @@ func _process(dt: float) -> void:
 		_period_t = 0.0
 		if _dl_ok and downloads_enabled():
 			export_now("periódico")
+
+
+## "Caixa-preta": a cada poucos segundos grava as últimas ações e o estado do motor. Se o app
+## morrer sem avisar, a próxima sessão lê isto e sabe o que acontecia nos últimos segundos.
+func _write_crumb() -> void:
+	var f := FileAccess.open(CRUMB_PATH, FileAccess.WRITE)
+	if f == null:
+		return
+	var tw := -1
+	if get_tree() != null and get_tree().has_method("get_processed_tweens"):
+		tw = get_tree().get_processed_tweens().size()
+	var stage := -1
+	var pend := false
+	if Game != null and Game.loaded:
+		stage = Game._month_stage
+		pend = Game.month_pending()
+	f.store_string("sessão %s | log %s | %s | mês pendente %s (etapa %d) | mem %.1f MB | nós %d | tweens %d\n%s" % [
+		session_stamp, LogBuffer.fmt_time(Time.get_ticks_msec()), _game_stamp(), str(pend), stage,
+		float(OS.get_static_memory_usage()) / 1048576.0, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), tw,
+		buf.tail(30)])
+	f.close()
 
 
 func _game_stamp() -> String:
@@ -146,8 +174,11 @@ func _sample_resources() -> void:
 	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 	var prims := int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
 	var vram := float(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)) / 1048576.0
-	buf.add(LogBuffer.INFO, "recursos", "mem %.1f MB (pico %.1f) | nós %d (órfãos %d) | objetos %d | fps %d | draw calls %d | primitivas %d | vram %.1f MB | gfx %s | %s" % [
-		mem, peak, nodes, orphans, objs, fps, draws, prims, vram, AppSettings.GFX_NAMES[AppSettings.gfx_quality()], _game_stamp()])
+	var tweens := -1
+	if get_tree() != null and get_tree().has_method("get_processed_tweens"):
+		tweens = get_tree().get_processed_tweens().size()
+	buf.add(LogBuffer.INFO, "recursos", "tweens %d | mem %.1f MB (pico %.1f) | nós %d (órfãos %d) | objetos %d | fps %d | draw calls %d | primitivas %d | vram %.1f MB | gfx %s | %s" % [
+		tweens, mem, peak, nodes, orphans, objs, fps, draws, prims, vram, AppSettings.GFX_NAMES[AppSettings.gfx_quality()], _game_stamp()])
 
 
 func _on_notice(text: String) -> void:
@@ -302,8 +333,10 @@ func _logcat_tail() -> String:
 			if blocks.has(key):
 				blocks[key]["n"] = int(blocks[key]["n"]) + 1
 				blocks[key]["last"] = stamp
+				if (blocks[key]["stamps"] as Array).size() < 80:
+					blocks[key]["stamps"].append(stamp.substr(6))
 			else:
-				blocks[key] = {"n": 1, "first": stamp, "last": stamp}
+				blocks[key] = {"n": 1, "first": stamp, "last": stamp, "stamps": [stamp.substr(6)]}
 				order.append(key)
 			i = j
 		else:
@@ -313,8 +346,43 @@ func _logcat_tail() -> String:
 	var res := "logcat: %d erro(s) distinto(s) com pilha:\n" % order.size()
 	for k in order.slice(0, 40):
 		var d: Dictionary = blocks[k]
-		res += "[%s → %s] x%d\n%s\n" % [d["first"], d["last"], d["n"], k]
+		res += "[%s → %s] x%d\n%s\n  horas: %s\n" % [d["first"], d["last"], d["n"], k, " ".join(PackedStringArray(d["stamps"]))]
 	return res
+
+
+## Procura no logcat sinais de queda nativa (sinal fatal, falta de memória, ANR, morte do processo).
+func _crash_forensics() -> String:
+	if OS.get_name() != "Android":
+		return "(só no Android)"
+	var out: Array = []
+	var code := OS.execute("logcat", ["-b", "crash,main,events", "-d", "-t", "8000", "-v", "time", "*:I"], out, true)
+	if code != 0 or out.is_empty():
+		out.clear()
+		code = OS.execute("logcat", ["-d", "-t", "8000", "-v", "time", "*:W"], out, true)
+		if code != 0 or out.is_empty():
+			return "logcat indisponível (código %d)." % code
+	var lines := str(out[0]).split("\n")
+	var pats := ["Fatal signal", "SIGSEGV", "SIGABRT", "backtrace", "FATAL EXCEPTION", "am_crash", "am_kill", "am_proc_died", "am_anr", "Out of memory", "OutOfMemory", "lowmemorykiller", "has died", "Stack overflow", "stack overflow"]
+	var hits := PackedStringArray()
+	var last_end := -1
+	for i in lines.size():
+		var hit := false
+		for p in pats:
+			if lines[i].contains(p):
+				hit = true
+				break
+		if hit and i > last_end:
+			var a := maxi(0, i - 3)
+			var b := mini(lines.size() - 1, i + 14)
+			hits.append("--- linha %d ---" % i)
+			for k in range(a, b + 1):
+				hits.append(lines[k])
+			last_end = b
+			if hits.size() > 120:
+				break
+	if hits.is_empty():
+		return "Nenhum sinal fatal/memória/ANR no logcat (%d linhas lidas)." % lines.size()
+	return "\n".join(hits)
 
 
 func _is_err_line(ln: String) -> bool:
@@ -380,6 +448,9 @@ func _check_previous_session() -> void:
 			_prev_session_text = "Sessão %s (últimas 80 linhas):\n%s" % [prev, "\n".join(lines.slice(from))]
 		else:
 			_prev_session_text = "Sessão %s: sem arquivo salvo." % prev
+		if FileAccess.file_exists(CRUMB_PATH):
+			_prev_session_text += "\n\nCAIXA-PRETA (últimos segundos antes do fechamento):\n%s" % FileAccess.get_file_as_string(CRUMB_PATH)
+		_prev_session_text += "\n\nFORENSE NATIVA (logcat):\n%s" % _crash_forensics()
 		var jpath := "%s/journal_%s.log" % [LOG_DIR, prev]
 		if FileAccess.file_exists(jpath):
 			var jl := FileAccess.get_file_as_string(jpath).split("\n")

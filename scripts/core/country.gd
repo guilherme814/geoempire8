@@ -32,6 +32,7 @@ var law_cd: Array = []        # meses de espera até poder mudar cada grupo
 var overlord: int = -1        # suserano (-1 = independente); vassalo paga tributo e segue o suserano
 var overlord_since: int = 0   # dia (tick) em que virou vassalo
 var debt: int = 0             # dívida (empréstimos) em ouro
+var infamy: int = 0             # infâmia: sobe ao atacar/anexar, cai devagar
 var spy_cd: int = 0             # meses até a próxima operação de espionagem
 var drill: int = 0            # instrução das tropas: 0 recrutas, 1 regulares, 2 elite
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)

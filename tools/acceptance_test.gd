@@ -884,7 +884,7 @@ func _infamy_and_outcomes() -> void:
 		g.countries[me].infamy = 10
 		check("sem infamia alta, melhorar relacoes volta a ser possivel", g.can_improve(other, me) or g.opinion(other, me) >= 100)
 		g.relations[g._pair(me, other)] = 50
-		g.countries[me].infamy = g.INFAMY_BAD
+		g.countries[me].infamy = g.INFAMY_BAD + g.INFAMY_DECAY   # o decaimento mensal vem antes da checagem
 		g._simulate_month()
 		check("mal visto perde 1 de opiniao por mes alem do decaimento", g.opinion(me, other) == 50 - 2 - 1, "%d" % g.opinion(me, other))
 	g.countries[me].infamy = 10

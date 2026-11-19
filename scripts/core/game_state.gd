@@ -59,6 +59,9 @@ const CLASS_PART := [2, 3, 40, 25, 15, 10]       # participação política por 
 const CLASS_AFF := [[40, 10, 5, 15, 30], [10, 25, 45, 20, 0], [30, 0, 0, 10, 60],
 	[25, 55, 5, 15, 0], [45, 25, 0, 25, 5], [30, 5, 0, 50, 15]]
 const CLASS_RADICAL := [2, 2, 4, 1, 1, 3]        # corrente que cresce quando a classe fica insatisfeita
+const LEGIT_FLOOR := 200                         # corrente só pesa na legitimidade acima de 20%
+const LEGIT_DIV := 400
+const LEGIT_MAX := 6                             # legitimidade das leis: -6..+6 na satisfação-alvo
 const LABOR_FORCE_PCT := 35                      # força de trabalho (% da população)
 const SURPLUS_LABOR_PCT := 20                    # % da força de trabalho que busca emprego formal
 const JOB_SCALE := 60                            # trabalhadores por vaga declarada em JOBS_PER_LEVEL
@@ -2818,12 +2821,6 @@ func politics_of(c: Country) -> Dictionary:
 	tg[3] = 45 + clampi(int(e["trade"]) / 10, 0, 25) + clampi(int(e["industry"]) / 10, 0, 15) - emb_n * 5 - (15 if is_blockaded(c.id) else 0) - (tax - 30)
 	tg[4] = 50 + (-30 if broke else 15) + c.literacy / 30
 	tg[5] = 55 + (-25 if broke else 10) + wars_n * 5
-	var lmp := law_mods(c)
-	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
-	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
-	for i in 6:
-		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
-
 	var pw := [0, 0, 0, 0, 0, 0]
 	var tot_pw := 0
 	for i in 6:
@@ -2847,8 +2844,41 @@ func politics_of(c: Country) -> Dictionary:
 	var ideo := [0, 0, 0, 0, 0]
 	for j in 5:
 		ideo[j] = acc[j] / (10 * tot_pw)
+	var fit: Array = Laws.fit_all(c.laws)
+	var legit := 0
+	for j in 5:
+		legit += maxi(0, int(ideo[j]) - LEGIT_FLOOR) * int(fit[j])
+	legit = clampi(legit / LEGIT_DIV, -LEGIT_MAX, LEGIT_MAX)
+	var lmp := law_mods(c)
+	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
+	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
+	for i in 6:
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
+
 	return {"share": sh, "target": tg, "power": pw, "power_total": tot_pw, "ideo": ideo,
-		"stability": ssum / maxi(1, wsum)}
+		"fit": fit, "legit": legit, "stability": ssum / maxi(1, wsum)}
+
+
+## Reformas que a corrente dominante exige: [{group, option, gain}] das 3 maiores melhorias de afinidade.
+func law_demands(c: Country, pol: Dictionary) -> Array:
+	var ideo: Array = pol["ideo"]
+	var best := 0
+	for j in 5:
+		if int(ideo[j]) > int(ideo[best]):
+			best = j
+	var out: Array = []
+	for gi in Laws.group_count():
+		var cur: int = int(c.laws[gi])
+		var bo := cur
+		var bl: int = Laws.lean(gi, cur, best)
+		for oi in (Laws.group(gi)["opts"] as Array).size():
+			if Laws.lean(gi, oi, best) > bl:
+				bl = Laws.lean(gi, oi, best)
+				bo = oi
+		if bo != cur:
+			out.append({"group": gi, "option": bo, "gain": bl - Laws.lean(gi, cur, best), "ideo": best})
+	out.sort_custom(func(x, y): return int(x["gain"]) > int(y["gain"]) or (int(x["gain"]) == int(y["gain"]) and int(x["group"]) < int(y["group"])))
+	return out.slice(0, 3)
 
 
 ## Estabilidade a partir de uma previsão já calculada (pesos e poder não dependem de `sat`).

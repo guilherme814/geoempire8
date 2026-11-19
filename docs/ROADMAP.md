@@ -10,7 +10,7 @@ Motor: Godot 4.3, GDScript, GL Compatibility. Alvo: Android.
 | 1 | Desempenho (mês fatiado, cache, throttle de UI) | feita (v0.13.x) |
 | 2 | Mundo e IA (pressão, finanças e espionagem da IA, infâmia, vitória/derrota) | feita (v0.14.0) |
 | 3 | Economia de mercado (métodos de produção das fábricas) | feita no código (v0.15.0), falta validar no aparelho |
-| 4 | Política interna (6 classes, 5 correntes ligadas às leis) | pendente |
+| 4 | Política interna (6 classes, 5 correntes ligadas às leis) | feita no código (v0.16.0), falta validar no aparelho |
 | 5 | Governo (orçamento por ministérios, decretos) | pendente |
 | 6 | Diplomacia (jogadas, casus belli, coalizões, tratados) | pendente |
 | 7 | Guerra (frentes, logística, comandantes, naval) | pendente |

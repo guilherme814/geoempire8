@@ -1,8 +1,13 @@
 {
- "version": "0.15.0",
- "title": "GeoEmpire 8 — v0.15.0 (Fase 3)",
- "body": "## Fase 3 — Economia de mercado\n- **Métodos de produção:** cada fábrica pode trabalhar em modo Artesanal, Manufatura (era 1) ou Mecanizada (era 3). Métodos mais modernos produzem mais e empregam menos, mas consomem mais insumos.\n- **Custo:** subir de método custa ouro por nível da fábrica; voltar ao Artesanal é grátis.\n- **Mercado:** oferta, demanda e desemprego passam a usar o método de cada fábrica.\n- **Aba Construir:** a fábrica mostra o método atual e botões para trocar.\n- **Organização:** novo `docs/ROADMAP.md` com as 12 fases, regras de arquitetura e como testar.",
+ "version": "0.16.0",
+ "title": "GeoEmpire 8 — v0.16.0 (Fase 4)",
+ "body": "## Fase 4 — Política interna\n- **Correntes ligadas às leis:** cada opção de lei agrada ou contraria as 5 correntes (conservadorismo, liberalismo, socialismo, nacionalismo, reacionarismo).\n- **Legitimidade das leis:** correntes acima de 20% pesam na satisfação de todas as classes: leis que agradam as correntes fortes dão até +6, leis que as contrariam tiram até 6.\n- **Reformas exigidas:** a tela de Política mostra as 3 reformas que a corrente dominante quer.\n- **Sem estado novo:** o efeito é calculado a partir das leis e das correntes, então saves antigos continuam valendo.",
  "history": [
+  {
+   "version": "0.15.0",
+   "title": "GeoEmpire 8 — v0.15.0 (Fase 3)",
+   "body": "## Fase 3 — Economia de mercado\n- **Métodos de produção:** cada fábrica pode trabalhar em modo Artesanal, Manufatura (era 1) ou Mecanizada (era 3). Métodos mais modernos produzem mais e empregam menos, mas consomem mais insumos.\n- **Custo:** subir de método custa ouro por nível da fábrica; voltar ao Artesanal é grátis.\n- **Mercado:** oferta, demanda e desemprego passam a usar o método de cada fábrica.\n- **Aba Construir:** a fábrica mostra o método atual e botões para trocar.\n- **Organização:** novo `docs/ROADMAP.md` com as 12 fases, regras de arquitetura e como testar."
+  },
   {
    "version": "0.14.0",
    "title": "GeoEmpire 8 — v0.14.0 (Fase 2)",

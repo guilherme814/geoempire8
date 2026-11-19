@@ -653,6 +653,7 @@ func run_all() -> void:
 	_infamy_and_outcomes()
 	_pressure_and_ai_money()
 	_production_methods()
+	_law_legitimacy()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1007,4 +1008,21 @@ func _production_methods() -> void:
 	var t1: int = c.treasury
 	g.apply_command({"type": "set_method", "province": fp.id, "method": 0, "issuer": me})
 	check("voltar ao artesanal e gratis", fp.method == 0 and c.treasury == t1)
+	g.load_state(blob)
+
+
+func _law_legitimacy() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	check("tabela de afinidade cobre todos os grupos", Laws.fit_all(c.laws).size() == 5)
+	var pol: Dictionary = g.politics_of(c)
+	check("legitimidade limitada a +-6", absi(int(pol["legit"])) <= 6)
+	check("previsao e deterministica", int(g.politics_of(c)["legit"]) == int(pol["legit"]))
+	for gi in Laws.group_count():
+		check("afinidade definida: " + str(Laws.group(gi)["id"]), Laws.LEAN.has(str(Laws.group(gi)["id"])) and (Laws.LEAN[str(Laws.group(gi)["id"])] as Array).size() == (Laws.group(gi)["opts"] as Array).size())
+	var dem: Array = g.law_demands(c, pol)
+	check("no maximo 3 reformas exigidas", dem.size() <= 3)
+	for dm in dem:
+		check("reforma exigida melhora a afinidade", int(dm["gain"]) > 0)
 	g.load_state(blob)

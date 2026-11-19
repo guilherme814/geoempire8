@@ -100,6 +100,41 @@ const GROUPS := [
 const CLASS_NAMES := ["Camponeses", "Operários", "Aristocratas", "Burguesia", "Funcionários", "Soldados"]
 
 
+## Afinidade de cada opção de lei com as 5 correntes (conserv., liberal., social., nacional., reacion.), -2..+2.
+const LEAN := {
+	"gov": [[1, -2, -1, 1, 2], [2, 1, -1, 0, -1], [-1, 2, 1, 0, -2]],
+	"press": [[1, -2, -1, 1, 2], [1, 0, 0, 0, 0], [-1, 2, 1, -1, -2]],
+	"military": [[1, 0, -1, 1, 0], [0, 1, -1, -2, 0], [0, -1, 0, 2, 1]],
+	"economy": [[1, -2, 0, 1, 1], [0, -1, 2, 1, 0], [-1, 2, -2, 0, -1]],
+	"trade": [[1, -2, 1, 2, 1], [1, 0, 0, 0, 0], [-1, 2, 0, -2, -1]],
+	"tax": [[1, -1, -1, 0, 2], [0, 1, 1, 0, -1], [0, 0, -1, 0, 1]],
+	"land": [[1, -2, -2, 0, 2], [0, 1, 0, 0, -1], [-2, 0, 2, 0, -2]],
+	"edu": [[2, -1, -1, 0, 2], [0, 1, 1, 1, -1], [-1, 1, 2, 1, -2]],
+	"labor": [[1, 1, -2, 0, 1], [1, 0, 1, 0, 0], [-1, -1, 2, 0, -1]],
+	"unions": [[1, -2, -2, 1, 2], [0, 0, 0, 0, 0], [-1, 1, 2, -1, -2]],
+}
+
+
+## Afinidade (-2..+2) da opção `oi` do grupo `gi` com a corrente `j`.
+static func lean(gi: int, oi: int, j: int) -> int:
+	var id: String = str(GROUPS[gi]["id"])
+	if not LEAN.has(id):
+		return 0
+	var rows: Array = LEAN[id]
+	if oi < 0 or oi >= rows.size():
+		return 0
+	return int((rows[oi] as Array)[j])
+
+
+## Soma das afinidades das leis em vigor com cada corrente.
+static func fit_all(laws: Array) -> Array:
+	var f := [0, 0, 0, 0, 0]
+	for gi in mini(laws.size(), GROUPS.size()):
+		for j in 5:
+			f[j] += lean(gi, int(laws[gi]), j)
+	return f
+
+
 static func group_count() -> int:
 	return GROUPS.size()
 

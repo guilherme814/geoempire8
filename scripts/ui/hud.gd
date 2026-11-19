@@ -1568,6 +1568,14 @@ func _refresh_politics() -> void:
 		row.add_child(pl)
 	var dom := UIKit.label("Corrente dominante: %s" % IDEO_PT[best], 16, UIKit.GOLD)
 	icard.add_child(dom)
+	var lg: int = int(pol["legit"])
+	var ll := UIKit.label("Legitimidade das leis: %+d na satisfação (as leis em vigor %s as correntes fortes)" % [lg, ("agradam" if lg > 0 else ("contrariam" if lg < 0 else "são neutras com"))], 16, UIKit.POS if lg > 0 else (UIKit.NEG if lg < 0 else UIKit.TEXT))
+	ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	icard.add_child(ll)
+	for dm in Game.law_demands(c, pol):
+		var dl := UIKit.label("• %s exige: %s → %s" % [IDEO_PT[int(dm["ideo"])], Laws.group(int(dm["group"]))["name"], Laws.option(int(dm["group"]), int(dm["option"]))["name"]], 15, UIKit.TEXT)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		icard.add_child(dl)
 
 	var gcard := _card(body, "Queixas da população", "book")
 	var any := false

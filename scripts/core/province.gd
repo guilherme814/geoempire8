@@ -36,6 +36,36 @@ const FACTORIES := {
 	"steel": {"out": "steel", "amount": 100, "inputs": {"iron": 100, "coal": 100}},
 }
 
+## Métodos de produção das fábricas (estilo Victoria 3): trocam trabalho por produtividade.
+## out/inp/jobs em % do método artesanal; `tech` = era mínima do país; `cost` = ouro por nível da fábrica.
+const METHODS := [
+	{"name": "Artesanal", "out": 100, "inp": 100, "jobs": 130, "tech": 0, "cost": 0},
+	{"name": "Manufatura", "out": 130, "inp": 120, "jobs": 100, "tech": 1, "cost": 150},
+	{"name": "Mecanizada", "out": 170, "inp": 150, "jobs": 70, "tech": 3, "cost": 320},
+]
+var method: int = 0   # método de produção da fábrica (índice em METHODS)
+
+
+func method_pct(field: String) -> int:
+	return int((METHODS[clampi(method, 0, METHODS.size() - 1)] as Dictionary)[field])
+
+
+## Unidades produzidas por mês pela fábrica (nível x quantidade-base x método).
+@warning_ignore("integer_division")
+func factory_units() -> int:
+	if factory == "" or factory_level <= 0:
+		return 0
+	return int(FACTORIES[factory]["amount"]) * factory_level * method_pct("out") / 100
+
+
+## Insumo consumido por mês (unidades do bem `good`) pela fábrica, no método atual.
+@warning_ignore("integer_division")
+func factory_input(good: String) -> int:
+	if factory == "" or factory_level <= 0:
+		return 0
+	return int((FACTORIES[factory]["inputs"] as Dictionary).get(good, 0)) * factory_level * method_pct("inp") / 100
+
+
 ## Construções por aba: tab (gov/res/ind), nome, custo-base (x nível+1), tecnologia exigida, efeito.
 const BUILDINGS := {
 	"school": {"tab": "gov", "name": "Escola", "cost": 120, "tech": 0, "desc": "Alfabetização"},
@@ -330,11 +360,11 @@ func factory_profit() -> int:
 		return 0
 	var f: Dictionary = FACTORIES[factory]
 	var out: String = f["out"]
-	var revenue: int = int(f["amount"]) * factory_level * base_price(out) * price_of(out) / 10000
+	var revenue: int = factory_units() * base_price(out) * price_of(out) / 10000
 	var cost := 0
 	var ins: Dictionary = f["inputs"]
 	for g in ins.keys():
-		cost += int(ins[g]) * factory_level * base_price(g) * price_of(g) / 10000
+		cost += factory_input(str(g)) * base_price(g) * price_of(g) / 10000
 	return revenue - cost
 
 
@@ -359,12 +389,18 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 		var f: Dictionary = FACTORIES[kind]
 		var out: String = f["out"]
 		r["product"] = out
-		r["units"] = int(f["amount"]) * level
-		r["revenue"] = int(f["amount"]) * level * base_price(out) * price_of(out) / 10000
+		var o_pct := 100
+		var i_pct := 100
+		if factory == kind:
+			o_pct = method_pct("out")
+			i_pct = method_pct("inp")
+			r["jobs"] = int(r["jobs"]) * method_pct("jobs") / 100
+		r["units"] = int(f["amount"]) * level * o_pct / 100
+		r["revenue"] = int(r["units"]) * base_price(out) * price_of(out) / 10000
 		var ins: Dictionary = f["inputs"]
 		var cost := 0
 		for g in ins.keys():
-			var n: int = int(ins[g]) * level
+			var n: int = int(ins[g]) * level * i_pct / 100
 			var v: int = n * base_price(g) * price_of(g) / 10000
 			(r["inputs"] as Array).append({"good": g, "amount": n, "value": v})
 			cost += v

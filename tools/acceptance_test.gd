@@ -652,6 +652,7 @@ func run_all() -> void:
 	_espionage()
 	_infamy_and_outcomes()
 	_pressure_and_ai_money()
+	_production_methods()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -965,4 +966,45 @@ func _pressure_and_ai_money() -> void:
 	var d0: int = a.debt
 	g._ai_finance(a)
 	check("IA amortiza quando sobra dinheiro", a.debt < d0)
+	g.load_state(blob)
+
+
+func _production_methods() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var fp: Province = null
+	for pid in g.countries[me].province_ids:
+		var p: Province = g.provinces[pid]
+		p.factory = "carpentry"
+		p.factory_level = 2
+		p.method = 0
+		fp = p
+		break
+	if fp == null:
+		return
+	var c: Country = g.countries[me]
+	c.treasury = 100000
+	c.techs.clear()
+	var u0: int = fp.factory_units()
+	check("metodo artesanal e a base", u0 == int(Province.FACTORIES[fp.factory]["amount"]) * 2)
+	check("manufatura exige era 1", not g.can_set_method(fp.id, me, 1) or c.tech_level() >= 1)
+	# libera tecnologia suficiente para a era 3
+	var ids := []
+	for i in Techs.ALL.size():
+		ids.append(i)
+	c.techs = ids
+	check("com tecnologia, pode mecanizar", g.can_set_method(fp.id, me, 2))
+	var t0: int = c.treasury
+	g.apply_command({"type": "set_method", "province": fp.id, "method": 2, "issuer": me})
+	check("mecanizar cobra o custo e muda o metodo", fp.method == 2 and c.treasury < t0)
+	check("mecanizada produz mais", fp.factory_units() == u0 * 170 / 100)
+	var in0: int = fp.factory_input("timber")
+	check("mecanizada consome mais insumos", in0 == 100 * 2 * 150 / 100)
+	var b2: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	fp.method = 0
+	g.load_state(b2)
+	check("metodo persiste no save", g.provinces[fp.id].method == 2)
+	var t1: int = c.treasury
+	g.apply_command({"type": "set_method", "province": fp.id, "method": 0, "issuer": me})
+	check("voltar ao artesanal e gratis", fp.method == 0 and c.treasury == t1)
 	g.load_state(blob)

@@ -1089,6 +1089,17 @@ func apply_command(cmd: Dictionary) -> void:
 		Events.treasury_changed.emit(target)
 		Events.war_changed.emit()
 
+	elif t == Cmd.SET_METHOD:
+		var mp: int = int(cmd.get("province", -1))
+		var mm: int = int(cmd.get("method", 0))
+		if not can_set_method(mp, issuer, mm):
+			return
+		var mprov := provinces[mp]
+		countries[issuer].treasury -= method_cost(mprov, mm)
+		mprov.method = mm
+		Events.treasury_changed.emit(issuer)
+		Events.province_updated.emit(mp)
+
 	elif t == Cmd.SPY:
 		var target: int = int(cmd.get("target", -1))
 		var op: int = clampi(int(cmd.get("op", 0)), 0, 2)
@@ -1477,6 +1488,27 @@ func can_repay_loan(cid: int) -> bool:
 	if cid < 0 or cid >= countries.size():
 		return false
 	return countries[cid].debt > 0 and countries[cid].treasury >= mini(LOAN_STEP, countries[cid].debt)
+
+
+## Custo de passar a fábrica ao método `m` (só se paga ao subir; descer é de graça).
+@warning_ignore("integer_division")
+func method_cost(p: Province, m: int) -> int:
+	if m <= p.method:
+		return 0
+	return int((Province.METHODS[m] as Dictionary)["cost"]) * p.factory_level
+
+
+func can_set_method(pid: int, issuer: int, m: int) -> bool:
+	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
+		return false
+	if m < 0 or m >= Province.METHODS.size():
+		return false
+	var p := provinces[pid]
+	if p.owner_id != issuer or p.factory == "" or p.factory_level <= 0 or p.method == m:
+		return false
+	if countries[issuer].tech_level() < int((Province.METHODS[m] as Dictionary)["tech"]):
+		return false
+	return countries[issuer].treasury >= method_cost(p, m)
 
 
 func can_spy(issuer: int, target: int) -> bool:
@@ -3042,7 +3074,8 @@ func unemployment_pct(c: Country) -> int:
 		for kind in Province.JOBS_PER_LEVEL.keys():
 			var lv := p.building_level(str(kind))
 			if lv > 0:
-				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv
+				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else 100
+				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv * jp / 100
 	jobs *= JOB_SCALE
 	return SURPLUS_LABOR_PCT * maxi(0, surplus - jobs) / surplus
 
@@ -3460,7 +3493,7 @@ func market_supply() -> Dictionary:
 		if p.factory != "" and p.factory_level > 0:
 			var f: Dictionary = Province.FACTORIES[p.factory]
 			var out: String = f["out"]
-			sup[out] = int(sup[out]) + int(f["amount"]) * p.factory_level
+			sup[out] = int(sup[out]) + p.factory_units()
 	return sup
 
 
@@ -3537,10 +3570,10 @@ func market_tables() -> Array:
 			sup[o]["timber"] += p.side_timber()
 		if p.factory != "" and p.factory_level > 0:
 			var f: Dictionary = Province.FACTORIES[p.factory]
-			sup[o][f["out"]] += int(f["amount"]) * p.factory_level
+			sup[o][f["out"]] += p.factory_units()
 			var ins: Dictionary = f["inputs"]
 			for g in ins.keys():
-				dem[o][g] += int(ins[g]) * p.factory_level
+				dem[o][g] += p.factory_input(str(g))
 	for i in n:
 		for g in goods:
 			dem[i][g] += int(market_dem[g]) * int(pops[i]) / market_pop0
@@ -3788,6 +3821,7 @@ func state_hash() -> int:
 		for k in Province.EXTRA_KINDS:
 			h = _mix(h, int(p.bld.get(k, 0)))
 		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
+		h = _mix(h, p.method)
 	for c in countries:
 		h = _mix(h, c.treasury)
 		h = _mix(h, c.tax_pct)
@@ -3992,6 +4026,7 @@ func serialize_state() -> Dictionary:
 	var barracks: Array = []
 	var fkinds: Array = []
 	var flevels: Array = []
+	var fmethods: Array = []
 	for p in provinces:
 		owners.append(p.owner_id)
 		pops.append(p.population)
@@ -4000,6 +4035,7 @@ func serialize_state() -> Dictionary:
 		barracks.append(p.barracks)
 		fkinds.append(p.factory)
 		flevels.append(p.factory_level)
+		fmethods.append(p.method)
 		blds.append(_bld_str(p))
 	var treasury: Array = []
 	var taxes: Array = []
@@ -4052,6 +4088,7 @@ func serialize_state() -> Dictionary:
 		"barracks": barracks,
 		"factory": fkinds,
 		"factory_lvl": flevels,
+		"factory_method": fmethods,
 		"treasury": treasury,
 		"taxes": taxes,
 		"capitals": capitals,
@@ -4122,6 +4159,8 @@ func load_state(d: Dictionary) -> bool:
 		var fl: Array = d.get("factory_lvl", [])
 		provinces[i].factory = str(fk[i]) if i < fk.size() else ""
 		provinces[i].factory_level = int(fl[i]) if i < fl.size() else 0
+		var fme: Array = d.get("factory_method", [])
+		provinces[i].method = int(fme[i]) if i < fme.size() else 0
 		provinces[i].bld = {}
 		var bs: Array = d.get("bld", [])
 		if i < bs.size() and str(bs[i]) != "":

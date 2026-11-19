@@ -1,8 +1,13 @@
 {
- "version": "0.16.0",
- "title": "GeoEmpire 8 — v0.16.0 (Fase 4)",
- "body": "## Fase 4 — Política interna\n- **Correntes ligadas às leis:** cada opção de lei agrada ou contraria as 5 correntes (conservadorismo, liberalismo, socialismo, nacionalismo, reacionarismo).\n- **Legitimidade das leis:** correntes acima de 20% pesam na satisfação de todas as classes: leis que agradam as correntes fortes dão até +6, leis que as contrariam tiram até 6.\n- **Reformas exigidas:** a tela de Política mostra as 3 reformas que a corrente dominante quer.\n- **Sem estado novo:** o efeito é calculado a partir das leis e das correntes, então saves antigos continuam valendo.",
+ "version": "0.17.0",
+ "title": "GeoEmpire 8 — v0.17.0 (Fase 5)",
+ "body": "## Fase 5 — Governo\n- **Orçamento por ministérios:** Educação, Forças Armadas, Administração e Assistência social, cada um em Cortado, Normal ou Reforçado. Mudam o custo mensal e o efeito: alfabetização, lealdade dos soldados, arrecadação e satisfação do povo.\n- **Decretos:** Austeridade, Estado de emergência, Incentivo industrial e Campanha de alfabetização. Duram 12 meses, só um por vez, e há 12 meses de espera depois.\n- **IA:** países com caixa negativo decretam austeridade.\n- **Onde:** tela de Política, abaixo das correntes.\n- **Saves antigos:** carregam com o orçamento normal e sem decreto.",
  "history": [
+  {
+   "version": "0.16.0",
+   "title": "GeoEmpire 8 — v0.16.0 (Fase 4)",
+   "body": "## Fase 4 — Política interna\n- **Correntes ligadas às leis:** cada opção de lei agrada ou contraria as 5 correntes (conservadorismo, liberalismo, socialismo, nacionalismo, reacionarismo).\n- **Legitimidade das leis:** correntes acima de 20% pesam na satisfação de todas as classes: leis que agradam as correntes fortes dão até +6, leis que as contrariam tiram até 6.\n- **Reformas exigidas:** a tela de Política mostra as 3 reformas que a corrente dominante quer.\n- **Sem estado novo:** o efeito é calculado a partir das leis e das correntes, então saves antigos continuam valendo."
+  },
   {
    "version": "0.15.0",
    "title": "GeoEmpire 8 — v0.15.0 (Fase 3)",

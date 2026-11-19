@@ -803,6 +803,36 @@ func law_block_reason(c: Country, gi: int, oi: int) -> String:
 	return ""
 
 
+func can_set_budget(issuer: int, m: int, lv: int) -> bool:
+	if issuer < 0 or issuer >= countries.size() or m < 0 or m >= Government.MINISTRIES.size() or lv < 0 or lv > 2:
+		return false
+	return Government.level(countries[issuer].budget_code, m) != lv
+
+
+## Por que o decreto não pode ser emitido agora ("" = pode).
+func decree_block_reason(issuer: int, di: int) -> String:
+	if issuer < 0 or issuer >= countries.size() or di < 0 or di >= Government.DECREES.size():
+		return "Decreto inválido"
+	var c := countries[issuer]
+	if c.decree >= 0:
+		return "Já há um decreto em vigor"
+	if c.decree_cd > 0:
+		return "Aguarde %d meses" % c.decree_cd
+	if c.treasury < int(Government.DECREES[di]["cost"]):
+		return "Libras insuficientes"
+	return ""
+
+
+func _enact_decree(cid: int, di: int) -> void:
+	var c := countries[cid]
+	c.treasury -= int(Government.DECREES[di]["cost"])
+	c.decree = di
+	c.decree_left = int(Government.DECREES[di]["dur"])
+	Events.treasury_changed.emit(cid)
+	if cid == player_country:
+		Events.notice.emit("Decreto: %s (%d meses)." % [Government.DECREES[di]["name"], c.decree_left])
+
+
 func _enact_law(c: Country, gi: int, oi: int) -> void:
 	var old: Dictionary = Laws.option(gi, int(c.laws[gi]))
 	var nw: Dictionary = Laws.option(gi, oi)
@@ -875,6 +905,20 @@ func apply_command(cmd: Dictionary) -> void:
 	elif t == Cmd.SET_AUTO_FRONT:
 		if issuer >= 0 and issuer < countries.size():
 			countries[issuer].auto_front = bool(cmd.get("enabled", true))
+
+	elif t == Cmd.SET_BUDGET:
+		var bm: int = int(cmd.get("ministry", -1))
+		var bl: int = int(cmd.get("level", -1))
+		if not can_set_budget(issuer, bm, bl):
+			return
+		countries[issuer].budget_code = Government.with_level(countries[issuer].budget_code, bm, bl)
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.DECREE:
+		var di: int = int(cmd.get("id", -1))
+		if decree_block_reason(issuer, di) != "":
+			return
+		_enact_decree(issuer, di)
 
 	elif t == Cmd.ENACT_LAW:
 		if issuer < 0 or issuer >= countries.size():
@@ -2207,6 +2251,8 @@ func _ai_spy(c: Country, tid: int) -> void:
 
 ## Finanças da IA: toma empréstimo quando o caixa fica negativo e amortiza quando sobra dinheiro.
 func _ai_finance(c: Country) -> void:
+	if c.treasury < 0 and decree_block_reason(c.id, 0) == "":
+		apply_command({"type": "decree", "id": 0, "issuer": c.id})
 	if c.treasury < 0 and can_take_loan(c.id):
 		apply_command({"type": "take_loan", "issuer": c.id})
 	elif c.debt > 0 and c.treasury > maxi(600, c.last_expense * 6) + LOAN_STEP:
@@ -2540,12 +2586,19 @@ func _country_month(c: Country) -> void:
 	var edu := edu_levels(c)
 	var lmod := law_mods(c)
 	var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
-	c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
+	c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"]) + Government.eff(c.budget_code, 0) + Government.decree_field(c.decree, "lit")) / 100)
 	c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
 	c.lit_acc = c.lit_acc % 100
 	c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
 	_research_step(c)
 	c.spy_cd = maxi(0, c.spy_cd - 1)
+	c.decree_cd = maxi(0, c.decree_cd - 1)
+	if c.decree >= 0:
+		c.decree_left -= 1
+		if c.decree_left <= 0:
+			c.decree = -1
+			c.decree_left = 0
+			c.decree_cd = Government.DECREE_COOLDOWN
 	c.infamy = maxi(0, c.infamy - INFAMY_DECAY)
 	for gi in c.law_cd.size():
 		if int(c.law_cd[gi]) > 0:
@@ -2844,6 +2897,7 @@ func politics_of(c: Country) -> Dictionary:
 	var ideo := [0, 0, 0, 0, 0]
 	for j in 5:
 		ideo[j] = acc[j] / (10 * tot_pw)
+	var gsh: Array = Government.sat_shift(c.budget_code, c.decree)
 	var fit: Array = Laws.fit_all(c.laws)
 	var legit := 0
 	for j in 5:
@@ -2853,7 +2907,7 @@ func politics_of(c: Country) -> Dictionary:
 	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
 	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
 	for i in 6:
-		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + int(gsh[i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
 
 	return {"share": sh, "target": tg, "power": pw, "power_total": tot_pw, "ideo": ideo,
 		"fit": fit, "legit": legit, "stability": ssum / maxi(1, wsum)}
@@ -3067,6 +3121,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 	tax = tax * (100 + int(lm["tax"]) + tech_tax_bonus(c)) / 100
 	if c.stability < UNREST_TAX_STABILITY:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
+	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
+	industry_state = industry_state * (100 + Government.decree_field(c.decree, "ind")) / 100
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
 	var arsenal_pct: int = mini(20, 2 * bld_total(c, "arsenal"))
@@ -3077,6 +3133,12 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
 	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
+	var bc: int = c.budget_code
+	var dexp: int = 100 + Government.decree_field(c.decree, "exp")
+	up_prov = up_prov * Government.pct(bc, 2) / 100 * dexp / 100
+	up_army = up_army * Government.pct(bc, 1) / 100 * dexp / 100
+	up_edu = up_edu * Government.pct(bc, 0) / 100 * dexp / 100
+	var up_welfare: int = c.province_ids.size() * Government.WELFARE_PER_PROVINCE * Government.pct(bc, 3) / 100
 	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
 	var up_debt: int = c.debt * LOAN_RATE_PCT / 100
 	return {
@@ -3084,7 +3146,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
-		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt + up_welfare, "upkeep_welfare": up_welfare, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -3926,6 +3988,8 @@ func state_hash() -> int:
 		h = _mix(h, c.research_pct)
 		h = _mix(h, c.debt * 5 + c.drill)
 		h = _mix(h, c.spy_cd * 7 + c.infamy)
+		h = _mix(h, c.budget_code * 1000 + (c.decree + 1) * 100 + c.decree_left)
+		h = _mix(h, c.decree_cd)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -4104,6 +4168,10 @@ func serialize_state() -> Dictionary:
 		"debt": _country_ints("debt"),
 		"drill": _country_ints("drill"),
 		"spy_cd": _country_ints("spy_cd"),
+		"budget_code": _country_ints("budget_code"),
+		"decree": _country_ints("decree"),
+		"decree_left": _country_ints("decree_left"),
+		"decree_cd": _country_ints("decree_cd"),
 		"infamy": _country_ints("infamy"),
 		"ai_heg": ai_heg,
 		"victories": victories.duplicate(),
@@ -4286,6 +4354,10 @@ func load_state(d: Dictionary) -> bool:
 	var drl: Array = d.get("drill", [])
 	var spc: Array = d.get("spy_cd", [])
 	var inf: Array = d.get("infamy", [])
+	var bcs: Array = d.get("budget_code", [])
+	var dcs: Array = d.get("decree", [])
+	var dls: Array = d.get("decree_left", [])
+	var dcd: Array = d.get("decree_cd", [])
 	ai_heg = int(d.get("ai_heg", -1))
 	victories = (d.get("victories", []) as Array).duplicate()
 	defeated = bool(d.get("defeated", false))
@@ -4294,6 +4366,10 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].drill = int(drl[i]) if i < drl.size() else 0
 		countries[i].spy_cd = int(spc[i]) if i < spc.size() else 0
 		countries[i].infamy = int(inf[i]) if i < inf.size() else 0
+		countries[i].budget_code = int(bcs[i]) if i < bcs.size() else Government.DEFAULT_CODE
+		countries[i].decree = int(dcs[i]) if i < dcs.size() else -1
+		countries[i].decree_left = int(dls[i]) if i < dls.size() else 0
+		countries[i].decree_cd = int(dcd[i]) if i < dcd.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

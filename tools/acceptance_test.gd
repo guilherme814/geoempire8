@@ -663,6 +663,7 @@ func run_all() -> void:
 	_pressure_and_ai_money()
 	_production_methods()
 	_law_legitimacy()
+	_government()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1034,4 +1035,38 @@ func _law_legitimacy() -> void:
 	check("no maximo 3 reformas exigidas", dem.size() <= 3)
 	for dm in dem:
 		check("reforma exigida melhora a afinidade", int(dm["gain"]) > 0)
+	g.load_state(blob)
+
+
+func _government() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.treasury = 100000
+	c.budget_code = Government.DEFAULT_CODE
+	c.decree = -1
+	c.decree_cd = 0
+	check("codigo de orcamento: niveis padrao", Government.level(13, 0) == 1 and Government.level(13, 3) == 0)
+	check("with_level troca so o ministerio", Government.level(Government.with_level(13, 2, 2), 2) == 2 and Government.level(Government.with_level(13, 2, 2), 1) == 1)
+	var e0: Dictionary = g.estimate_monthly(c)
+	g.apply_command({"type": "set_budget", "ministry": 3, "level": 2, "issuer": me})
+	var e1: Dictionary = g.estimate_monthly(c)
+	check("assistencia social cobra despesa", int(e1["upkeep_welfare"]) > 0 and int(e1["expense"]) > int(e0["expense"]))
+	g.apply_command({"type": "set_budget", "ministry": 0, "level": 0, "issuer": me})
+	check("cortar educacao reduz o custo", int(g.estimate_monthly(c)["upkeep_edu"]) <= int(e1["upkeep_edu"]))
+	check("orcamento invalido e ignorado", not g.can_set_budget(me, 9, 1) and not g.can_set_budget(me, 0, 5))
+	var sh: Array = Government.sat_shift(c.budget_code, -1)
+	check("assistencia eleva satisfacao de operarios", int(sh[1]) > 0)
+	g.apply_command({"type": "decree", "id": 0, "issuer": me})
+	check("decreto entra em vigor", c.decree == 0 and c.decree_left == 12)
+	check("so um decreto por vez", g.decree_block_reason(me, 1) != "")
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	g.load_state(bl)
+	check("governo sobrevive ao salvar/carregar", g.countries[me].decree == 0 and g.countries[me].budget_code == c.budget_code and g.state_hash() == hh)
+	c = g.countries[me]
+	c.decree_left = 1
+	g._country_month(c)
+	check("decreto expira e entra em espera", c.decree == -1 and c.decree_cd == Government.DECREE_COOLDOWN - 0)
+	check("espera bloqueia novo decreto", g.decree_block_reason(me, 2) != "")
 	g.load_state(blob)

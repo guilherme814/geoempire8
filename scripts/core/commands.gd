@@ -46,6 +46,8 @@ const SET_DRILL := "set_drill"
 const SEND_AID := "send_aid"
 const SPY := "spy"
 const SET_METHOD := "set_method"
+const SET_BUDGET := "set_budget"
+const DECREE := "decree"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
 
@@ -66,6 +68,16 @@ static func set_drill(level: int) -> Dictionary:
 ## Troca o método de produção da fábrica de uma província (índice em Province.METHODS).
 static func set_method(province: int, method: int) -> Dictionary:
 	return {"type": SET_METHOD, "province": province, "method": method}
+
+
+## Nível (0 cortado, 1 normal, 2 reforçado) de um ministério (índice em Government.MINISTRIES).
+static func set_budget(ministry: int, level: int) -> Dictionary:
+	return {"type": SET_BUDGET, "ministry": ministry, "level": level}
+
+
+## Emite um decreto (índice em Government.DECREES).
+static func decree(id: int) -> Dictionary:
+	return {"type": DECREE, "id": id}
 
 
 ## Operação de espionagem contra outro país (op: 0 roubar tecnologia, 1 sabotar economia, 2 insuflar descontentamento).

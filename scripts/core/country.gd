@@ -33,6 +33,14 @@ var overlord: int = -1        # suserano (-1 = independente); vassalo paga tribu
 var overlord_since: int = 0   # dia (tick) em que virou vassalo
 var debt: int = 0             # dívida (empréstimos) em ouro
 var infamy: int = 0             # infâmia: sobe ao atacar/anexar, cai devagar
+var budget_code: int = 13       # orçamento: nível de cada ministério (Government)
+var decree: int = -1            # decreto em vigor (-1 = nenhum)
+var decree_left: int = 0        # meses restantes do decreto
+var decree_cd: int = 0          # meses até poder decretar de novo
+var budget_code: int = 13      # orçamento: nível de cada ministério (ver Government)
+var decree: int = -1           # decreto em vigor (-1 = nenhum)
+var decree_left: int = 0       # meses restantes do decreto
+var decree_cd: int = 0         # meses até poder decretar de novo
 var spy_cd: int = 0             # meses até a próxima operação de espionagem
 var drill: int = 0            # instrução das tropas: 0 recrutas, 1 regulares, 2 elite
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)

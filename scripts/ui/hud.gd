@@ -1469,6 +1469,53 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 	return pc
 
 
+## Cards "Orçamento" (ministérios) e "Decretos" da tela de Política.
+func _add_government_cards(body: Control, c: Country) -> void:
+	var bcard := _card(body, "Orçamento dos ministérios", "scroll")
+	var e := Game.estimate_monthly(c)
+	for m in Government.MINISTRIES.size():
+		var md: Dictionary = Government.MINISTRIES[m]
+		var lv: int = Government.level(c.budget_code, m)
+		var t := UIKit.label("%s — %s (custo %d%%) · afeta: %s" % [md["name"], Government.LEVEL_NAMES[lv], Government.pct(c.budget_code, m), md["eff_text"]], 15, UIKit.TEXT)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bcard.add_child(t)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		bcard.add_child(row)
+		for l in 3:
+			var b := _make_button(str(Government.LEVEL_NAMES[l]), Vector2(110, 40))
+			b.add_theme_font_size_override("font_size", 14)
+			b.disabled = l == lv
+			b.pressed.connect(_on_budget_pressed.bind(m, l))
+			row.add_child(b)
+	bcard.add_child(UIKit.label("Assistência social: %s/mês" % Money.fmt(int(e["upkeep_welfare"])), 15, UIKit.GOLD))
+	var dcard := _card(body, "Decretos", "scroll")
+	if c.decree >= 0:
+		dcard.add_child(UIKit.label("Em vigor: %s (%d meses restantes)" % [Government.DECREES[c.decree]["name"], c.decree_left], 16, UIKit.GOLD_BRIGHT))
+	elif c.decree_cd > 0:
+		dcard.add_child(UIKit.label("Novo decreto em %d meses." % c.decree_cd, 15, UIKit.TEXT))
+	for di in Government.DECREES.size():
+		var dd: Dictionary = Government.DECREES[di]
+		var dl := UIKit.label("%s — %s" % [dd["name"], dd["desc"]], 15, UIKit.TEXT)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dcard.add_child(dl)
+		var why: String = Game.decree_block_reason(c.id, di)
+		var db := _make_button("Decretar (%s)" % ("grátis" if int(dd["cost"]) == 0 else Money.fmt(int(dd["cost"]))), Vector2(200, 40))
+		db.add_theme_font_size_override("font_size", 14)
+		db.disabled = why != ""
+		db.tooltip_text = why
+		db.pressed.connect(_on_decree_pressed.bind(di))
+		dcard.add_child(db)
+
+
+func _on_budget_pressed(m: int, l: int) -> void:
+	Game.submit_command(Cmd.set_budget(m, l))
+
+
+func _on_decree_pressed(di: int) -> void:
+	Game.submit_command(Cmd.decree(di))
+
+
 func _on_law_pressed(gi: int, oi: int) -> void:
 	Game.submit_command(Cmd.enact_law(gi, oi))
 	_refresh_windows()
@@ -1576,6 +1623,8 @@ func _refresh_politics() -> void:
 		var dl := UIKit.label("• %s exige: %s → %s" % [IDEO_PT[int(dm["ideo"])], Laws.group(int(dm["group"]))["name"], Laws.option(int(dm["group"]), int(dm["option"]))["name"]], 15, UIKit.TEXT)
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		icard.add_child(dl)
+
+	_add_government_cards(body, c)
 
 	var gcard := _card(body, "Queixas da população", "book")
 	var any := false

@@ -20,41 +20,51 @@ func get_history(country_id: int) -> Array:
 	return (_history_by_country.get(country_id, []) as Array).duplicate(true)
 
 
+var _rec_tables: Array = []
+var _rec_year: int = 0
+var _rec_month: int = 0
+
+
 func record_month(game: Node) -> void:
 	if game == null or game.countries.is_empty():
 		return
-
-	# O tick mensal ocorre no primeiro dia do novo mês; o registro representa
-	# o mês que acabou de terminar.
-	var report_year: int = int(game.clock.year)
-	var report_month: int = int(game.clock.month) - 1
-	if report_month <= 0:
-		report_month = 12
-		report_year -= 1
-
-	var market_tables: Array = game.market_tables()
+	record_begin(game, [])
 	for country in game.countries:
-		if not country.is_alive():
-			continue
-		var report := _calculate_country_report(game, country.id, market_tables)
-		var rows: Array = _history_by_country.get(country.id, [])
-		var previous: Dictionary = rows.back() if not rows.is_empty() else {}
-		report["year"] = report_year
-		report["month"] = report_month
-		report["date_label"] = "%02d/%04d" % [report_month, report_year]
-		report["gdp_growth_pct"] = _percentage_change(
-			int(report["gdp_real"]), int(previous.get("gdp_real", report["gdp_real"]))
-		)
-		report["nominal_growth_pct"] = _percentage_change(
-			int(report["gdp_nominal"]), int(previous.get("gdp_nominal", report["gdp_nominal"]))
-		)
-		report["inflation_pct"] = _percentage_change(
-			int(report["price_index"]), int(previous.get("price_index", report["price_index"]))
-		)
-		rows.append(report)
-		while rows.size() > MAX_HISTORY:
-			rows.pop_front()
-		_history_by_country[country.id] = rows
+		if country.is_alive():
+			record_country(game, country)
+
+
+## Prepara o registro do mês: o tick mensal ocorre no primeiro dia do novo mês; o registro
+## representa o mês que acabou de terminar. `tables`: tabelas de mercado já calculadas (ou vazio).
+func record_begin(game: Node, tables: Array) -> void:
+	_rec_year = int(game.clock.year)
+	_rec_month = int(game.clock.month) - 1
+	if _rec_month <= 0:
+		_rec_month = 12
+		_rec_year -= 1
+	_rec_tables = tables if not tables.is_empty() else game.market_tables()
+
+
+func record_country(game: Node, country) -> void:
+	var report := _calculate_country_report(game, country.id, _rec_tables)
+	var rows: Array = _history_by_country.get(country.id, [])
+	var previous: Dictionary = rows.back() if not rows.is_empty() else {}
+	report["year"] = _rec_year
+	report["month"] = _rec_month
+	report["date_label"] = "%02d/%04d" % [_rec_month, _rec_year]
+	report["gdp_growth_pct"] = _percentage_change(
+		int(report["gdp_real"]), int(previous.get("gdp_real", report["gdp_real"]))
+	)
+	report["nominal_growth_pct"] = _percentage_change(
+		int(report["gdp_nominal"]), int(previous.get("gdp_nominal", report["gdp_nominal"]))
+	)
+	report["inflation_pct"] = _percentage_change(
+		int(report["price_index"]), int(previous.get("price_index", report["price_index"]))
+	)
+	rows.append(report)
+	while rows.size() > MAX_HISTORY:
+		rows.pop_front()
+	_history_by_country[country.id] = rows
 
 
 func country_report(game: Node, country_id: int) -> Dictionary:

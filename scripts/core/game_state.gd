@@ -202,14 +202,21 @@ var _month_stage: int = -1
 var _month_running: bool = false   # true enquanto uma etapa do mês executa (proteção contra reentrada)
 var month_hook: Callable = Callable()   # só para testes: chamado ao fim da última etapa
 var _month_t0: int = 0
+var month_budget_us: int = 9000   # orçamento por quadro para o mês fatiado
+var _deadline_us: int = 0         # 0 = sem limite (mês síncrono)
+var _sub: int = 0                 # cursor dentro da etapa atual
+var _ms: Dictionary = {}          # dados temporários do mês em andamento (não salvos)
+var _stage_acc: int = 0
+var _mt_cache: Array = []         # tabelas de mercado do mês (reaproveitadas pelo registro)
 var _cmd_queue: Array = []
 ## Conquistas do jogador local (vitórias já alcançadas e derrota); fazem parte do save e do hash.
 var victories: Array = []
 var defeated: bool = false
 ## Contador de comandos aplicados (só para a interface saber se algo mudou; fora do save e do hash).
 var cmd_seq: int = 0
-const MONTH_STAGES := 10
-const MONTH_BUDGET_US := 9000
+const MONTH_STAGES := 15
+const STAGE_NAMES := ["m_prov", "m_migr_a", "m_migr_b", "m_migr_c", "m_trade_a", "m_trade_b", "m_trade_c", "m_countries",
+	"m_politics", "m_econ", "m_aipeace", "m_rel", "m_events", "m_record", "m_emit"]
 
 
 func _ready() -> void:
@@ -1779,29 +1786,46 @@ func step(cmds: Array = []) -> void:
 		_simulate_day()
 
 
-## Executa etapas do mês dentro de um orçamento de tempo por quadro.
+## Executa etapas do mês dentro de um orçamento de tempo por quadro. As etapas pesadas têm cursor
+## (`_sub`) e devolvem false quando o orçamento acaba: continuam no quadro seguinte, na mesma ordem.
 func _run_month_slice() -> void:
 	if _month_running:
 		return
 	var t0: int = Time.get_ticks_usec()
+	_deadline_us = t0 + month_budget_us
 	while _month_stage >= 0 and not _month_running:
 		_step_month_stage()
 		if _month_stage < 0:
 			_acc = 0.0
 			break
-		if Time.get_ticks_usec() - t0 > MONTH_BUDGET_US:
+		if Time.get_ticks_usec() >= _deadline_us:
 			break
+	_deadline_us = 0
 
 
-## Roda UMA etapa. O índice avança ANTES de executar: se algo chamado durante a etapa
-## (ouvintes de sinal, autosave, hash) pedir finish_month(), não reexecuta a etapa em curso
-## (isso causava recursão infinita no autosave de janeiro).
+func _over_budget() -> bool:
+	return _deadline_us > 0 and Time.get_ticks_usec() >= _deadline_us
+
+
+## Roda (um pedaço de) UMA etapa. A última etapa (aviso aos ouvintes) zera o índice ANTES de
+## executar: se um ouvinte pedir finish_month()/autosave, nada reexecuta (isso causava recursão
+## infinita no autosave de janeiro).
 func _step_month_stage() -> void:
 	var i := _month_stage
-	_month_stage = i + 1 if i + 1 < MONTH_STAGES else -1
+	var last := i == MONTH_STAGES - 1
+	if last:
+		_month_stage = -1
 	_month_running = true
-	_month_run_stage(i)
+	var tm: int = Time.get_ticks_usec()
+	var done: bool = _month_run_stage(i)
+	_stage_acc += Time.get_ticks_usec() - tm
 	_month_running = false
+	if done:
+		PerfMonitor.record(STAGE_NAMES[i], Time.get_ticks_usec() - _stage_acc)
+		_stage_acc = 0
+		_sub = 0
+		if not last:
+			_month_stage = i + 1
 	if _month_stage < 0:
 		PerfMonitor.record("month", _month_t0)
 		_flush_cmd_queue()
@@ -1811,6 +1835,7 @@ func _step_month_stage() -> void:
 func finish_month() -> void:
 	if _month_running:
 		return
+	_deadline_us = 0
 	while _month_stage >= 0:
 		_step_month_stage()
 
@@ -2241,11 +2266,13 @@ func _advance_war() -> void:
 
 
 func _simulate_month() -> void:
+	_deadline_us = 0
 	for i in MONTH_STAGES:
-		_month_run_stage(i)
+		while not _month_run_stage(i):
+			pass
+		_sub = 0
 
 
-@warning_ignore("integer_division")
 ## Condições de vitória e derrota do jogador local (determinísticas, inteiras).
 func _check_outcome() -> Array:
 	var fresh: Array = []
@@ -2282,8 +2309,8 @@ func _check_outcome() -> Array:
 	return fresh
 
 
-func _month_run_stage(i: int) -> void:
-	var tm: int = PerfMonitor.begin()
+@warning_ignore("integer_division")
+func _month_run_stage(i: int) -> bool:
 	match i:
 		0:
 			for p in provinces:
@@ -2295,46 +2322,47 @@ func _month_run_stage(i: int) -> void:
 				var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 				if p.manpower < mx:
 					p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
-			PerfMonitor.record("m_prov", tm)
 		1:
-			_simulate_migration()
-			PerfMonitor.record("m_migr", tm)
-			_supply_attrition()
+			_migr_init()
 		2:
-			_run_trade()
-			PerfMonitor.record("m_trade", tm)
+			return _migr_step()
 		3:
-			for c in countries:
-				if c.is_alive():
-					var edu := edu_levels(c)
-					var lmod := law_mods(c)
-					var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
-					c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
-					c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
-					c.lit_acc = c.lit_acc % 100
-					c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
-					_research_step(c)
-					c.spy_cd = maxi(0, c.spy_cd - 1)
-					c.infamy = maxi(0, c.infamy - INFAMY_DECAY)
-					for gi in c.law_cd.size():
-						if int(c.law_cd[gi]) > 0:
-							c.law_cd[gi] = int(c.law_cd[gi]) - 1
-			PerfMonitor.record("m_countries", tm)
+			_migr_apply()
+			_supply_attrition()
 		4:
-			for c in countries:
+			_trade_init()
+		5:
+			return _trade_goods_step()
+		6:
+			_trade_prices()
+		7:
+			while _sub < countries.size():
+				var c := countries[_sub]
+				_sub += 1
+				if c.is_alive():
+					_country_month(c)
+				if _over_budget():
+					return false
+		8:
+			while _sub < countries.size():
+				var c := countries[_sub]
+				_sub += 1
 				if c.is_alive():
 					_update_politics(c)
-			PerfMonitor.record("m_politics", tm)
-		5:
+				if _over_budget():
+					return false
+		9:
 			# Economia: impostos + comércio - manutenção (províncias, regimentos e navios).
-			for c in countries:
-				if not c.is_alive():
-					continue
-				var e := estimate_monthly(c)
-				c.last_income = int(e["income"])
-				c.last_expense = int(e["expense"])
-				c.treasury += c.last_income - c.last_expense
-			PerfMonitor.record("m_econ", tm)
+			while _sub < countries.size():
+				var c := countries[_sub]
+				_sub += 1
+				if c.is_alive():
+					var e := estimate_monthly(c)
+					c.last_income = int(e["income"])
+					c.last_expense = int(e["expense"])
+					c.treasury += c.last_income - c.last_expense
+				if _over_budget():
+					return false
 			for c in countries:
 				if c.overlord >= 0 and c.is_alive():
 					var ov := countries[c.overlord]
@@ -2344,11 +2372,10 @@ func _month_run_stage(i: int) -> void:
 					var tribute: int = maxi(0, c.last_income) * VASSAL_TRIBUTE_PCT / 100
 					c.treasury -= tribute
 					ov.treasury += tribute
-		6:
+		10:
 			_ai_peace()
 			_ai_offers()
-			PerfMonitor.record("m_aipeace", tm)
-		7:
+		11:
 			for k in relations.keys():
 				var v: int = int(relations[k])
 				if at_war(int(k) / 1000, int(k) % 1000):
@@ -2359,19 +2386,55 @@ func _month_run_stage(i: int) -> void:
 					for o in countries:
 						if o.id != c.id and o.is_alive():
 							relations[_pair(c.id, o.id)] = maxi(-100, opinion(c.id, o.id) - 1)
-			_roll_events()
-			PerfMonitor.record("m_events", tm)
-		8:
-			EconomyManager.record_month(self)
-			PerfMonitor.record("m_record", tm)
-		9:
+		12:
+			if _sub == 0:
+				_ev_prepare()
+			var defs: Array = _ms.get("ev", [])
+			while _sub < countries.size():
+				var c := countries[_sub]
+				_sub += 1
+				_roll_events_for(c, defs)
+				if _over_budget():
+					return false
+		13:
+			# Histórico econômico (só apresentação): o jogador todo mês, os demais em rodízio de 6 meses.
+			if _sub == 0:
+				EconomyManager.record_begin(self, _mt_cache)
+			while _sub < countries.size():
+				var c := countries[_sub]
+				_sub += 1
+				if c.is_alive() and (c.id == player_country or c.id % 6 == clock.month % 6):
+					EconomyManager.record_country(self, c)
+				if _over_budget():
+					return false
+		14:
+			_ms.clear()
+			_mt_cache = []
 			_check_outcome()
 			Events.month_changed.emit(clock.to_dict())
 			if month_hook.is_valid():
 				month_hook.call()
-			PerfMonitor.record("m_emit", tm)
 			for c in countries:
 				Events.treasury_changed.emit(c.id)
+	return true
+
+
+## Evolução mensal de um país vivo: alfabetização, tecnologia, pesquisa e esperas.
+@warning_ignore("integer_division")
+func _country_month(c: Country) -> void:
+	var edu := edu_levels(c)
+	var lmod := law_mods(c)
+	var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
+	c.lit_acc += maxi(0, lit_base * (100 + int(lmod["lit"]) + int(tech_fx(c)["lit"])) / 100)
+	c.literacy = mini(LITERACY_MAX, c.literacy + c.lit_acc / 100)
+	c.lit_acc = c.lit_acc % 100
+	c.tech_pts = mini(TECH_BANK_MAX, c.tech_pts + tech_gain(c))
+	_research_step(c)
+	c.spy_cd = maxi(0, c.spy_cd - 1)
+	c.infamy = maxi(0, c.infamy - INFAMY_DECAY)
+	for gi in c.law_cd.size():
+		if int(c.law_cd[gi]) > 0:
+			c.law_cd[gi] = int(c.law_cd[gi]) - 1
 
 
 # ---------------------------------------------------------------------------
@@ -2477,15 +2540,6 @@ func _event_ok(d: Dictionary, c: Country, ctx: Dictionary = {}) -> bool:
 		return false
 	if c.treasury > int(d.get("max_treasury", 1000000000)) or c.treasury < int(d.get("min_treasury", -1000000000)):
 		return false
-	if d.has("min_ideo"):
-		var need: Dictionary = d["min_ideo"]
-		if not ctx.has("pol"):
-			ctx["pol"] = politics_of(c)
-		var pol: Dictionary = ctx["pol"]
-		for k in need.keys():
-			var idx := IDEOLOGIES.find(str(k))
-			if idx < 0 or int(pol["ideo"][idx]) < int(need[k]):
-				return false
 	if d.has("max_sat"):
 		var lim: Dictionary = d["max_sat"]
 		for k in lim.keys():
@@ -2503,30 +2557,56 @@ func _event_ok(d: Dictionary, c: Country, ctx: Dictionary = {}) -> bool:
 			ctx["regs"] = regiments_of(c.id)
 		if int(ctx["regs"]) < need_regs:
 			return false
+	if d.has("min_ideo"):
+		var need: Dictionary = d["min_ideo"]
+		if not ctx.has("pol"):
+			ctx["pol"] = politics_of(c)
+		var pol: Dictionary = ctx["pol"]
+		for k in need.keys():
+			var idx := IDEOLOGIES.find(str(k))
+			if idx < 0 or int(pol["ideo"][idx]) < int(need[k]):
+				return false
 	return true
+
+
+## Eventos possíveis neste mês (filtro só por data, igual para todos os países).
+func _ev_prepare() -> void:
+	var act: Array = []
+	for d in event_defs:
+		if clock.year < int(d.get("min_year", 0)) or clock.year > int(d.get("max_year", 9999)):
+			continue
+		if d.has("date"):
+			var dt: Array = d["date"]
+			if clock.year != int(dt[0]) or clock.month != int(dt[1]):
+				continue
+		act.append(d)
+	_ms["ev"] = act
 
 
 ## Sorteio mensal. Usa só `rng` e itera em ordem fixa -> igual em todos os pares.
 func _roll_events() -> void:
-	if event_defs.is_empty():
-		return
+	_ev_prepare()
 	for c in countries:
-		if not c.is_alive() or not pending_event_for(c.id).is_empty():
+		_roll_events_for(c, _ms["ev"])
+
+
+func _roll_events_for(c: Country, defs: Array) -> void:
+	if not c.is_alive() or not pending_event_for(c.id).is_empty():
+		return
+	var ectx: Dictionary = {}   # politics_of/regiments_of caros: calculados no máximo uma vez por país
+	for d in defs:
+		if not _event_ok(d, c, ectx):
 			continue
-		var ectx: Dictionary = {}   # politics_of/regiments_of caros: calculados no máximo uma vez por país
-		for d in event_defs:
-			if not _event_ok(d, c, ectx):
+		if not d.has("date"):
+			var mtth: int = maxi(1, int(d.get("mtth_months", 120)))
+			if rng.randi_range(0, mtth - 1) != 0:
 				continue
-			if not d.has("date"):
-				var mtth: int = maxi(1, int(d.get("mtth_months", 120)))
-				if rng.randi_range(0, mtth - 1) != 0:
-					continue
-			if bool(d.get("once", false)):
-				fired_events["%d|%s" % [c.id, str(d["id"])]] = true
-			pending_events.append({"uid": next_event_uid, "country": c.id, "event": str(d["id"]), "days": EVENT_DECISION_DAYS})
-			next_event_uid += 1
-			Events.game_event_changed.emit()
-			break
+		if bool(d.get("once", false)):
+			fired_events["%d|%s" % [c.id, str(d["id"])]] = true
+		pending_events.append({"uid": next_event_uid, "country": c.id, "event": str(d["id"]), "days": EVENT_DECISION_DAYS})
+		next_event_uid += 1
+		Events.game_event_changed.emit()
+		break
 
 
 func _advance_events() -> void:
@@ -3139,7 +3219,7 @@ func attractiveness(c: Country, avg_density: int) -> Dictionary:
 ## estreitos), rumo ao mais atrativo, conforme a política de imigração do destino; 3) transoceânica,
 ## de portos para os 3 países mais atrativos que aceitam imigrantes.
 @warning_ignore("integer_division")
-func _simulate_migration() -> void:
+func _migr_init() -> void:
 	var avg: int = world_density()
 	var att: Array = []
 	for c in countries:
@@ -3164,7 +3244,20 @@ func _simulate_migration() -> void:
 					best = c.id
 		if best >= 0:
 			dests.append(best)
-	for p in provinces:
+	_ms["att"] = att
+	_ms["delta"] = delta
+	_ms["port_of"] = port_of
+	_ms["dests"] = dests
+
+
+func _migr_step() -> bool:
+	var att: Array = _ms["att"]
+	var delta: Array = _ms["delta"]
+	var port_of: Dictionary = _ms["port_of"]
+	var dests: Array = _ms["dests"]
+	while _sub < provinces.size():
+		var p: Province = provinces[_sub]
+		_sub += 1
 		var a: int = p.owner_id
 		if a < 0 or p.population < 20000:
 			continue
@@ -3213,10 +3306,26 @@ func _simulate_migration() -> void:
 				countries[a].migr_out += m2
 				countries[di].migr_in += m2
 				break
+		if _over_budget():
+			return false
+	return true
+
+
+func _migr_apply() -> void:
+	var delta: Array = _ms["delta"]
 	for i in provinces.size():
 		var dv: int = int(delta[i])
 		if dv != 0:
 			provinces[i].population = maxi(0, provinces[i].population + dv)
+
+
+func _simulate_migration() -> void:
+	_migr_init()
+	_sub = 0
+	_deadline_us = 0
+	_migr_step()
+	_sub = 0
+	_migr_apply()
 
 
 ## População total do país.
@@ -3349,7 +3458,7 @@ func market_tables() -> Array:
 ## embargo bloqueiam. Depois, o preço local se ajusta ao saldo e o comércio rende ouro:
 ## exportador vende ao preço do comprador; importador ganha tarifas.
 @warning_ignore("integer_division")
-func _run_trade() -> void:
+func _trade_init() -> void:
 	var n := countries.size()
 	var goods := goods_list()
 	var tb := market_tables()
@@ -3380,8 +3489,30 @@ func _run_trade() -> void:
 		trade_imp.append({})
 		trade_exp.append({})
 		trade_bonus.append(0)
+	_mt_cache = tb
+	_ms["n"] = n
+	_ms["goods"] = goods
+	_ms["sup"] = sup
+	_ms["dem"] = dem
+	_ms["adj"] = adj
+	_ms["cap"] = cap
+	_ms["zmask"] = zmask
+	_ms["route_cache"] = route_cache
 
-	for g in goods:
+
+@warning_ignore("integer_division")
+func _trade_goods_step() -> bool:
+	var n: int = _ms["n"]
+	var goods: Array = _ms["goods"]
+	var sup: Array = _ms["sup"]
+	var dem: Array = _ms["dem"]
+	var adj: Dictionary = _ms["adj"]
+	var cap: Array = _ms["cap"]
+	var zmask: Array = _ms["zmask"]
+	var route_cache: Dictionary = _ms["route_cache"]
+	while _sub < goods.size():
+		var g: String = goods[_sub]
+		_sub += 1
 		var avail: Array = []
 		var exporters: Array = []
 		for e in n:
@@ -3443,13 +3574,32 @@ func _run_trade() -> void:
 							var toll: int = q * base * pi / 10000 * toll_pct / GATE_TOLL_BASE
 							trade_bonus[gc2] = int(trade_bonus[gc2]) + toll
 							trade_bonus[e] = int(trade_bonus[e]) - toll
+		if _over_budget():
+			return false
+	return true
 
+
+@warning_ignore("integer_division")
+func _trade_prices() -> void:
+	var n: int = _ms["n"]
+	var goods: Array = _ms["goods"]
+	var sup: Array = _ms["sup"]
+	var dem: Array = _ms["dem"]
 	for i in n:
 		for g in goods:
 			var s: int = int(sup[i][g]) - int(trade_exp[i].get(g, 0)) + int(trade_imp[i].get(g, 0))
 			var d: int = int(dem[i][g])
 			var delta: int = (d - s) * 8 / maxi(1, maxi(s, d))
 			local_price[i][g] = clampi(int(local_price[i][g]) + delta, PRICE_MIN, PRICE_MAX)
+
+
+func _run_trade() -> void:
+	_trade_init()
+	_sub = 0
+	_deadline_us = 0
+	_trade_goods_step()
+	_sub = 0
+	_trade_prices()
 
 
 func _rebuild_all_countries() -> void:
@@ -3836,6 +3986,9 @@ func _province_cores() -> Array:
 func load_state(d: Dictionary) -> bool:
 	_month_stage = -1
 	_month_running = false
+	_sub = 0
+	_ms.clear()
+	_stage_acc = 0
 	_cmd_queue.clear()
 	var cores: Array = d.get("cores", [])
 	for i in mini(cores.size(), provinces.size()):

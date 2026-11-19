@@ -806,11 +806,14 @@ func _sliced_month() -> void:
 	var h_sync: int = g.state_hash()
 	g.load_state(blob)
 	g._month_stage = 0
+	g.month_budget_us = 1   # força o corte em TODA unidade de trabalho (pior caso de fatiamento)
 	var guard := 0
-	while g.month_pending() and guard < 50:
+	while g.month_pending() and guard < 60000:
 		g._run_month_slice()
 		guard += 1
 	var h_sliced: int = g.state_hash()
+	g.month_budget_us = 9000
+	check("mes fatiado levou varios quadros (cursores funcionando)", guard > 20, "%d quadros" % guard)
 	check("mes fatiado gera o mesmo hash do sincrono", h_sync == h_sliced, "%d vs %d" % [h_sync, h_sliced])
 	# comandos durante o mes ficam na fila e sao aplicados depois, na ordem
 	g.load_state(blob)

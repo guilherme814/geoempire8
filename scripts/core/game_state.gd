@@ -214,6 +214,7 @@ var victories: Array = []
 var defeated: bool = false
 ## Contador de comandos aplicados (só para a interface saber se algo mudou; fora do save e do hash).
 var cmd_seq: int = 0
+var ai_heg: int = -1   # hegemon mundial calculado a cada 30 dias (usado pelo planejamento fatiado da IA)
 const MONTH_STAGES := 15
 const STAGE_NAMES := ["m_prov", "m_migr_a", "m_migr_b", "m_migr_c", "m_trade_a", "m_trade_b", "m_trade_c", "m_countries",
 	"m_politics", "m_econ", "m_aipeace", "m_rel", "m_events", "m_record", "m_emit"]
@@ -1934,12 +1935,15 @@ func is_human(cid: int) -> bool:
 
 
 @warning_ignore("integer_division")
+@warning_ignore("integer_division")
 func _advance_ai() -> void:
 	if tick % 5 != 0:
 		return
-	var heg := -1
 	if tick % 30 == 0:
-		heg = AiBrain.hegemon(self)
+		ai_heg = AiBrain.hegemon(self)
+	# Planejamento da IA em 6 fatias: cada país planeja uma vez a cada 30 dias, mas em dias
+	# diferentes (id % 6), em vez de todos no mesmo quadro (antes: pico de ~440 ms por mês).
+	var slot: int = (tick / 5) % 6
 	for c in countries:
 		if not c.is_alive():
 			continue
@@ -1949,9 +1953,9 @@ func _advance_ai() -> void:
 				_ai_war(c)
 				_auto_fleets(c)
 			continue
-		if tick % 30 == 0:
-			AiBrain.balance_drift(self, c, heg)
-			var plan := AiBrain.plan(self, c, heg)
+		if c.id % 6 == slot:
+			AiBrain.balance_drift(self, c, ai_heg)
+			var plan := AiBrain.plan(self, c, ai_heg)
 			AiEconomy.review_taxes(self, c)
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
@@ -3417,6 +3421,20 @@ func _init_market() -> void:
 
 ## Oferta e demanda locais de cada país: [sup, dem, ports, pops] (listas por id de país).
 @warning_ignore("integer_division")
+## Versão em cache para a interface (válida no mesmo dia e sem comandos novos): painéis que pedem
+## mercado várias vezes não recalculam tudo a cada abertura.
+var _mt_ui: Array = []
+var _mt_ui_key: Array = []
+
+
+func market_tables_cached() -> Array:
+	var key := [clock.year, clock.month, clock.day, cmd_seq]
+	if _mt_ui.is_empty() or key != _mt_ui_key:
+		_mt_ui = market_tables()
+		_mt_ui_key = key
+	return _mt_ui
+
+
 func market_tables() -> Array:
 	var n := countries.size()
 	var goods := goods_list()
@@ -3788,6 +3806,7 @@ func state_hash() -> int:
 	h = _mix(h, next_event_uid)
 	h = _mix(h, rng.state & 0xFFFFFFFF)
 	h = _mix(h, victories.size() * 2 + (1 if defeated else 0))
+	h = _mix(h, ai_heg + 1)
 	return h
 
 
@@ -3939,6 +3958,7 @@ func serialize_state() -> Dictionary:
 		"drill": _country_ints("drill"),
 		"spy_cd": _country_ints("spy_cd"),
 		"infamy": _country_ints("infamy"),
+		"ai_heg": ai_heg,
 		"victories": victories.duplicate(),
 		"defeated": defeated,
 		"immigration": _country_ints("immigration"),
@@ -3989,6 +4009,7 @@ func load_state(d: Dictionary) -> bool:
 	_sub = 0
 	_ms.clear()
 	_stage_acc = 0
+	_mt_ui = []
 	_cmd_queue.clear()
 	var cores: Array = d.get("cores", [])
 	for i in mini(cores.size(), provinces.size()):
@@ -4114,6 +4135,7 @@ func load_state(d: Dictionary) -> bool:
 	var drl: Array = d.get("drill", [])
 	var spc: Array = d.get("spy_cd", [])
 	var inf: Array = d.get("infamy", [])
+	ai_heg = int(d.get("ai_heg", -1))
 	victories = (d.get("victories", []) as Array).duplicate()
 	defeated = bool(d.get("defeated", false))
 	for i in countries.size():

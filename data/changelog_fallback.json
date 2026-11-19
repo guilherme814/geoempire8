@@ -1,8 +1,13 @@
 {
- "version": "0.13.1",
- "title": "GeoEmpire 8 — v0.13.1",
- "body": "## Correções\n- **Travamento em janeiro:** o autosave de janeiro entrava em recursão dentro do turno mensal fatiado e derrubava o app. Corrigido (e coberto por teste).\n- **Saves mais seguros:** gravação atômica (arquivo temporário + troca), rodízio de 2 autosaves, autosave ao ir para segundo plano e recuperação automática do melhor save.\n- **Diagnóstico:** caixa-preta gravada a cada 3 s e forense nativa (queda, falta de memória) lidas na sessão seguinte.\n\n## Novidades\n- **Infâmia:** declarar guerra e anexar países aumenta a infâmia; acima de 50 todos perdem opinião sobre você e acima de 100 você vira pária (sem alianças, ajuda ou melhora de relações). Cai devagar com o tempo.\n- **Condições de jogo:** vitórias por Hegemonia (25% das províncias), Era da Ciência (tecnologia máxima) e Grande Potência (top 5 em 1900); tela de derrota quando seu país é extinto.",
+ "version": "0.13.2",
+ "title": "GeoEmpire 8 — v0.13.2",
+ "body": "## Fase 1 — Desempenho\n- **Turno mensal em pedaços minúsculos:** o mês agora é dividido por país, por província e por mercadoria, em 15 etapas, com ~9 ms por quadro. O resultado é idêntico ao turno inteiro (teste automático com corte máximo).\n- **IA sem pico mensal:** cada país planeja em um dia diferente do mês, em vez de todos de uma vez.\n- **Painéis:** com o jogo correndo, painéis abertos se atualizam no máximo a cada 2,5 s; tabelas de mercado ficam em cache; abrir a economia ficou mais leve.\n- **Histórico econômico:** o jogador é registrado todo mês e os demais países em rodízio de 6 meses (só afeta gráficos de outros países).\n- **Eventos:** filtro por data feito uma vez por mês, e as checagens mais caras só rodam por último.",
  "history": [
+  {
+   "version": "0.13.2",
+   "title": "GeoEmpire 8 — v0.13.2",
+   "body": "## Fase 1 — Desempenho\n- **Turno mensal em pedaços minúsculos:** o mês agora é dividido por país, por província e por mercadoria, em 15 etapas, com ~9 ms por quadro. O resultado é idêntico ao turno inteiro (teste automático com corte máximo).\n- **IA sem pico mensal:** cada país planeja em um dia diferente do mês, em vez de todos de uma vez.\n- **Painéis:** com o jogo correndo, painéis abertos se atualizam no máximo a cada 2,5 s; tabelas de mercado ficam em cache; abrir a economia ficou mais leve.\n- **Histórico econômico:** o jogador é registrado todo mês e os demais países em rodízio de 6 meses (só afeta gráficos de outros países).\n- **Eventos:** filtro por data feito uma vez por mês, e as checagens mais caras só rodam por último."
+  },
   {
    "version": "0.13.1",
    "title": "GeoEmpire 8 — v0.13.1",

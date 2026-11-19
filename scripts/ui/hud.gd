@@ -747,9 +747,22 @@ func _state_sig() -> Array:
 	return [Game.cmd_seq, Game.clock.year, Game.clock.month, Game.clock.day, _world_rev, Game.player_country]
 
 
-func _refresh_windows() -> void:
+var _win_last_ms: int = 0
+var _win_dirty: bool = false
+const WIN_REFRESH_MS := 2500
+
+
+## Painéis abertos são remontados na hora quando o jogador age ou o jogo está pausado; com o jogo
+## correndo, as atualizações automáticas (dia/mês) são agrupadas a cada 2,5 s para não travar.
+func _refresh_windows(force: bool = true) -> void:
 	if _windows.is_empty():
 		return
+	if not force and Game.speed > 0:
+		if Time.get_ticks_msec() - _win_last_ms < WIN_REFRESH_MS:
+			_win_dirty = true
+			return
+	_win_dirty = false
+	_win_last_ms = Time.get_ticks_msec()
 	var sig := _state_sig()
 	for k in _windows.keys():
 		if _windows[k].visible:
@@ -1288,7 +1301,7 @@ func _refresh_market() -> void:
 	var body: VBoxContainer = _win_bodies["market"]
 	UIKit.clear(body)
 	var pc := Game.player_country
-	var tb := Game.market_tables()
+	var tb := Game.market_tables_cached()
 	var sup: Dictionary = tb[0][pc]
 	var dem: Dictionary = tb[1][pc]
 	var card := _card(body, "Preço = % do valor base  ·  + falta (sobe)  ·  - sobra (cai)", "bars")
@@ -1911,7 +1924,7 @@ func _refresh_top() -> void:
 	_date_label.text = Game.clock.format()
 	var s := clampi(Game.speed, 0, _speed_buttons.size() - 1)
 	_speed_buttons[s].set_pressed_no_signal(true)
-	_refresh_windows()
+	_refresh_windows(false)
 	_refresh_side()
 
 
@@ -2122,6 +2135,11 @@ func _input(event: InputEvent) -> void:
 		Game.submit_command(Cmd.set_speed(clampi(Game.speed - 1, 1, Game.MAX_SPEED)))
 
 
+func _process(_dt: float) -> void:
+	if _win_dirty and (Game.speed == 0 or Time.get_ticks_msec() - _win_last_ms >= WIN_REFRESH_MS) and not Game.month_pending():
+		_refresh_windows(true)
+
+
 func _notification(what: int) -> void:
 	# O Android pode encerrar o app em segundo plano: grava um autosave ao sair para o fundo.
 	if what == NOTIFICATION_APPLICATION_PAUSED and _root != null and _root.visible and Game.loaded and not Net.is_online():
@@ -2167,7 +2185,7 @@ func _on_month_changed(_date: Dictionary) -> void:
 	_check_succession()
 	_refresh_top()
 	_refresh_info()
-	_refresh_windows()
+	_refresh_windows(false)
 	_refresh_offers()
 
 

@@ -70,7 +70,7 @@ func record_country(game: Node, country) -> void:
 func country_report(game: Node, country_id: int) -> Dictionary:
 	if game == null or country_id < 0 or country_id >= game.countries.size():
 		return {}
-	return _calculate_country_report(game, country_id, game.market_tables())
+	return _calculate_country_report(game, country_id, game.market_tables_cached())
 
 
 func _calculate_country_report(game: Node, country_id: int, market_tables: Array) -> Dictionary:
@@ -237,7 +237,7 @@ func _percentage_change(current: int, previous: int) -> int:
 
 func global_rankings(game: Node) -> Array:
 	var rows: Array = []
-	var tables: Array = game.market_tables()
+	var tables: Array = game.market_tables_cached()
 	for c in game.countries:
 		if not c.is_alive():
 			continue
@@ -260,7 +260,7 @@ func global_rankings(game: Node) -> Array:
 func market_report(game: Node, country_id: int) -> Array:
 	if country_id < 0 or country_id >= game.countries.size():
 		return []
-	var tables: Array = game.market_tables()
+	var tables: Array = game.market_tables_cached()
 	var supply: Dictionary = tables[0][country_id]
 	var demand: Dictionary = tables[1][country_id]
 	var rows: Array = []

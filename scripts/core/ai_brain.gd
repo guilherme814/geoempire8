@@ -334,8 +334,7 @@ static func apply_pressure(g: Node, c, plan_d: Dictionary) -> void:
 		return
 	if str(plan_d["goal"]) != "intervene":
 		g.relations[g._pair(c.id, tid)] = maxi(-100, g.opinion(c.id, tid) - 3)
-	if g.is_human(tid) and (int(g.clock.month) + c.id) % 3 == 0:
-		Events.notice.emit("%s concentra tropas e faz exigências a você (%s)." % [c.name, goal_label(str(plan_d["goal"]))])
+	g.pressure_escalate(c.id, tid)   # protesto -> ultimato -> prazo esgotado (avisos só quando muda de nível)
 	court_allies(g, c, tid, g.is_human(tid))
 
 

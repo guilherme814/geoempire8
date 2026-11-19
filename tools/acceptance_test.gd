@@ -651,6 +651,7 @@ func run_all() -> void:
 	_sliced_month()
 	_espionage()
 	_infamy_and_outcomes()
+	_pressure_and_ai_money()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -924,4 +925,44 @@ func _infamy_and_outcomes() -> void:
 	# --- save atomico
 	var path := "user://_t_atomic.json"
 	check("save atomico grava e nao deixa .tmp", g.save_game(path) and FileAccess.file_exists(path) and not FileAccess.file_exists(path + ".tmp"))
+	g.load_state(blob)
+
+
+func _pressure_and_ai_money() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var agg := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != me and not g.is_human(c.id):
+			agg = c.id
+			break
+	if agg < 0:
+		return
+	check("pressao comeca em 0", g.pressure_level(agg, me) == 0)
+	check("1a escalada vai ao nivel 1", g.pressure_escalate(agg, me) == 1)
+	check("sem esperar, nao sobe de novo", g.pressure_escalate(agg, me) == 1)
+	g.tick += g.PRESSURE_STEP_DAYS
+	check("apos o intervalo sobe ao nivel 2", g.pressure_escalate(agg, me) == 2)
+	var b2: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.pressure.clear()
+	g.load_state(b2)
+	check("pressao persiste no save", g.pressure_level(agg, me) == 2)
+	g.countries[me].treasury = 100000
+	g.relations[g._pair(me, agg)] = 0
+	g.apply_command({"type": "improve_relations", "target": agg, "issuer": me})
+	check("melhorar relacoes acalma a pressao", g.pressure_level(agg, me) <= 1)
+	g.tick += g.PRESSURE_FORGET_DAYS
+	g._simulate_month()
+	check("pressao esquecida com o tempo", g.pressure_level(agg, me) == 0)
+	# financas da IA
+	g.load_state(blob)
+	var a: Country = g.countries[agg]
+	a.treasury = -50
+	a.debt = 0
+	g._ai_finance(a)
+	check("IA toma emprestimo com caixa negativo", a.debt > 0 and a.treasury > -50)
+	a.treasury = 100000
+	var d0: int = a.debt
+	g._ai_finance(a)
+	check("IA amortiza quando sobra dinheiro", a.debt < d0)
 	g.load_state(blob)

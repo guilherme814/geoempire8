@@ -172,6 +172,12 @@ var market_pop0: int = 1
 var relations: Dictionary = {}   # par -> opinião (-100..100)
 var alliances: Array = []        # pares aliados
 var peace_offers: Array = []       # propostas de paz pendentes (IA -> jogador): from, to, winner, term, tick
+## Escalada de pressão da IA: aggressor*1000+alvo -> nível*1000000 + tick da última subida.
+## Nível 1 protesto, 2 ultimato, 3 prazo esgotado (só então a IA pode declarar guerra a um humano).
+var pressure: Dictionary = {}
+const PRESSURE_STEP_DAYS := 45      # tempo mínimo entre os degraus
+const PRESSURE_FORGET_DAYS := 180   # sem nova pressão, o nível cai um degrau
+const PRESSURE_WAR_LEVEL := 2       # nível exigido para a IA atacar um jogador
 var peace_cd: Dictionary = {}      # par -> tick até o qual a IA não oferece paz de novo
 var truces: Dictionary = {}      # par -> tick em que a trégua acaba
 
@@ -524,6 +530,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	truces.clear()
 	peace_offers.clear()
 	peace_cd.clear()
+	pressure.clear()
 	embargoes.clear()
 	next_army_id = 1
 	_load_sea_grid(dict)
@@ -1046,6 +1053,7 @@ func apply_command(cmd: Dictionary) -> void:
 			return
 		countries[issuer].treasury -= IMPROVE_COST
 		relations[_pair(issuer, target)] = mini(100, opinion(issuer, target) + 20)
+		_pressure_relax(target, issuer)   # agrado diplomático acalma quem pressionava
 		Events.treasury_changed.emit(issuer)
 		Events.war_changed.emit()
 
@@ -1104,8 +1112,13 @@ func apply_command(cmd: Dictionary) -> void:
 			relations[_pair(issuer, target)] = maxi(-100, opinion(issuer, target) - SPY_CAUGHT_OPINION)
 		if is_human(issuer):
 			Events.notice.emit(("Operação bem-sucedida contra %s." if win else "Seu agente foi capturado em %s!") % spy_tg.name)
-		elif is_human(target) and not win:
-			Events.notice.emit("Agentes de %s foram capturados em seu território." % spy_me.name)
+		elif is_human(target):
+			if not win:
+				Events.notice.emit("Agentes de %s foram capturados em seu território." % spy_me.name)
+			elif op == 1:
+				Events.notice.emit("Sabotagem: parte do seu tesouro foi destruída. Suspeita-se de %s." % spy_me.name)
+			elif op == 2:
+				Events.notice.emit("Agitadores incitam descontentamento no país. Suspeita-se de %s." % spy_me.name)
 		Events.treasury_changed.emit(issuer)
 		Events.treasury_changed.emit(target)
 		Events.war_changed.emit()
@@ -1508,7 +1521,43 @@ func _add_infamy(cid: int, amount: int) -> void:
 		Events.notice.emit("Sua infâmia chegou a %d: o mundo desconfia de você." % c.infamy)
 
 
+func pressure_level(aggressor: int, target: int) -> int:
+	return int(pressure.get(aggressor * 1000 + target, 0)) / 1000000
+
+
+## Sobe um degrau da escalada se o intervalo mínimo passou. Devolve o nível atual.
+func pressure_escalate(aggressor: int, target: int) -> int:
+	var key := aggressor * 1000 + target
+	var v: int = int(pressure.get(key, 0))
+	var lvl: int = v / 1000000
+	var t: int = v % 1000000
+	if lvl < 3 and (v == 0 or tick - t >= PRESSURE_STEP_DAYS):
+		lvl += 1
+		pressure[key] = lvl * 1000000 + tick
+		if is_human(target):
+			var who := countries[aggressor].name
+			match lvl:
+				1: Events.notice.emit("%s protesta formalmente contra o seu governo." % who)
+				2: Events.notice.emit("ULTIMATO: %s exige concessões e mobiliza tropas. Melhore as relações ou prepare-se para a guerra." % who)
+				3: Events.notice.emit("%s esgotou a paciência: a guerra pode vir a qualquer momento!" % who)
+	return lvl
+
+
+func _pressure_relax(aggressor: int, target: int) -> void:
+	var key := aggressor * 1000 + target
+	var v: int = int(pressure.get(key, 0))
+	if v == 0:
+		return
+	var lvl: int = v / 1000000 - 1
+	if lvl <= 0:
+		pressure.erase(key)
+	else:
+		pressure[key] = lvl * 1000000 + tick
+
+
 func _start_war(attacker: int, target: int) -> void:
+	pressure.erase(attacker * 1000 + target)
+	pressure.erase(target * 1000 + attacker)
 	if loaded:
 		_add_infamy(attacker, INFAMY_WAR)
 	wars.append(_new_war(attacker, target))
@@ -1959,6 +2008,7 @@ func _advance_ai() -> void:
 			AiEconomy.review_taxes(self, c)
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
+			_ai_finance(c)
 			_ai_invest(c)
 			_ai_declare_war(c, plan)
 		if not wars_of(c.id).is_empty():
@@ -2090,6 +2140,7 @@ func _ai_declare_war(c: Country, plan: Dictionary) -> void:
 	var stage := str(plan["stage"])
 	if stage == "pressure":
 		AiBrain.apply_pressure(self, c, plan)
+		_ai_spy(c, int(plan["target"]))
 		return
 	if stage == "defend":
 		AiBrain.court_allies(self, c, int(plan["target"]), false)
@@ -2101,8 +2152,30 @@ func _ai_declare_war(c: Country, plan: Dictionary) -> void:
 		return
 	var tgt: int = int(plan["target"])
 	if is_human(tgt):
+		# Aviso justo: contra o jogador a IA precisa ter escalado a pressão até o ultimato.
+		if pressure_level(c.id, tgt) < PRESSURE_WAR_LEVEL:
+			AiBrain.apply_pressure(self, c, plan)
+			return
 		Events.notice.emit("%s declara guerra para %s." % [c.name, AiBrain.goal_label(str(plan["goal"]))])
 	_start_war(c.id, tgt)
+
+
+## Espionagem da IA contra o alvo da sua pressão (rara; usa o rng, ordem fixa).
+func _ai_spy(c: Country, tid: int) -> void:
+	if tid < 0 or not can_spy(c.id, tid) or c.treasury < SPY_COST * 3:
+		return
+	if rng.randi_range(0, 3) != 0:
+		return
+	var op: int = 0 if countries[tid].tech_level() > c.tech_level() else (1 if rng.randi_range(0, 1) == 0 else 2)
+	apply_command({"type": "spy", "target": tid, "op": op, "issuer": c.id})
+
+
+## Finanças da IA: toma empréstimo quando o caixa fica negativo e amortiza quando sobra dinheiro.
+func _ai_finance(c: Country) -> void:
+	if c.treasury < 0 and can_take_loan(c.id):
+		apply_command({"type": "take_loan", "issuer": c.id})
+	elif c.debt > 0 and c.treasury > maxi(600, c.last_expense * 6) + LOAN_STEP:
+		apply_command({"type": "repay_loan", "issuer": c.id})
 
 
 func _ai_build_ship(c: Country) -> void:
@@ -2385,6 +2458,9 @@ func _month_run_stage(i: int) -> bool:
 				if at_war(int(k) / 1000, int(k) % 1000):
 					continue
 				relations[k] = v - signi(v) * mini(absi(v), 2)
+			for k in pressure.keys():
+				if tick - int(pressure[k]) % 1000000 >= PRESSURE_FORGET_DAYS:
+					_pressure_relax(int(k) / 1000, int(k) % 1000)
 			for c in countries:
 				if c.is_alive() and c.infamy >= INFAMY_BAD:
 					for o in countries:
@@ -3759,6 +3835,11 @@ func state_hash() -> int:
 		h = _mix(h, int(o["winner"]))
 		h = _mix(h, str(o["term"]).length())
 		h = _mix(h, int(o["tick"]))
+	var prk: Array = pressure.keys()
+	prk.sort()
+	for k in prk:
+		h = _mix(h, int(k))
+		h = _mix(h, int(pressure[k]))
 	var pk: Array = peace_cd.keys()
 	pk.sort()
 	for k in pk:
@@ -3986,6 +4067,7 @@ func serialize_state() -> Dictionary:
 		"truces": _dict_to_pairs(truces),
 		"peace_offers": peace_offers.duplicate(true),
 		"peace_cd": _dict_to_pairs(peace_cd),
+		"pressure": _dict_to_pairs(pressure),
 		"next_army_id": next_army_id,
 		"fleets": _fleets_to_list(),
 		"next_fleet_id": next_fleet_id,
@@ -4180,6 +4262,9 @@ func load_state(d: Dictionary) -> bool:
 	peace_offers.clear()
 	for o in d.get("peace_offers", []):
 		peace_offers.append({"from": int(o["from"]), "to": int(o["to"]), "winner": int(o["winner"]), "term": str(o["term"]), "tick": int(o["tick"])})
+	pressure.clear()
+	for r in d.get("pressure", []):
+		pressure[int(r[0])] = int(r[1])
 	peace_cd.clear()
 	for r in d.get("peace_cd", []):
 		peace_cd[int(r[0])] = int(r[1])

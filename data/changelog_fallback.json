@@ -1,8 +1,13 @@
 {
- "version": "0.13.2",
- "title": "GeoEmpire 8 — v0.13.2",
- "body": "## Fase 1 — Desempenho\n- **Turno mensal em pedaços minúsculos:** o mês agora é dividido por país, por província e por mercadoria, em 15 etapas, com ~9 ms por quadro. O resultado é idêntico ao turno inteiro (teste automático com corte máximo).\n- **IA sem pico mensal:** cada país planeja em um dia diferente do mês, em vez de todos de uma vez.\n- **Painéis:** com o jogo correndo, painéis abertos se atualizam no máximo a cada 2,5 s; tabelas de mercado ficam em cache; abrir a economia ficou mais leve.\n- **Histórico econômico:** o jogador é registrado todo mês e os demais países em rodízio de 6 meses (só afeta gráficos de outros países).\n- **Eventos:** filtro por data feito uma vez por mês, e as checagens mais caras só rodam por último.",
+ "version": "0.14.0",
+ "title": "GeoEmpire 8 — v0.14.0 (Fase 2)",
+ "body": "## Fase 2 — Mundo e IA\n- **Escalada de pressão:** a IA não repete mais \"exigências\" em loop. Agora há degraus: protesto, ultimato e prazo esgotado, com aviso só quando o nível muda. A IA só pode declarar guerra a você depois do ultimato.\n- **Acalmar:** melhorar relações com quem te pressiona reduz o nível; sem nova pressão, o nível cai sozinho em 6 meses.\n- **IA com finanças:** toma empréstimo quando o caixa fica negativo e amortiza quando sobra dinheiro.\n- **IA espiã:** países que pressionam um alvo podem sabotar ou roubar tecnologia; você é avisado quando sofre sabotagem ou agitação.",
  "history": [
+  {
+   "version": "0.14.0",
+   "title": "GeoEmpire 8 — v0.14.0 (Fase 2)",
+   "body": "## Fase 2 — Mundo e IA\n- **Escalada de pressão:** a IA não repete mais \"exigências\" em loop. Agora há degraus: protesto, ultimato e prazo esgotado, com aviso só quando o nível muda. A IA só pode declarar guerra a você depois do ultimato.\n- **Acalmar:** melhorar relações com quem te pressiona reduz o nível; sem nova pressão, o nível cai sozinho em 6 meses.\n- **IA com finanças:** toma empréstimo quando o caixa fica negativo e amortiza quando sobra dinheiro.\n- **IA espiã:** países que pressionam um alvo podem sabotar ou roubar tecnologia; você é avisado quando sofre sabotagem ou agitação."
+  },
   {
    "version": "0.13.2",
    "title": "GeoEmpire 8 — v0.13.2",

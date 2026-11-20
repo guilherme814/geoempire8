@@ -668,6 +668,7 @@ func run_all() -> void:
 	_pops()
 	_class_income()
 	_consumption()
+	_regional_markets()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1177,3 +1178,20 @@ func _consumption() -> void:
 	var cheap := {"wine": 70, "silk": 70, "spices": 70, "furniture": 70, "sugar": 70, "tea": 70}
 	check("cesta barata eleva satisfacao", Consumption.comfort_term(cheap, 2) > 0)
 	check("termo limitado", Consumption.comfort_term({"wine": 1000, "silk": 1000, "spices": 1000, "furniture": 1000, "sugar": 1000, "tea": 1000}, 2) >= Consumption.TERM_MIN)
+
+
+func _regional_markets() -> void:
+	var food: Dictionary = g.region_food()
+	check("ha mercados regionais", food.size() > 0)
+	var neg := 0
+	var famine := 0
+	for k in food.keys():
+		var r: Array = food[k]
+		if int(r[0]) < 0 or int(r[1]) < 0:
+			neg += 1
+	for p in g.provinces:
+		if p.owner_id >= 0 and g.region_famine(food, p):
+			famine += 1
+	check("oferta e demanda regionais nao negativas", neg == 0)
+	check("regioes sao deterministicas", JSON.stringify(g.region_food()) == JSON.stringify(food))
+	print("INFO provincias em regiao com fome: %d de %d" % [famine, g.provinces.size()])

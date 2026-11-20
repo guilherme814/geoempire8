@@ -1469,6 +1469,28 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 	return pc
 
 
+## Card "Mercados regionais": regiões do país com pior abastecimento de alimento.
+func _add_region_card(body: Control, c: Country) -> void:
+	var food: Dictionary = Game.region_food()
+	var rows: Array = []
+	for k in food.keys():
+		var parts: PackedStringArray = str(k).split("|")
+		if int(parts[0]) != c.id:
+			continue
+		var r: Array = food[k]
+		if int(r[1]) > 0:
+			rows.append([parts[1], int(r[0]) * 100 / int(r[1])])
+	rows.sort_custom(func(x, y): return int(x[1]) < int(y[1]))
+	var card := _card(body, "Mercados regionais (alimento)", "scroll")
+	if rows.is_empty():
+		card.add_child(UIKit.label("Sem regiões.", 15, UIKit.TEXT))
+		return
+	for i in mini(5, rows.size()):
+		var ratio: int = int(rows[i][1])
+		var col: Color = UIKit.NEG if ratio < Game.FAMINE_PCT else (UIKit.GOLD if ratio < 100 else UIKit.POS)
+		card.add_child(UIKit.label("%s — oferta %d%% da demanda%s" % [rows[i][0], ratio, " (fome: crescimento cortado)" if ratio < Game.FAMINE_PCT else ""], 15, col))
+
+
 ## Card "Renda por classe": renda mensal, por mil habitantes e relativa à média, e desigualdade.
 func _add_income_card(body: Control, c: Country) -> void:
 	var inc: Dictionary = Game.class_income(c)
@@ -1651,6 +1673,7 @@ func _refresh_politics() -> void:
 		icard.add_child(dl)
 
 	_add_income_card(body, c)
+	_add_region_card(body, c)
 	_add_government_cards(body, c)
 
 	var gcard := _card(body, "Queixas da população", "book")

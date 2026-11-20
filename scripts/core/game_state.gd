@@ -182,6 +182,7 @@ var trade_exp: Array = []
 var trade_bonus: Array = []
 var market_dem: Dictionary = {}
 var market_pop0: int = 1
+var famine_regions: int = 0       # (só apresentação) províncias em região com fome no último mês
 var relations: Dictionary = {}   # par -> opinião (-100..100)
 var alliances: Array = []        # pares aliados
 var peace_offers: Array = []       # propostas de paz pendentes (IA -> jogador): from, to, winner, term, tick
@@ -2612,11 +2613,17 @@ func _check_outcome() -> Array:
 func _month_run_stage(i: int) -> bool:
 	match i:
 		0:
+			var food := region_food()
+			famine_regions = 0
 			for p in provinces:
-				# Crescimento demográfico: +0,1% ao mês.
+				# Crescimento demográfico: +0,1% ao mês (metade, em região com fome).
 				var own: int = p.owner_id
 				var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
-				p.population += p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
+				var grow: int = p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
+				if own >= 0 and region_famine(food, p):
+					grow /= FAMINE_GROWTH_DIV
+					famine_regions += 1
+				p.population += grow
 				# Recuperação de mão de obra.
 				var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 				if p.manpower < mx:
@@ -2972,6 +2979,36 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 		var pct: int = int(fx["pop_pct"])
 		for pid in c.province_ids:
 			provinces[pid].population += provinces[pid].population * pct / 100
+
+
+## Mercados regionais (B4): alimento (grãos, peixe, gado) de cada região histórica de cada país.
+## Retorna {"dono|região": [oferta, demanda]}. Derivado da produção e da população, não é estado.
+const FOOD := ["grain", "fish", "livestock"]
+const FAMINE_PCT := 50           # abaixo disso (oferta/demanda) a região passa fome
+const FAMINE_GROWTH_DIV := 2     # fome corta o crescimento populacional pela metade
+
+
+@warning_ignore("integer_division")
+func region_food() -> Dictionary:
+	var out: Dictionary = {}
+	var dem_unit := 0
+	for g in FOOD:
+		dem_unit += int(market_dem.get(g, 0))
+	for p in provinces:
+		if p.owner_id < 0:
+			continue
+		var key := "%d|%s" % [p.owner_id, p.region]
+		var row: Array = out.get(key, [0, 0])
+		if FOOD.has(p.resource_type):
+			row[0] += p.units()
+		row[1] += dem_unit * p.population / maxi(1, market_pop0)
+		out[key] = row
+	return out
+
+
+func region_famine(food: Dictionary, p: Province) -> bool:
+	var row: Array = food.get("%d|%s" % [p.owner_id, p.region], [0, 0])
+	return int(row[1]) > 0 and int(row[0]) * 100 < int(row[1]) * FAMINE_PCT
 
 
 ## Pops (B1): população de cada província por profissão/classe [camponeses, operários, aristocratas,

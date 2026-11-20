@@ -47,6 +47,9 @@ const SEND_AID := "send_aid"
 const SPY := "spy"
 const SET_METHOD := "set_method"
 const SET_BUDGET := "set_budget"
+const JUSTIFY := "justify"
+const PROPOSE_TREATY := "propose_treaty"
+const BREAK_TREATY := "break_treaty"
 const DECREE := "decree"
 const TRANSFER_PROVINCE := "transfer_province"   # debug / base para conquista
 
@@ -78,6 +81,20 @@ static func set_budget(ministry: int, level: int) -> Dictionary:
 ## Emite um decreto (índice em Government.DECREES).
 static func decree(id: int) -> Dictionary:
 	return {"type": DECREE, "id": id}
+
+
+## Fabrica um casus belli contra `target` (fica pronto após alguns dias).
+static func justify(target: int) -> Dictionary:
+	return {"type": JUSTIFY, "target": target}
+
+
+## Propõe um tratado (0 não agressão, 1 comercial).
+static func propose_treaty(target: int, kind: int) -> Dictionary:
+	return {"type": PROPOSE_TREATY, "target": target, "kind": kind}
+
+
+static func break_treaty(target: int, kind: int) -> Dictionary:
+	return {"type": BREAK_TREATY, "target": target, "kind": kind}
 
 
 ## Operação de espionagem contra outro país (op: 0 roubar tecnologia, 1 sabotar economia, 2 insuflar descontentamento).

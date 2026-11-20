@@ -664,6 +664,7 @@ func run_all() -> void:
 	_production_methods()
 	_law_legitimacy()
 	_government()
+	_diplomacy_moves()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1069,4 +1070,55 @@ func _government() -> void:
 	g._country_month(c)
 	check("decreto expira e entra em espera", c.decree == -1 and c.decree_cd == Government.DECREE_COOLDOWN - 0)
 	check("espera bloqueia novo decreto", g.decree_block_reason(me, 2) != "")
+	g.load_state(blob)
+
+
+func _diplomacy_moves() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var other := -1
+	for c in g.countries:
+		if c.is_alive() and c.id != me and c.overlord < 0 and not g.at_war(me, c.id) and not g.allied(me, c.id) and c.infamy < g.INFAMY_PARIAH:
+			other = c.id
+			break
+	if other < 0:
+		check("achou alvo diplomatico", false)
+		return
+	g.countries[me].treasury = 100000
+	g.countries[me].overlord = -1
+	g.cb.clear()
+	g.treaties.clear()
+	g.truces.erase(g._pair(me, other))
+	# casus belli
+	check("pode justificar guerra", g.can_justify(me, other))
+	g.apply_command({"type": "justify", "target": other, "issuer": me})
+	check("justificativa em preparo", g.cb_pending_days(me, other) > 0 and not g.has_cb(me, other))
+	check("nao justifica duas vezes", not g.can_justify(me, other))
+	g.tick += g.JUSTIFY_DAYS
+	check("casus belli pronto", g.has_cb(me, other))
+	var inf0: int = g.countries[me].infamy
+	g._start_war(me, other)
+	check("guerra com casus belli nao gera infamia", g.countries[me].infamy == inf0 and not g.cb.has(me * 1000 + other))
+	g._end_war(me, other)
+	g.truces.erase(g._pair(me, other))
+	# tratados
+	g.relations[g._pair(me, other)] = 50
+	g.apply_command({"type": "propose_treaty", "target": other, "kind": 0, "issuer": me})
+	check("pacto de nao agressao firmado", g.treaty_active(me, other, 0))
+	check("pacto bloqueia declaracao de guerra", not g.can_declare_war(me, other) and not g.can_declare_war(other, me))
+	g.apply_command({"type": "propose_treaty", "target": other, "kind": 1, "issuer": me})
+	check("acordo comercial da bonus de comercio", g.treaty_trade_pct(me) == g.TREATY_TRADE_PCT)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	g.load_state(bl)
+	check("tratados sobrevivem ao salvar/carregar", g.treaty_active(me, other, 0) and g.state_hash() == hh)
+	var inf1: int = g.countries[me].infamy
+	g.apply_command({"type": "break_treaty", "target": other, "kind": 0, "issuer": me})
+	check("romper pacto custa infamia", not g.treaty_active(me, other, 0) and g.countries[me].infamy == inf1 + g.PACT_BREAK_INFAMY)
+	g.tick += g.TREATY_DAYS + 1
+	g._expire_diplomacy()
+	check("tratados vencem", not g.treaty_active(me, other, 1) and g.treaty_trade_pct(me) == 0)
+	g.relations[g._pair(me, other)] = 0
+	g.apply_command({"type": "propose_treaty", "target": other, "kind": 0, "issuer": me})
+	check("sem opiniao suficiente a IA recusa", not g.treaty_active(me, other, 0))
 	g.load_state(blob)

@@ -2596,6 +2596,23 @@ func _diplo_detail(parent: VBoxContainer, me: int, t: int) -> void:
 		var sb := _info_button("%s (%d)" % [spy_names[oi], Game.SPY_COST], bs, _diplo_cmd.bind(Cmd.spy(t, oi)), grid)
 		sb.disabled = not Game.can_spy(me, t)
 		sb.tooltip_text = "Espionagem: chance base %d%% (alfabetização pesa). Falhar custa %d de opinião. Espera: %d meses (restam %d)." % [int(Game.SPY_CHANCE[oi]), Game.SPY_CAUGHT_OPINION, Game.SPY_COOLDOWN, Game.countries[me].spy_cd]
+	var jb := _info_button("Justificar guerra (%d)" % Game.JUSTIFY_COST, bs, _diplo_cmd.bind(Cmd.justify(t)), grid)
+	jb.disabled = not Game.can_justify(me, t)
+	if Game.has_cb(me, t):
+		jb.text = "Casus belli pronto"
+	elif Game.cb_pending_days(me, t) > 0:
+		jb.text = "Justificando (%d dias)" % Game.cb_pending_days(me, t)
+	jb.tooltip_text = "Com casus belli, declarar guerra não gera infâmia e as potências não formam coalizão contra você. Pronto em %d dias, vale %d dias." % [Game.JUSTIFY_DAYS, Game.CB_VALID_DAYS]
+	for tk in 2:
+		var active: bool = Game.treaty_active(me, t, tk)
+		var tb: Button
+		if active:
+			tb = _info_button("Romper: %s" % Game.TREATY_NAMES[tk], bs, _diplo_cmd.bind(Cmd.break_treaty(t, tk)), grid)
+			tb.tooltip_text = "Vence em %d dias. Romper o pacto custa %d de infâmia e %d de opinião." % [int(Game.treaties.get(Game._pair(me, t) * 10 + tk, 0)) - Game.tick, Game.PACT_BREAK_INFAMY, Game.PACT_BREAK_OPINION] if tk == 0 else "Vence em %d dias." % (int(Game.treaties.get(Game._pair(me, t) * 10 + tk, 0)) - Game.tick)
+		else:
+			tb = _info_button("%s (%d)" % [Game.TREATY_NAMES[tk], int(Game.TREATY_COST[tk])], bs, _diplo_cmd.bind(Cmd.propose_treaty(t, tk)), grid)
+			tb.disabled = not Game.can_treaty(me, t, tk)
+			tb.tooltip_text = "Exige opinião %d. Dura %d dias. %s" % [int(Game.TREATY_MIN_OPINION[tk]), Game.TREATY_DAYS, "Bloqueia declarações de guerra entre os dois." if tk == 0 else "+%d%% de comércio para cada lado (máx. 3 acordos)." % Game.TREATY_TRADE_PCT]
 	var is_ally := Game.allied(me, t)
 	var vassal_pair := tc.overlord == me or Game.countries[me].overlord == t
 	var b2 := _info_button("Romper aliança" if is_ally else "Propor aliança", bs,

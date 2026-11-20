@@ -12,7 +12,7 @@ Motor: Godot 4.3, GDScript, GL Compatibility. Alvo: Android.
 | 3 | Economia de mercado (métodos de produção das fábricas) | feita no código (v0.15.0), falta validar no aparelho |
 | 4 | Política interna (6 classes, 5 correntes ligadas às leis) | feita no código (v0.16.0), falta validar no aparelho |
 | 5 | Governo (orçamento por ministérios, decretos) | feita no código (v0.17.0), falta validar no aparelho |
-| 6 | Diplomacia (jogadas, casus belli, coalizões, tratados) | pendente |
+| 6 | Diplomacia (jogadas, casus belli, coalizões, tratados) | feita no código (v0.18.0), falta validar no aparelho |
 | 7 | Guerra (frentes, logística, comandantes, naval) | pendente |
 | 8 | Tecnologia e cultura (eras, ideologias, prestígio) | pendente |
 | 9 | Eventos e história (1836–2012, tela de fim de jogo) | pendente |

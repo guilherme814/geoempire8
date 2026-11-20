@@ -114,6 +114,16 @@ const DRILL_LOSS_PCT := 10       # -% de perdas em batalha por nível de instru�
 const AID_COST := 200            # custo da ajuda financeira
 const AID_GIFT := 120            # o que o país ajudado recebe
 const AID_OPINION := 25
+const JUSTIFY_COST := 150         # fabricar casus belli
+const JUSTIFY_DAYS := 90          # tempo até a justificativa ficar pronta
+const CB_VALID_DAYS := 720        # validade depois de pronta
+const TREATY_DAYS := 720          # duração dos tratados
+const TREATY_COST := [0, 100]     # custo de propor: [não agressão, comercial]
+const TREATY_MIN_OPINION := [20, 10]
+const TREATY_NAMES := ["Pacto de não agressão", "Acordo comercial"]
+const TREATY_TRADE_PCT := 6       # % de comércio por acordo comercial (máx. 3)
+const PACT_BREAK_INFAMY := 15
+const PACT_BREAK_OPINION := 30
 const INFAMY_WAR := 20           # declarar guerra
 const INFAMY_ANNEX := 30         # anexar um país na paz
 const INFAMY_DECAY := 2          # queda mensal
@@ -183,6 +193,8 @@ const PRESSURE_FORGET_DAYS := 180   # sem nova pressão, o nível cai um degrau
 const PRESSURE_WAR_LEVEL := 2       # nível exigido para a IA atacar um jogador
 var peace_cd: Dictionary = {}      # par -> tick até o qual a IA não oferece paz de novo
 var truces: Dictionary = {}      # par -> tick em que a trégua acaba
+var cb: Dictionary = {}          # casus belli: atacante*1000+alvo -> tick em que a justificativa fica pronta
+var treaties: Dictionary = {}    # tratados: par*10+tipo (0 não agressão, 1 comercial) -> tick em que vence
 
 var event_defs: Array = []         # definições de data/events.json (somente leitura)
 var pending_events: Array = []     # [{uid, country, event, days}]
@@ -531,6 +543,8 @@ func load_world(path: String = WORLD_PATH) -> bool:
 	relations.clear()
 	alliances.clear()
 	truces.clear()
+	cb.clear()
+	treaties.clear()
 	peace_offers.clear()
 	peace_cd.clear()
 	pressure.clear()
@@ -919,6 +933,48 @@ func apply_command(cmd: Dictionary) -> void:
 		if decree_block_reason(issuer, di) != "":
 			return
 		_enact_decree(issuer, di)
+
+	elif t == Cmd.JUSTIFY:
+		var jt: int = int(cmd.get("target", -1))
+		if not can_justify(issuer, jt):
+			return
+		countries[issuer].treasury -= JUSTIFY_COST
+		cb[issuer * 1000 + jt] = tick + JUSTIFY_DAYS
+		Events.treasury_changed.emit(issuer)
+		if issuer == player_country:
+			Events.notice.emit("Casus belli contra %s em preparo (%d dias)." % [countries[jt].name, JUSTIFY_DAYS])
+
+	elif t == Cmd.PROPOSE_TREATY:
+		var tt: int = int(cmd.get("target", -1))
+		var tk: int = int(cmd.get("kind", -1))
+		if not can_treaty(issuer, tt, tk):
+			return
+		if is_human(tt):
+			if issuer == player_country:
+				Events.notice.emit("Tratados com jogadores ainda não existem.")
+			return
+		if opinion(issuer, tt) < int(TREATY_MIN_OPINION[tk]):
+			if issuer == player_country:
+				Events.notice.emit("%s recusa: opinião %d, precisa de %d." % [countries[tt].name, opinion(issuer, tt), int(TREATY_MIN_OPINION[tk])])
+			return
+		countries[issuer].treasury -= int(TREATY_COST[tk])
+		treaties[_pair(issuer, tt) * 10 + tk] = tick + TREATY_DAYS
+		relations[_pair(issuer, tt)] = clampi(opinion(issuer, tt) + 5, -100, 100)
+		Events.treasury_changed.emit(issuer)
+		if issuer == player_country or tt == player_country:
+			Events.notice.emit("%s firmado: %s e %s." % [TREATY_NAMES[tk], countries[issuer].name, countries[tt].name])
+
+	elif t == Cmd.BREAK_TREATY:
+		var bt: int = int(cmd.get("target", -1))
+		var bk: int = int(cmd.get("kind", -1))
+		if bt < 0 or bt >= countries.size() or bk < 0 or bk >= TREATY_COST.size() or not treaty_active(issuer, bt, bk):
+			return
+		treaties.erase(_pair(issuer, bt) * 10 + bk)
+		if bk == 0:
+			_add_infamy(issuer, PACT_BREAK_INFAMY)
+			relations[_pair(issuer, bt)] = clampi(opinion(issuer, bt) - PACT_BREAK_OPINION, -100, 100)
+		if issuer == player_country:
+			Events.notice.emit("%s com %s rompido." % [TREATY_NAMES[bk], countries[bt].name])
 
 	elif t == Cmd.ENACT_LAW:
 		if issuer < 0 or issuer >= countries.size():
@@ -1558,6 +1614,89 @@ func can_set_method(pid: int, issuer: int, m: int) -> bool:
 	return countries[issuer].treasury >= method_cost(p, m)
 
 
+## Casus belli: a justificativa pronta e ainda válida de `a` contra `t`.
+func has_cb(a: int, t: int) -> bool:
+	var key: int = a * 1000 + t
+	if not cb.has(key):
+		return false
+	var ready: int = int(cb[key])
+	return tick >= ready and tick < ready + CB_VALID_DAYS
+
+
+func cb_pending_days(a: int, t: int) -> int:
+	var key: int = a * 1000 + t
+	return maxi(0, int(cb.get(key, 0)) - tick) if cb.has(key) else 0
+
+
+func can_justify(a: int, t: int) -> bool:
+	if a < 0 or t < 0 or a >= countries.size() or t >= countries.size() or a == t:
+		return false
+	if not countries[a].is_alive() or not countries[t].is_alive() or at_war(a, t) or allied(a, t):
+		return false
+	if countries[a].overlord >= 0 or countries[t].overlord == a:
+		return false
+	if cb.has(a * 1000 + t) and (cb_pending_days(a, t) > 0 or has_cb(a, t)):
+		return false
+	return countries[a].treasury >= JUSTIFY_COST
+
+
+func treaty_active(x: int, y: int, kind: int) -> bool:
+	return int(treaties.get(_pair(x, y) * 10 + kind, 0)) > tick
+
+
+func treaty_trade_pct(cid: int) -> int:
+	var n := 0
+	for k in treaties.keys():
+		var key: int = int(k)
+		if key % 10 != 1 or int(treaties[k]) <= tick:
+			continue
+		var pr: int = key / 10
+		if pr / 1000 == cid or pr % 1000 == cid:
+			n += 1
+	return mini(3, n) * TREATY_TRADE_PCT
+
+
+func can_treaty(issuer: int, target: int, kind: int) -> bool:
+	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
+		return false
+	if kind < 0 or kind >= TREATY_COST.size():
+		return false
+	if not countries[issuer].is_alive() or not countries[target].is_alive() or at_war(issuer, target):
+		return false
+	if countries[issuer].overlord >= 0 or countries[target].overlord >= 0 or countries[target].infamy >= INFAMY_PARIAH:
+		return false
+	return not treaty_active(issuer, target, kind) and countries[issuer].treasury >= int(TREATY_COST[kind])
+
+
+func _expire_diplomacy() -> void:
+	for k in treaties.keys():
+		if int(treaties[k]) <= tick:
+			treaties.erase(k)
+	for k in cb.keys():
+		if tick >= int(cb[k]) + CB_VALID_DAYS:
+			cb.erase(k)
+
+
+## IA: uma vez por ano busca o parceiro de maior opinião para um acordo comercial (e pacto, se confiam muito).
+func _ai_treaties(c: Country) -> void:
+	if (tick / 30 + c.id) % 12 != 0:
+		return
+	var best := -1
+	var bo := -1000
+	for o in countries:
+		if o.id == c.id or not o.is_alive() or is_human(o.id):
+			continue
+		var op: int = opinion(c.id, o.id)
+		if op > bo and can_treaty(c.id, o.id, 1):
+			bo = op
+			best = o.id
+	if best < 0 or bo < int(TREATY_MIN_OPINION[1]) + 15:
+		return
+	apply_command({"type": "propose_treaty", "issuer": c.id, "target": best, "kind": 1})
+	if bo >= 40:
+		apply_command({"type": "propose_treaty", "issuer": c.id, "target": best, "kind": 0})
+
+
 func can_spy(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
@@ -1637,8 +1776,9 @@ func _pressure_relax(aggressor: int, target: int) -> void:
 func _start_war(attacker: int, target: int) -> void:
 	pressure.erase(attacker * 1000 + target)
 	pressure.erase(target * 1000 + attacker)
-	if loaded:
+	if loaded and not has_cb(attacker, target):
 		_add_infamy(attacker, INFAMY_WAR)
+	cb.erase(attacker * 1000 + target)
 	wars.append(_new_war(attacker, target))
 	relations[_pair(attacker, target)] = -100
 	if attacker == player_country or target == player_country:
@@ -1687,7 +1827,7 @@ func can_declare_war(attacker: int, target: int) -> bool:
 		return false
 	if countries[attacker].overlord >= 0 or countries[target].overlord == attacker:
 		return false   # vassalo não declara guerra; suserano não ataca o próprio vassalo
-	if truce_left(attacker, target) > 0:
+	if truce_left(attacker, target) > 0 or treaty_active(attacker, target, 0):
 		return false
 	return countries[attacker].is_alive() and countries[target].is_alive()
 
@@ -2088,6 +2228,7 @@ func _advance_ai() -> void:
 			_ai_recruit(c, plan)
 			_ai_build_ship(c)
 			_ai_finance(c)
+			_ai_treaties(c)
 			_ai_invest(c)
 			_ai_declare_war(c, plan)
 		if not wars_of(c.id).is_empty():
@@ -2534,6 +2675,7 @@ func _month_run_stage(i: int) -> bool:
 			_ai_peace()
 			_ai_offers()
 		11:
+			_expire_diplomacy()
 			for k in relations.keys():
 				var v: int = int(relations[k])
 				if at_war(int(k) / 1000, int(k) % 1000):
@@ -3132,7 +3274,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
+	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
 	var bc: int = c.budget_code
 	var dexp: int = 100 + Government.decree_field(c.decree, "exp")
 	up_prov = up_prov * Government.pct(bc, 2) / 100 * dexp / 100
@@ -3976,6 +4118,12 @@ func state_hash() -> int:
 	for k in tk:
 		h = _mix(h, int(k))
 		h = _mix(h, int(truces[k]))
+	for dk in [cb, treaties]:
+		var dks: Array = dk.keys()
+		dks.sort()
+		for k in dks:
+			h = _mix(h, int(k))
+			h = _mix(h, int(dk[k]))
 	for t in training:
 		h = _mix(h, int(t["province"]))
 		h = _mix(h, int(t["owner"]))
@@ -4200,6 +4348,8 @@ func serialize_state() -> Dictionary:
 		"embargoes": embargoes.duplicate(),
 		"alliances": alliances.duplicate(),
 		"truces": _dict_to_pairs(truces),
+		"cb": _dict_to_pairs(cb),
+		"treaties": _dict_to_pairs(treaties),
 		"peace_offers": peace_offers.duplicate(true),
 		"peace_cd": _dict_to_pairs(peace_cd),
 		"pressure": _dict_to_pairs(pressure),
@@ -4416,6 +4566,12 @@ func load_state(d: Dictionary) -> bool:
 	truces.clear()
 	for r in d.get("truces", []):
 		truces[int(r[0])] = int(r[1])
+	cb.clear()
+	for r in d.get("cb", []):
+		cb[int(r[0])] = int(r[1])
+	treaties.clear()
+	for r in d.get("treaties", []):
+		treaties[int(r[0])] = int(r[1])
 	sieges.clear()
 	for sd in d.get("sieges", []):
 		sieges[int(sd["pid"])] = {"by": int(sd["by"]), "days": int(sd["days"])}

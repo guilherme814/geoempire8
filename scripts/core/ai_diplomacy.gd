@@ -168,7 +168,7 @@ static func rally(g: Node, attacker: int, target: int) -> void:
 			if ally_joins(pers, g.opinion(o.id, attacker), ready, int(ev["motive"])):
 				_join(g, o.id, target, attacker, "ao lado de %s" % g.countries[attacker].name)
 				on_att += 1
-		elif not g.allied(o.id, attacker) and not g.allied(o.id, target):
+		elif not g.allied(o.id, attacker) and not g.allied(o.id, target) and not g.has_cb(attacker, target):
 			if on_def >= RALLY_MAX_PER_SIDE or not g.can_declare_war(o.id, attacker):
 				continue
 			var bal: bool = bool(AiBrain.profile_of(o)["balance"])

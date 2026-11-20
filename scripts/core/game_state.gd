@@ -3020,6 +3020,51 @@ func country_pops(c: Country) -> Dictionary:
 	return out
 
 
+## Renda por classe (B2): quanto cada classe recebe por mês, por mil habitantes e relativa à média
+## nacional (100 = média). Derivado da economia; não é estado. Retorna {pool, people, pc, rel, gini}.
+@warning_ignore("integer_division")
+func class_income(c: Country) -> Dictionary:
+	var e := estimate_monthly(c)
+	var people := [0, 0, 0, 0, 0, 0]
+	for v in country_pops(c).values():
+		for i in 6:
+			people[i] += int(v[i])
+	var keep: int = 100 - c.tax_pct
+	var prod: int = int(e["production"])
+	var pool := [0, 0, 0, 0, 0, 0]
+	pool[0] = prod * 55 / 100 * keep / 100
+	pool[2] = prod * 25 / 100 * keep / 100
+	pool[1] = int(e["factory_wages"]) + prod * 20 / 100 * keep / 100
+	pool[3] = maxi(0, int(e["industry"]) - int(e["factory_wages"]) - int(e["factory_tax"])) + int(e["trade"]) / 2
+	pool[4] = int(e["upkeep_edu"]) + int(e["upkeep_prov"]) + int(e["upkeep_infra"])
+	pool[5] = int(e["upkeep_army"]) * 6 / 10 + int(e["upkeep_barracks"])
+	var pc := [0, 0, 0, 0, 0, 0]
+	var tot_pool := 0
+	var tot_people := 0
+	for i in 6:
+		pc[i] = int(pool[i]) * 1000 / maxi(1, int(people[i]))
+		tot_pool += int(pool[i])
+		tot_people += int(people[i])
+	var avg: int = maxi(1, tot_pool * 1000 / maxi(1, tot_people))
+	var rel := [0, 0, 0, 0, 0, 0]
+	for i in 6:
+		rel[i] = int(pc[i]) * 100 / avg
+	# Gini (0..1000) pelos 6 grupos, ordenados por renda per capita
+	var order := [0, 1, 2, 3, 4, 5]
+	order.sort_custom(func(x, y): return int(pc[x]) < int(pc[y]) or (int(pc[x]) == int(pc[y]) and x < y))
+	var cum_p := 0
+	var cum_i := 0
+	var area2 := 0       # 2 x área sob a curva de Lorenz, em milésimos
+	for k in order:
+		var dp: int = int(people[k]) * 1000 / maxi(1, tot_people)
+		var di: int = int(pool[k]) * 1000 / maxi(1, tot_pool)
+		area2 += dp * (2 * cum_i + di) / 1000
+		cum_p += dp
+		cum_i += di
+	var gini: int = clampi(1000 - area2, 0, 1000)
+	return {"pool": pool, "people": people, "pc": pc, "rel": rel, "gini": gini}
+
+
 ## Previsão mensal de um país (usada pela simulação e pela UI).
 ## Classes do país: participação (permil), satisfação-alvo, influência, correntes (permil) e
 ## estabilidade. Tudo derivado da economia; só `Country.sat` e `stability` são estado.

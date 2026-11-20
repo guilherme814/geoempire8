@@ -22,7 +22,7 @@ Economia
 | # | Etapa | Estado |
 |---|-------|--------|
 | B1 | Pops reais: população por profissão em cada província | feita no código (v0.19.0) |
-| B2 | Salários e padrão de vida por pop | pendente |
+| B2 | Salários e padrão de vida por pop | feita no código (v0.20.0), só leitura |
 | B3 | Necessidades e consumo: cestas de bens por classe | pendente |
 | B4 | Mercados: oferta, demanda e preço por mercado regional | pendente |
 | B5 | Cadeias produtivas ampliadas: novos bens e edifícios | pendente |

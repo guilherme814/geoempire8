@@ -1469,6 +1469,28 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 	return pc
 
 
+## Card "Renda por classe": renda mensal, por mil habitantes e relativa à média, e desigualdade.
+func _add_income_card(body: Control, c: Country) -> void:
+	var inc: Dictionary = Game.class_income(c)
+	var card := _card(body, "Renda por classe", "scroll")
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 14)
+	card.add_child(grid)
+	for hd in ["Classe", "Renda/mês", "Por mil hab.", "Relativa"]:
+		var hl := UIKit.label(hd, 15, UIKit.GOLD)
+		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if hd == "Classe" else HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(hl)
+	for i in 6:
+		grid.add_child(UIKit.label(CLASS_PT[i], 16, UIKit.TEXT))
+		for txt in [Money.fmt(int(inc["pool"][i])), Money.fmt(int(inc["pc"][i])), "%d%%" % int(inc["rel"][i])]:
+			var l := UIKit.label(str(txt), 16, UIKit.TEXT)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			grid.add_child(l)
+	var g: int = int(inc["gini"])
+	card.add_child(UIKit.label("Desigualdade (Gini): %.2f — %s" % [float(g) / 1000.0, "alta" if g >= 450 else ("média" if g >= 300 else "baixa")], 16, UIKit.NEG if g >= 450 else UIKit.TEXT))
+
+
 ## Cards "Orçamento" (ministérios) e "Decretos" da tela de Política.
 func _add_government_cards(body: Control, c: Country) -> void:
 	var bcard := _card(body, "Orçamento dos ministérios", "scroll")
@@ -1624,6 +1646,7 @@ func _refresh_politics() -> void:
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		icard.add_child(dl)
 
+	_add_income_card(body, c)
 	_add_government_cards(body, c)
 
 	var gcard := _card(body, "Queixas da população", "book")

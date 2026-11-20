@@ -666,6 +666,7 @@ func run_all() -> void:
 	_government()
 	_diplomacy_moves()
 	_pops()
+	_class_income()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1144,3 +1145,19 @@ func _pops() -> void:
 	check("nenhuma pop negativa", neg == 0)
 	var again: Dictionary = g.country_pops(c)
 	check("pops sao deterministicas", JSON.stringify(again) == JSON.stringify(pops))
+
+
+func _class_income() -> void:
+	var c: Country = g.countries[g.player_country]
+	var inc: Dictionary = g.class_income(c)
+	var neg := 0
+	for i in 6:
+		if int(inc["pool"][i]) < 0 or int(inc["pc"][i]) < 0:
+			neg += 1
+	check("renda por classe nao e negativa", neg == 0)
+	check("Gini entre 0 e 1000", int(inc["gini"]) >= 0 and int(inc["gini"]) <= 1000, str(inc["gini"]))
+	check("renda e deterministica", JSON.stringify(g.class_income(c)) == JSON.stringify(inc))
+	var people := 0
+	for i in 6:
+		people += int(inc["people"][i])
+	check("pessoas somam a populacao", people == g.population_of(c))

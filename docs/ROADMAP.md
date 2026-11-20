@@ -3,22 +3,59 @@
 Branch de trabalho: `v0.12-base-historica` (não fazer merge na `main` antes da aceitação).
 Motor: Godot 4.3, GDScript, GL Compatibility. Alvo: Android.
 
-## As 12 fases
+## Trilha A — Base (fases 1 a 6, concluídas)
 
 | # | Fase | Estado |
 |---|------|--------|
 | 1 | Desempenho (mês fatiado, cache, throttle de UI) | feita (v0.13.x) |
 | 2 | Mundo e IA (pressão, finanças e espionagem da IA, infâmia, vitória/derrota) | feita (v0.14.0) |
-| 3 | Economia de mercado (métodos de produção das fábricas) | feita no código (v0.15.0), falta validar no aparelho |
-| 4 | Política interna (6 classes, 5 correntes ligadas às leis) | feita no código (v0.16.0), falta validar no aparelho |
-| 5 | Governo (orçamento por ministérios, decretos) | feita no código (v0.17.0), falta validar no aparelho |
-| 6 | Diplomacia (jogadas, casus belli, coalizões, tratados) | feita no código (v0.18.0), falta validar no aparelho |
-| 7 | Guerra (frentes, logística, comandantes, naval) | pendente |
-| 8 | Tecnologia e cultura (eras, ideologias, prestígio) | pendente |
-| 9 | Eventos e história (1836–2012, tela de fim de jogo) | pendente |
-| 10 | Interface (tutorial, tela de país, mapa por modos) | pendente |
-| 11 | Online (P2P/lockstep, sync de saves) | pendente |
-| 12 | Polimento (áudio, balanceamento, segurança, lançamento) | pendente |
+| 3 | Economia de mercado (métodos de produção das fábricas) | feita (v0.15.0) |
+| 4 | Política interna (correntes ligadas às leis) | feita (v0.16.0) |
+| 5 | Governo (orçamento por ministérios, decretos) | feita (v0.17.0) |
+| 6 | Diplomacia (casus belli, tratados) | feita (v0.18.0), falta validar no aparelho |
+
+Fases antigas 7 a 12 (guerra, tecnologia e cultura, eventos e história, interface, online, polimento) ficam em pausa até a Trilha B terminar.
+
+## Trilha B — Economia e política (25 etapas, foco atual)
+
+Economia
+| # | Etapa | Estado |
+|---|-------|--------|
+| B1 | Pops reais: população por profissão em cada província | pendente |
+| B2 | Salários e padrão de vida por pop | pendente |
+| B3 | Necessidades e consumo: cestas de bens por classe | pendente |
+| B4 | Mercados: oferta, demanda e preço por mercado regional | pendente |
+| B5 | Cadeias produtivas ampliadas: novos bens e edifícios | pendente |
+| B6 | Métodos de produção para fazendas, minas e fábricas, por tecnologia | pendente |
+| B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | pendente |
+| B8 | Comércio exterior: rotas, tarifas, balança comercial | pendente |
+| B9 | Moeda, inflação, juros e dívida pública | pendente |
+| B10 | Impostos detalhados por classe, consumo e tarifa; evasão | pendente |
+| B11 | Infraestrutura e transporte entre mercados | pendente |
+| B12 | Ciclos econômicos: expansão, recessão, crises | pendente |
+| B13 | Desigualdade e bem-estar: pobreza, natalidade e mortalidade | pendente |
+
+Política
+| # | Etapa | Estado |
+|---|-------|--------|
+| B14 | Partidos por corrente, programas e filiação por classe | pendente |
+| B15 | Eleições e parlamento: cadeiras, coalizão, aprovação | pendente |
+| B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | pendente |
+| B17 | Leis ampliadas e votação das leis no parlamento | pendente |
+| B18 | Movimentos: sindicatos, greves, protestos | pendente |
+| B19 | Golpes, revoluções e guerras civis; mudança de regime | pendente |
+| B20 | Reformas, concessões e repressão: crise de legitimidade | pendente |
+| B21 | Burocracia: capacidade do Estado e corrupção | pendente |
+| B22 | Cultura, religião e minorias; propaganda | pendente |
+| B23 | Política econômica avançada: planejamento, subsídios, monopólios, nacionalização | pendente |
+| B24 | IA econômica e política reagindo a crises | pendente |
+
+Fechamento
+| # | Etapa | Estado |
+|---|-------|--------|
+| B25 | Balanceamento, painéis finais de economia e política, auditorias | pendente |
+
+Regra de ritmo: uma etapa por vez, com CI verde, changelog e versão; entre etapas o log do aparelho é conferido.
 
 ## Regras de arquitetura (não quebrar)
 

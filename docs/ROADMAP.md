@@ -63,7 +63,7 @@ Não serão usados retratos, bandeiras reais nem imagens do mockup; todo o visua
 
 | # | Etapa | Estado |
 |---|-------|--------|
-| C1 | Tema visual: paleta, molduras e tipografia no UIKit | pendente |
+| C1 | Tema visual: paleta, molduras e bandeira ondulando | feita no código (v0.28.0), falta ver no aparelho |
 | C2 | Barra superior com indicadores e controle de velocidade | pendente |
 | C3 | Ficha do país à esquerda, recolhível | pendente |
 | C4 | Eventos e província selecionada à direita | pendente |

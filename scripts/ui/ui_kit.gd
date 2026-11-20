@@ -4,21 +4,21 @@ extends RefCounted
 ## Visual: painéis escuros com moldura dourada, cabeçalhos vinho e botões verde-azulados,
 ## inspirado em Victoria 3 e Age of History 3, mas com identidade própria.
 
-const BG := Color(0.055, 0.078, 0.102, 0.93)
-const BG_LIGHT := Color(0.085, 0.12, 0.155, 0.97)
-const BG_BAR := Color(0.04, 0.058, 0.078, 0.98)
-const GOLD := Color(0.79, 0.66, 0.36)
-const GOLD_BRIGHT := Color(0.96, 0.85, 0.55)
-const GOLD_DIM := Color(0.43, 0.37, 0.22)
-const TEAL := Color(0.10, 0.25, 0.26)
-const TEAL_HOVER := Color(0.15, 0.36, 0.36)
-const TEAL_DOWN := Color(0.06, 0.15, 0.16)
-const MAROON := Color(0.33, 0.09, 0.13)
-const MAROON_LIGHT := Color(0.50, 0.15, 0.20)
-const TEXT := Color(0.91, 0.89, 0.82)
-const TEXT_DIM := Color(0.62, 0.66, 0.68)
-const POS := Color(0.50, 0.82, 0.54)
-const NEG := Color(0.92, 0.50, 0.44)
+const BG := Color(0.035, 0.065, 0.135, 0.95)
+const BG_LIGHT := Color(0.065, 0.115, 0.215, 0.97)
+const BG_BAR := Color(0.025, 0.045, 0.105, 0.98)
+const GOLD := Color(0.94, 0.75, 0.32)
+const GOLD_BRIGHT := Color(1.0, 0.89, 0.54)
+const GOLD_DIM := Color(0.60, 0.46, 0.19)
+const TEAL := Color(0.07, 0.29, 0.38)
+const TEAL_HOVER := Color(0.10, 0.44, 0.55)
+const TEAL_DOWN := Color(0.04, 0.19, 0.26)
+const MAROON := Color(0.48, 0.07, 0.12)
+const MAROON_LIGHT := Color(0.72, 0.12, 0.18)
+const TEXT := Color(0.95, 0.93, 0.87)
+const TEXT_DIM := Color(0.66, 0.72, 0.78)
+const POS := Color(0.38, 0.90, 0.48)
+const NEG := Color(1.0, 0.42, 0.38)
 const WARN := Color(0.95, 0.78, 0.35)
 
 static var _serif: Font
@@ -49,13 +49,13 @@ static func make_theme() -> Theme:
 	t.set_color("font_color", "Label", TEXT)
 
 	# Painéis
-	var p := box(BG, Color(GOLD_DIM, 0.75), 12, 1, 14)
-	p.shadow_color = Color(0, 0, 0, 0.45)
-	p.shadow_size = 14
+	var p := box(BG, Color(GOLD, 0.85), 14, 2, 14)
+	p.shadow_color = Color(0, 0, 0, 0.5)
+	p.shadow_size = 12
 	t.set_stylebox("panel", "PanelContainer", p)
 
 	t.set_type_variation("CardPanel", "PanelContainer")
-	t.set_stylebox("panel", "CardPanel", box(BG_LIGHT, Color(0.24, 0.30, 0.33, 0.8), 10, 1, 12))
+	t.set_stylebox("panel", "CardPanel", box(BG_LIGHT, Color(0.30, 0.42, 0.58, 0.9), 12, 1, 12))
 
 	t.set_type_variation("BannerPanel", "PanelContainer")
 	var ban := box(MAROON, GOLD_DIM, 8, 0, 10)
@@ -170,6 +170,25 @@ static func icon_button(icon_kind: String, text: String, min_size: Vector2, vari
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(l)
+	return b
+
+
+## Botão de ícone com legenda curta embaixo (menu lateral).
+static func caption_button(icon_kind: String, caption: String, min_size: Vector2, variation: String = "") -> Button:
+	var b := button("", min_size, variation)
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(col)
+	var ic: Control = UiIcon.make(icon_kind, 30.0)
+	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(ic)
+	var l := label(caption, 12, TEXT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(l)
 	return b
 
 

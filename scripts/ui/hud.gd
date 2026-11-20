@@ -259,7 +259,8 @@ func _build_top_bar() -> void:
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(frame)
 	_flag = FlagRect.new()
-	_flag.custom_minimum_size = Vector2(66, 44)
+	_flag.waving = true
+	_flag.custom_minimum_size = Vector2(84, 54)
 	frame.add_child(_flag)
 
 	var names := VBoxContainer.new()
@@ -355,19 +356,19 @@ func _build_sidebar() -> void:
 	col.add_theme_constant_override("separation", 8)
 	panel.add_child(col)
 	var defs: Array = [
-		["politics", "scales", "Política: classes sociais e ideologias"],
-		["leaders", "crown", "Governantes: líder atual e sucessores"],
-		["laws", "scroll", "Leis: estrutura de poder, economia e direitos"],
-		["diplo", "flag", "Diplomacia: relações, alianças, guerra, paz e vassalos"],
-		["tech", "bulb", "Pesquisa: tecnologia, financiamento e desbloqueios"],
-		["eco", "coin", "Economia: orçamento e impostos"],
-		["market", "bars", "Mercado: oferta, demanda e preços"],
-		["map", "globe", "Modo do mapa"],
-		["menu", "menu", "Menu: salvar, carregar e trocar de país"],
+		["politics", "scales", "Política: classes sociais e ideologias", "Sociedade"],
+		["leaders", "crown", "Governantes: líder atual e sucessores", "Governo"],
+		["laws", "scroll", "Leis: estrutura de poder, economia e direitos", "Leis"],
+		["diplo", "flag", "Diplomacia: relações, alianças, guerra, paz e vassalos", "Diplomacia"],
+		["tech", "bulb", "Pesquisa: tecnologia, financiamento e desbloqueios", "Pesquisa"],
+		["eco", "coin", "Economia: orçamento e impostos", "Economia"],
+		["market", "bars", "Mercado: oferta, demanda e preços", "Mercado"],
+		["map", "globe", "Modo do mapa", "Mapa"],
+		["menu", "menu", "Menu: salvar, carregar e trocar de país", "Menu"],
 	]
 	for d in defs:
 		var key: String = d[0]
-		var b := UIKit.icon_button(str(d[1]), "", Vector2(58, 58), "DockButton")
+		var b := UIKit.caption_button(str(d[1]), str(d[3]), Vector2(78, 62), "DockButton")
 		b.tooltip_text = str(d[2])
 		b.toggle_mode = key != "map"
 		b.pressed.connect(_on_side_pressed.bind(key))
@@ -1830,6 +1831,7 @@ func _build_info_panel() -> void:
 	fframe.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hrow.add_child(fframe)
 	_info_flag = FlagRect.new()
+	_info_flag.waving = true
 	_info_flag.custom_minimum_size = Vector2(52, 34)
 	fframe.add_child(_info_flag)
 	var tcol := VBoxContainer.new()

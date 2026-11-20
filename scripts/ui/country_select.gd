@@ -230,6 +230,7 @@ func _build_card() -> void:
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(frame)
 	_card_flag = FlagRect.new()
+	_card_flag.waving = true
 	_card_flag.custom_minimum_size = Vector2(150, 94)
 	frame.add_child(_card_flag)
 

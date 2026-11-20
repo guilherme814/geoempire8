@@ -1,8 +1,13 @@
 {
- "version": "0.27.0",
- "title": "GeoEmpire 8 — v0.27.0 (Economia B9)",
- "body": "## Etapa B9 — Moeda, inflação e juros\n- **Juros do banco central:** de 1% a 4% ao mês sobre a dívida. Juros altos encarecem a dívida e freiam o investimento privado.\n- **Emissão de moeda:** +1000 no caixa agora, pago com inflação.\n- **Inflação:** corrói a arrecadação e a satisfação de camponeses, operários e funcionários; cai 1 ponto por mês (2 com juros de 3% ou mais).\n- **IA:** país quebrado, sem crédito, emite moeda.\n- **Onde:** card Moeda e crédito, na tela de Política.\n- **Saves antigos:** carregam com juros de 2% e sem inflação.",
+ "version": "0.28.0",
+ "title": "GeoEmpire 8 — v0.28.0 (HUD C1)",
+ "body": "## Nova HUD — etapa C1\n- **Bandeira ondulando:** a bandeira do país na barra superior, no painel do país e na seleção de nação balança suavemente, presa a um mastro dourado. Ela é desenhada uma vez e fatiada em colunas, a 30 quadros por segundo, só enquanto está visível.\n- **Cores mais vivas:** azul-marinho profundo, dourado mais forte, verde-azulado e vinho mais vibrantes, bordas douradas mais marcadas.\n- **Menu lateral com legendas:** Sociedade, Governo, Leis, Diplomacia, Pesquisa, Economia, Mercado, Mapa e Menu.\n- **Também nesta versão (B9):** juros do banco central, inflação e emissão de moeda na tela de Política.",
  "history": [
+  {
+   "version": "0.27.0",
+   "title": "GeoEmpire 8 — v0.27.0 (Economia B9)",
+   "body": "## Etapa B9 — Moeda, inflação e juros\n- **Juros do banco central:** de 1% a 4% ao mês sobre a dívida. Juros altos encarecem a dívida e freiam o investimento privado.\n- **Emissão de moeda:** +1000 no caixa agora, pago com inflação.\n- **Inflação:** corrói a arrecadação e a satisfação de camponeses, operários e funcionários; cai 1 ponto por mês (2 com juros de 3% ou mais).\n- **IA:** país quebrado, sem crédito, emite moeda.\n- **Onde:** card Moeda e crédito, na tela de Política.\n- **Saves antigos:** carregam com juros de 2% e sem inflação."
+  },
   {
    "version": "0.26.0",
    "title": "GeoEmpire 8 — v0.26.0 (Economia B8)",

@@ -135,6 +135,14 @@ static func fit_all(laws: Array) -> Array:
 	return f
 
 
+## Índice do grupo de lei com esse id (-1 se não existir).
+static func group_index(id: String) -> int:
+	for i in GROUPS.size():
+		if str(GROUPS[i]["id"]) == id:
+			return i
+	return -1
+
+
 static func group_count() -> int:
 	return GROUPS.size()
 

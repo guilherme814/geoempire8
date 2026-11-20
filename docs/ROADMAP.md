@@ -27,7 +27,7 @@ Economia
 | B4 | Mercados: oferta, demanda e preço por mercado regional | feita no código (v0.22.0): alimento regional e fome; preço regional fica para B11 |
 | B5 | Cadeias produtivas ampliadas: novos bens e edifícios | feita no código (v0.23.0): papel e máquinas |
 | B6 | Métodos de produção para fazendas, minas e fábricas, por tecnologia | feita no código (v0.24.0) |
-| B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | pendente |
+| B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | feita no código (v0.25.0); nacionalização fica para B23 |
 | B8 | Comércio exterior: rotas, tarifas, balança comercial | pendente |
 | B9 | Moeda, inflação, juros e dívida pública | pendente |
 | B10 | Impostos detalhados por classe, consumo e tarifa; evasão | pendente |

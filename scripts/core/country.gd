@@ -37,6 +37,7 @@ var budget_code: int = 13       # orçamento: nível de cada ministério (Govern
 var decree: int = -1            # decreto em vigor (-1 = nenhum)
 var decree_left: int = 0        # meses restantes do decreto
 var decree_cd: int = 0          # meses até poder decretar de novo
+var private_capital: int = 0     # capital privado acumulado (B7), reinvestido nas fábricas
 var spy_cd: int = 0             # meses até a próxima operação de espionagem
 var drill: int = 0            # instrução das tropas: 0 recrutas, 1 regulares, 2 elite
 var ships: int = 0            # frota (capacidade de comércio marítimo e bloqueio)

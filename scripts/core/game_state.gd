@@ -2782,7 +2782,45 @@ func _month_run_stage(i: int) -> bool:
 
 ## Evolução mensal de um país vivo: alfabetização, tecnologia, pesquisa e esperas.
 @warning_ignore("integer_division")
+## Propriedade (B7): parte dos lucros das fábricas (após salários e imposto) vira capital privado,
+## que financia sozinho +1 nível na fábrica mais lucrativa, sem gastar o tesouro. A política
+## econômica define a fração reinvestida.
+const PRIVATE_INVEST_PCT := [40, 25, 60]     # mercantilismo, intervencionismo, livre mercado
+const PRIVATE_NET_PCT := 60                   # lucro após salários (aprox.), % do lucro operacional
+const PRIVATE_CAPITAL_MAX := 200000
+
+
+@warning_ignore("integer_division")
+func _private_invest(c: Country) -> void:
+	var gi: int = Laws.group_index("economy")
+	var opt: int = int(c.laws[gi]) if gi >= 0 and gi < c.laws.size() else 1
+	var pct: int = int(PRIVATE_INVEST_PCT[clampi(opt, 0, PRIVATE_INVEST_PCT.size() - 1)])
+	var profit := 0
+	var best: Province = null
+	var best_fp := 0
+	for pid in c.province_ids:
+		var p := provinces[int(pid)]
+		if p.factory == "" or p.factory_level <= 0:
+			continue
+		var fp: int = p.factory_profit()
+		if fp > 0:
+			profit += fp
+		if p.factory_level < Province.MAX_BUILDING and fp > best_fp:
+			best_fp = fp
+			best = p
+	profit = profit * PRIVATE_NET_PCT / 100 * (100 - c.tax_pct) / 100
+	c.private_capital = mini(PRIVATE_CAPITAL_MAX, c.private_capital + profit * pct / 100)
+	if best != null:
+		var cost: int = build_total_cost(best, best.factory)
+		if c.private_capital >= cost:
+			c.private_capital -= cost
+			best.factory_level += 1
+			if c.id == player_country:
+				Events.notice.emit("Capitalistas ampliaram a fábrica de %s (nível %d)." % [best.name, best.factory_level])
+
+
 func _country_month(c: Country) -> void:
+	_private_invest(c)
 	var edu := edu_levels(c)
 	var lmod := law_mods(c)
 	var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
@@ -4320,6 +4358,7 @@ func state_hash() -> int:
 		h = _mix(h, c.spy_cd * 7 + c.infamy)
 		h = _mix(h, c.budget_code * 1000 + (c.decree + 1) * 100 + c.decree_left)
 		h = _mix(h, c.decree_cd)
+		h = _mix(h, c.private_capital)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -4504,6 +4543,7 @@ func serialize_state() -> Dictionary:
 		"decree": _country_ints("decree"),
 		"decree_left": _country_ints("decree_left"),
 		"decree_cd": _country_ints("decree_cd"),
+		"private_capital": _country_ints("private_capital"),
 		"infamy": _country_ints("infamy"),
 		"ai_heg": ai_heg,
 		"victories": victories.duplicate(),
@@ -4695,6 +4735,7 @@ func load_state(d: Dictionary) -> bool:
 	var dcs: Array = d.get("decree", [])
 	var dls: Array = d.get("decree_left", [])
 	var dcd: Array = d.get("decree_cd", [])
+	var pcs: Array = d.get("private_capital", [])
 	ai_heg = int(d.get("ai_heg", -1))
 	victories = (d.get("victories", []) as Array).duplicate()
 	defeated = bool(d.get("defeated", false))
@@ -4707,6 +4748,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].decree = int(dcs[i]) if i < dcs.size() else -1
 		countries[i].decree_left = int(dls[i]) if i < dls.size() else 0
 		countries[i].decree_cd = int(dcd[i]) if i < dcd.size() else 0
+		countries[i].private_capital = int(pcs[i]) if i < pcs.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

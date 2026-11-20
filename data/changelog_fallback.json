@@ -1,8 +1,13 @@
 {
- "version": "0.24.0",
- "title": "GeoEmpire 8 — v0.24.0 (Economia B6)",
- "body": "## Etapa B6 — Métodos de produção na extração\n- **Fazendas, minas e madeireiras** agora também têm método Artesanal, Manufatura (era 1) ou Mecanizada (era 3): produzem mais e empregam menos, no mesmo custo por nível da fábrica.\n- **Onde:** na aba Construir, a construção principal da província mostra o método e os botões de troca.\n- **IA:** países ricos modernizam uma fábrica ou extração por ciclo quando sobra caixa.\n- **Saves antigos:** carregam com método Artesanal.",
+ "version": "0.25.0",
+ "title": "GeoEmpire 8 — v0.25.0 (Economia B7)",
+ "body": "## Etapa B7 — Propriedade e capital privado\n- **Capital privado:** parte do lucro das fábricas (depois de salários e imposto) vira capital dos capitalistas.\n- **Investimento privado:** quando o capital paga, eles ampliam sozinhos a fábrica mais lucrativa em +1 nível, sem gastar o tesouro.\n- **Política econômica:** mercantilismo reinveste 40% do lucro, intervencionismo 25% e livre mercado 60%.\n- **Tela de Política:** o card de renda mostra o capital privado e a taxa de reinvestimento.\n- **Saves antigos:** carregam com capital zero.",
  "history": [
+  {
+   "version": "0.24.0",
+   "title": "GeoEmpire 8 — v0.24.0 (Economia B6)",
+   "body": "## Etapa B6 — Métodos de produção na extração\n- **Fazendas, minas e madeireiras** agora também têm método Artesanal, Manufatura (era 1) ou Mecanizada (era 3): produzem mais e empregam menos, no mesmo custo por nível da fábrica.\n- **Onde:** na aba Construir, a construção principal da província mostra o método e os botões de troca.\n- **IA:** países ricos modernizam uma fábrica ou extração por ciclo quando sobra caixa.\n- **Saves antigos:** carregam com método Artesanal."
+  },
   {
    "version": "0.23.0",
    "title": "GeoEmpire 8 — v0.23.0 (Economia B5)",

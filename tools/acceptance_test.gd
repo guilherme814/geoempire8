@@ -671,6 +671,7 @@ func run_all() -> void:
 	_regional_markets()
 	_new_chains()
 	_resource_methods()
+	_private_capital()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1241,4 +1242,33 @@ func _resource_methods() -> void:
 	ep.rmethod = 0
 	g.load_state(bl)
 	check("metodo de extracao persiste", g.provinces[ep.id].rmethod == 2 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _private_capital() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var fp: Province = null
+	for pid in c.province_ids:
+		var p: Province = g.provinces[pid]
+		p.factory = "carpentry"
+		p.factory_level = 1
+		p.method = 0
+		fp = p
+		break
+	check("grupo de lei economico existe", Laws.group_index("economy") >= 0)
+	c.private_capital = 100000
+	var t0: int = c.treasury
+	g._private_invest(c)
+	check("capitalistas ampliam a fabrica sem gastar o tesouro", fp.factory_level >= 2 and c.treasury == t0 and c.private_capital < 100000)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	c.private_capital = 0
+	g.load_state(bl)
+	check("capital privado persiste", g.countries[me].private_capital == int(bl["private_capital"][me]) and g.state_hash() == hh)
+	g.countries[me].private_capital = 0
+	g.provinces[fp.id].factory_level = Province.MAX_BUILDING
+	g._private_invest(g.countries[me])
+	check("fabrica no maximo nao e ampliada", g.provinces[fp.id].factory_level == Province.MAX_BUILDING)
 	g.load_state(blob)

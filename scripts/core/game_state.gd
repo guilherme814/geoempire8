@@ -1636,17 +1636,17 @@ func can_set_rmethod(pid: int, issuer: int, m: int) -> bool:
 ## IA: moderniza (no máximo 1 melhoria por ciclo) fábricas e extração quando sobra caixa.
 func _ai_modernize(c: Country, spare: int) -> void:
 	var best: int = 0
-	for m in Province.METHODS.size():
+	for m in mini(AI_MAX_METHOD + 1, Province.METHODS.size()):
 		if c.tech_level() >= int((Province.METHODS[m] as Dictionary)["tech"]):
 			best = m
 	if best <= 0:
 		return
 	for pid in c.province_ids:
 		var p := provinces[int(pid)]
-		if p.factory != "" and p.factory_level > 0 and p.method < best and method_cost(p, best) * 3 <= spare:
+		if p.factory != "" and p.factory_level > 0 and p.method < best and method_cost(p, best) * 6 <= spare:
 			apply_command({"type": "set_method", "province": int(pid), "method": best, "issuer": c.id})
 			return
-		if p.extractor_level() > 0 and p.rmethod < best and rmethod_cost(p, best) * 3 <= spare:
+		if p.extractor_level() > 0 and p.rmethod < best and rmethod_cost(p, best) * 6 <= spare:
 			apply_command({"type": "set_rmethod", "province": int(pid), "method": best, "issuer": c.id})
 			return
 
@@ -2289,6 +2289,7 @@ func _advance_ai() -> void:
 const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university",
 	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery"]
 const AI_INVEST_RESERVE_MONTHS := 8
+const AI_MAX_METHOD := 1          # a IA só chega à Manufatura (a Mecanizada fica de vantagem do jogador)
 
 
 ## Investimento da IA: com folga de caixa (acima de ~8 meses de despesa) constrói edifícios

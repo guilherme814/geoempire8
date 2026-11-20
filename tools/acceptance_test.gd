@@ -1310,9 +1310,9 @@ func _money() -> void:
 	var t0: int = c.treasury
 	g.apply_command({"type": "print_money", "issuer": me})
 	check("emitir moeda da caixa e inflacao", c.treasury == t0 + g.PRINT_STEP and c.inflation > 0)
-	var tax0: int = int(g.estimate_monthly(c)["tax"])
+	var tax0: int = int(g.estimate_monthly(c)["income"])
 	c.inflation = 0
-	var tax1: int = int(g.estimate_monthly(c)["tax"])
+	var tax1: int = int(g.estimate_monthly(c)["income"])
 	check("inflacao corroi a arrecadacao", tax0 <= tax1)
 	c.inflation = 20
 	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))

@@ -1473,6 +1473,29 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 	return pc
 
 
+## Card "Comércio exterior": balança comercial do último mês e tarifa de importação.
+func _add_trade_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Comércio exterior", "scroll")
+	var bal: Array = Game.trade_balance(c.id)
+	var saldo: int = int(bal[0]) - int(bal[1])
+	card.add_child(UIKit.label("Exportações %s · Importações %s · Saldo %s" % [Money.fmt(int(bal[0])), Money.fmt(int(bal[1])), Money.fmt(saldo)], 15, UIKit.POS if saldo >= 0 else UIKit.NEG))
+	var tl := UIKit.label("Tarifa de importação: %d%%. Mais tarifa rende mais ao Estado, mas importa menos e encarece a vida." % c.tariff, 15, UIKit.TEXT)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(tl)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	card.add_child(row)
+	for pct in range(0, Game.TARIFF_MAX + 1, Game.TARIFF_STEP):
+		var b := _make_button("%d%%" % pct, Vector2(70, 40))
+		b.disabled = pct == c.tariff
+		b.pressed.connect(_on_tariff_pressed.bind(pct))
+		row.add_child(b)
+
+
+func _on_tariff_pressed(pct: int) -> void:
+	Game.submit_command(Cmd.set_tariff(pct))
+
+
 ## Card "Mercados regionais": regiões do país com pior abastecimento de alimento.
 func _add_region_card(body: Control, c: Country) -> void:
 	var food: Dictionary = Game.region_food()
@@ -1681,6 +1704,7 @@ func _refresh_politics() -> void:
 
 	_add_income_card(body, c)
 	_add_region_card(body, c)
+	_add_trade_card(body, c)
 	_add_government_cards(body, c)
 
 	var gcard := _card(body, "Queixas da população", "book")

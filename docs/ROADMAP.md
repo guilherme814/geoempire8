@@ -28,7 +28,7 @@ Economia
 | B5 | Cadeias produtivas ampliadas: novos bens e edifícios | feita no código (v0.23.0): papel e máquinas |
 | B6 | Métodos de produção para fazendas, minas e fábricas, por tecnologia | feita no código (v0.24.0) |
 | B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | feita no código (v0.25.0); nacionalização fica para B23 |
-| B8 | Comércio exterior: rotas, tarifas, balança comercial | pendente |
+| B8 | Comércio exterior: rotas, tarifas, balança comercial | feita no código (v0.26.0) |
 | B9 | Moeda, inflação, juros e dívida pública | pendente |
 | B10 | Impostos detalhados por classe, consumo e tarifa; evasão | pendente |
 | B11 | Infraestrutura e transporte entre mercados | pendente |

@@ -1,8 +1,13 @@
 {
- "version": "0.25.0",
- "title": "GeoEmpire 8 — v0.25.0 (Economia B7)",
- "body": "## Etapa B7 — Propriedade e capital privado\n- **Capital privado:** parte do lucro das fábricas (depois de salários e imposto) vira capital dos capitalistas.\n- **Investimento privado:** quando o capital paga, eles ampliam sozinhos a fábrica mais lucrativa em +1 nível, sem gastar o tesouro.\n- **Política econômica:** mercantilismo reinveste 40% do lucro, intervencionismo 25% e livre mercado 60%.\n- **Tela de Política:** o card de renda mostra o capital privado e a taxa de reinvestimento.\n- **Saves antigos:** carregam com capital zero.",
+ "version": "0.26.0",
+ "title": "GeoEmpire 8 — v0.26.0 (Economia B8)",
+ "body": "## Etapa B8 — Comércio exterior\n- **Tarifa de importação:** você escolhe de 0% a 30%. O padrão é 10%.\n- **Efeito:** cada 2 pontos acima de 10% cortam 3% das importações do país; a arrecadação por unidade importada sobe com a tarifa, e a escassez encarece a vida.\n- **Balança comercial:** a tela de Política mostra exportações, importações e saldo do último mês.\n- **Saves antigos:** carregam com tarifa de 10%.",
  "history": [
+  {
+   "version": "0.25.0",
+   "title": "GeoEmpire 8 — v0.25.0 (Economia B7)",
+   "body": "## Etapa B7 — Propriedade e capital privado\n- **Capital privado:** parte do lucro das fábricas (depois de salários e imposto) vira capital dos capitalistas.\n- **Investimento privado:** quando o capital paga, eles ampliam sozinhos a fábrica mais lucrativa em +1 nível, sem gastar o tesouro.\n- **Política econômica:** mercantilismo reinveste 40% do lucro, intervencionismo 25% e livre mercado 60%.\n- **Tela de Política:** o card de renda mostra o capital privado e a taxa de reinvestimento.\n- **Saves antigos:** carregam com capital zero."
+  },
   {
    "version": "0.24.0",
    "title": "GeoEmpire 8 — v0.24.0 (Economia B6)",

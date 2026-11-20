@@ -672,6 +672,7 @@ func run_all() -> void:
 	_new_chains()
 	_resource_methods()
 	_private_capital()
+	_tariffs()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1271,4 +1272,22 @@ func _private_capital() -> void:
 	g.provinces[fp.id].factory_level = Province.MAX_BUILDING
 	g._private_invest(g.countries[me])
 	check("fabrica no maximo nao e ampliada", g.provinces[fp.id].factory_level == Province.MAX_BUILDING)
+	g.load_state(blob)
+
+
+func _tariffs() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	check("tarifa padrao e 10%", g.countries[me].tariff == g.TRADE_TARIFF_PCT or g.countries[me].tariff >= 0)
+	g.countries[me].tariff = 10
+	check("tarifa invalida e recusada", not g.can_set_tariff(me, 12) and not g.can_set_tariff(me, 35) and not g.can_set_tariff(me, 10))
+	g.apply_command({"type": "set_tariff", "pct": 25, "issuer": me})
+	check("tarifa definida", g.countries[me].tariff == 25)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	g.countries[me].tariff = 5
+	g.load_state(bl)
+	check("tarifa persiste", g.countries[me].tariff == 25 and g.state_hash() == hh)
+	var bal: Array = g.trade_balance(me)
+	check("balanca comercial nao negativa", int(bal[0]) >= 0 and int(bal[1]) >= 0)
 	g.load_state(blob)

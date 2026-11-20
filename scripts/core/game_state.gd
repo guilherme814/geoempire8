@@ -102,6 +102,9 @@ const DOCK_CAP := 60             # comércio marítimo extra por nível de cais 
 const PORT_CAP := 40             # capacidade básica por porto (província costeira)
 const PRICE_MIN := 70
 const PRICE_MAX := 140
+const TARIFF_MAX := 30
+const TARIFF_STEP := 5
+const TARIFF_VOLUME_LOSS := 3     # cada 2 pontos acima de TRADE_TARIFF_PCT cortam 3% das importações
 const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor importado
 
 # Diplomacia
@@ -920,6 +923,13 @@ func apply_command(cmd: Dictionary) -> void:
 	elif t == Cmd.SET_AUTO_FRONT:
 		if issuer >= 0 and issuer < countries.size():
 			countries[issuer].auto_front = bool(cmd.get("enabled", true))
+
+	elif t == Cmd.SET_TARIFF:
+		var tp: int = int(cmd.get("pct", -1))
+		if not can_set_tariff(issuer, tp):
+			return
+		countries[issuer].tariff = tp
+		Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.SET_BUDGET:
 		var bm: int = int(cmd.get("ministry", -1))
@@ -1745,6 +1755,26 @@ func _ai_treaties(c: Country) -> void:
 	apply_command({"type": "propose_treaty", "issuer": c.id, "target": best, "kind": 1})
 	if bo >= 40:
 		apply_command({"type": "propose_treaty", "issuer": c.id, "target": best, "kind": 0})
+
+
+## Balança comercial (B8): valor exportado e importado no último mês, a preços locais.
+@warning_ignore("integer_division")
+func trade_balance(cid: int) -> Array:
+	var ex := 0
+	var im := 0
+	if cid < 0 or cid >= trade_imp.size() or cid >= trade_exp.size():
+		return [0, 0]
+	for g in trade_exp[cid].keys():
+		ex += int(trade_exp[cid][g]) * Province.base_price(str(g)) * int(local_price[cid].get(str(g), 100)) / 10000
+	for g in trade_imp[cid].keys():
+		im += int(trade_imp[cid][g]) * Province.base_price(str(g)) * int(local_price[cid].get(str(g), 100)) / 10000
+	return [ex, im]
+
+
+func can_set_tariff(issuer: int, pct: int) -> bool:
+	if issuer < 0 or issuer >= countries.size() or pct < 0 or pct > TARIFF_MAX or pct % TARIFF_STEP != 0:
+		return false
+	return countries[issuer].tariff != pct
 
 
 func can_spy(issuer: int, target: int) -> bool:
@@ -4108,6 +4138,9 @@ func _trade_goods_step() -> bool:
 			var need: int = int(dem[i][g]) - int(sup[i][g])
 			if need <= 0:
 				continue
+			need = need * (100 - maxi(0, countries[i].tariff - TRADE_TARIFF_PCT) * TARIFF_VOLUME_LOSS / 2) / 100
+			if need <= 0:
+				continue
 			for by_sea in [false, true]:
 				if need <= 0:
 					break
@@ -4146,7 +4179,7 @@ func _trade_goods_step() -> bool:
 					var pi: int = int(local_price[i][g])
 					var pe: int = int(local_price[e][g])
 					trade_bonus[e] = int(trade_bonus[e]) + q * base * (pi - pe) / 10000
-					trade_bonus[i] = int(trade_bonus[i]) + q * base * pi / 10000 * TRADE_TARIFF_PCT / 100
+					trade_bonus[i] = int(trade_bonus[i]) + q * base * pi / 10000 * countries[i].tariff / 100
 					for gi in rgates:
 						gate_flow[int(gi)] = int(gate_flow[int(gi)]) + q
 						var gc2 := gate_controller(int(gi))
@@ -4359,6 +4392,7 @@ func state_hash() -> int:
 		h = _mix(h, c.budget_code * 1000 + (c.decree + 1) * 100 + c.decree_left)
 		h = _mix(h, c.decree_cd)
 		h = _mix(h, c.private_capital)
+		h = _mix(h, c.tariff)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -4544,6 +4578,7 @@ func serialize_state() -> Dictionary:
 		"decree_left": _country_ints("decree_left"),
 		"decree_cd": _country_ints("decree_cd"),
 		"private_capital": _country_ints("private_capital"),
+		"tariff": _country_ints("tariff"),
 		"infamy": _country_ints("infamy"),
 		"ai_heg": ai_heg,
 		"victories": victories.duplicate(),
@@ -4736,6 +4771,7 @@ func load_state(d: Dictionary) -> bool:
 	var dls: Array = d.get("decree_left", [])
 	var dcd: Array = d.get("decree_cd", [])
 	var pcs: Array = d.get("private_capital", [])
+	var trs: Array = d.get("tariff", [])
 	ai_heg = int(d.get("ai_heg", -1))
 	victories = (d.get("victories", []) as Array).duplicate()
 	defeated = bool(d.get("defeated", false))
@@ -4749,6 +4785,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].decree_left = int(dls[i]) if i < dls.size() else 0
 		countries[i].decree_cd = int(dcd[i]) if i < dcd.size() else 0
 		countries[i].private_capital = int(pcs[i]) if i < pcs.size() else 0
+		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

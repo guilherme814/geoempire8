@@ -48,6 +48,7 @@ const SPY := "spy"
 const SET_METHOD := "set_method"
 const SET_RMETHOD := "set_rmethod"
 const SET_BUDGET := "set_budget"
+const SET_TARIFF := "set_tariff"
 const JUSTIFY := "justify"
 const PROPOSE_TREATY := "propose_treaty"
 const BREAK_TREATY := "break_treaty"
@@ -77,6 +78,11 @@ static func set_method(province: int, method: int) -> Dictionary:
 ## Troca o método de extração da província (fazenda, mina ou madeireira).
 static func set_rmethod(province: int, method: int) -> Dictionary:
 	return {"type": SET_RMETHOD, "province": province, "method": method}
+
+
+## Define a tarifa de importação (0 a 30%, em passos de 5).
+static func set_tariff(pct: int) -> Dictionary:
+	return {"type": SET_TARIFF, "pct": pct}
 
 
 ## Nível (0 cortado, 1 normal, 2 reforçado) de um ministério (índice em Government.MINISTRIES).

@@ -1487,6 +1487,10 @@ func _add_income_card(body: Control, c: Country) -> void:
 			var l := UIKit.label(str(txt), 16, UIKit.TEXT)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			grid.add_child(l)
+	var lp: Dictionary = Game.local_price[c.id] if c.id < Game.local_price.size() else {}
+	var cl := UIKit.label("Preço da cesta (100 = base): " + " · ".join(range(6).map(func(i): return "%s %d" % [CLASS_PT[i], Consumption.price_index(lp, i, false)])), 14, UIKit.GOLD)
+	cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(cl)
 	var g: int = int(inc["gini"])
 	card.add_child(UIKit.label("Desigualdade (Gini): %.2f — %s" % [float(g) / 1000.0, "alta" if g >= 450 else ("média" if g >= 300 else "baixa")], 16, UIKit.NEG if g >= 450 else UIKit.TEXT))
 

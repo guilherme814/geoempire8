@@ -3131,6 +3131,9 @@ func politics_of(c: Country) -> Dictionary:
 	for j in 5:
 		ideo[j] = acc[j] / (10 * tot_pw)
 	var gsh: Array = Government.sat_shift(c.budget_code, c.decree)
+	var cterm: Array = []
+	for ci in 6:
+		cterm.append(Consumption.comfort_term(lp, ci))
 	var fit: Array = Laws.fit_all(c.laws)
 	var legit := 0
 	for j in 5:
@@ -3140,7 +3143,7 @@ func politics_of(c: Country) -> Dictionary:
 	var hist_bias: int = (int(history.get(c.tag, {}).get("stab", 2)) - 2) * 2
 	var prof_sat: Dictionary = history.get(c.tag, {}).get("profile", {}).get("sat", {})
 	for i in 6:
-		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + int(gsh[i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
+		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + int(gsh[i]) + int(cterm[i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
 
 	return {"share": sh, "target": tg, "power": pw, "power_total": tot_pw, "ideo": ideo,
 		"fit": fit, "legit": legit, "stability": ssum / maxi(1, wsum)}

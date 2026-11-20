@@ -667,6 +667,7 @@ func run_all() -> void:
 	_diplomacy_moves()
 	_pops()
 	_class_income()
+	_consumption()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1161,3 +1162,18 @@ func _class_income() -> void:
 	for i in 6:
 		people += int(inc["people"][i])
 	check("pessoas somam a populacao", people == g.population_of(c))
+
+
+func _consumption() -> void:
+	for i in 6:
+		var tw := 0
+		for k in Consumption.BASKETS[i].keys():
+			tw += int(Consumption.BASKETS[i][k])
+		check("cesta %d soma 100" % i, tw == 100, str(tw))
+	var base := {}
+	check("precos-base: termo de conforto 0", Consumption.comfort_term(base, 2) == 0 and Consumption.comfort_term(base, 0) == 0)
+	var dear := {"wine": 140, "silk": 140, "spices": 140, "furniture": 140, "sugar": 140, "tea": 140}
+	check("cesta cara reduz satisfacao", Consumption.comfort_term(dear, 2) < 0)
+	var cheap := {"wine": 70, "silk": 70, "spices": 70, "furniture": 70, "sugar": 70, "tea": 70}
+	check("cesta barata eleva satisfacao", Consumption.comfort_term(cheap, 2) > 0)
+	check("termo limitado", Consumption.comfort_term({"wine": 1000, "silk": 1000, "spices": 1000, "furniture": 1000, "sugar": 1000, "tea": 1000}, 2) >= Consumption.TERM_MIN)

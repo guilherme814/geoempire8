@@ -670,6 +670,7 @@ func run_all() -> void:
 	_consumption()
 	_regional_markets()
 	_new_chains()
+	_resource_methods()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1209,3 +1210,35 @@ func _new_chains() -> void:
 			if not (Province.RESOURCE_PRICE.has(good) or Province.PROCESSED.has(good)):
 				bad += 1
 	check("materiais de obra so usam bens existentes", bad == 0, "%d invalidos" % bad)
+
+
+func _resource_methods() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var ep: Province = null
+	for pid in c.province_ids:
+		var p: Province = g.provinces[pid]
+		if p.can_host(p.primary_extractor()):
+			ep = p
+			break
+	if ep == null:
+		check("achou provincia com extracao", false)
+		return
+	ep.bld[ep.primary_extractor()] = 2
+	ep.rmethod = 0
+	c.treasury = 100000
+	var ids := []
+	for i in Techs.ALL.size():
+		ids.append(i)
+	c.techs = ids
+	var u0: int = ep.units()
+	check("com tecnologia pode mecanizar a extracao", g.can_set_rmethod(ep.id, me, 2))
+	g.apply_command({"type": "set_rmethod", "province": ep.id, "method": 2, "issuer": me})
+	check("extracao mecanizada produz mais", ep.rmethod == 2 and ep.units() > u0)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	ep.rmethod = 0
+	g.load_state(bl)
+	check("metodo de extracao persiste", g.provinces[ep.id].rmethod == 2 and g.state_hash() == hh)
+	g.load_state(blob)

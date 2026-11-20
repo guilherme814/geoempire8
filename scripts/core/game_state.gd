@@ -1193,6 +1193,17 @@ func apply_command(cmd: Dictionary) -> void:
 		Events.treasury_changed.emit(target)
 		Events.war_changed.emit()
 
+	elif t == Cmd.SET_RMETHOD:
+		var rp: int = int(cmd.get("province", -1))
+		var rm: int = int(cmd.get("method", 0))
+		if not can_set_rmethod(rp, issuer, rm):
+			return
+		var rprov := provinces[rp]
+		countries[issuer].treasury -= rmethod_cost(rprov, rm)
+		rprov.rmethod = rm
+		Events.treasury_changed.emit(issuer)
+		Events.province_updated.emit(rp)
+
 	elif t == Cmd.SET_METHOD:
 		var mp: int = int(cmd.get("province", -1))
 		var mm: int = int(cmd.get("method", 0))
@@ -1602,7 +1613,45 @@ func method_cost(p: Province, m: int) -> int:
 	return int((Province.METHODS[m] as Dictionary)["cost"]) * p.factory_level
 
 
-func can_set_method(pid: int, issuer: int, m: int) -> bool:
+## Custo de passar a extração (fazenda/mina/madeireira) ao método `m`.
+func rmethod_cost(p: Province, m: int) -> int:
+	if m <= p.rmethod:
+		return 0
+	return int((Province.METHODS[m] as Dictionary)["cost"]) * p.extractor_level()
+
+
+func can_set_rmethod(pid: int, issuer: int, m: int) -> bool:
+	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
+		return false
+	if m < 0 or m >= Province.METHODS.size():
+		return false
+	var p := provinces[pid]
+	if p.owner_id != issuer or p.extractor_level() <= 0 or p.rmethod == m:
+		return false
+	if countries[issuer].tech_level() < int((Province.METHODS[m] as Dictionary)["tech"]):
+		return false
+	return countries[issuer].treasury >= rmethod_cost(p, m)
+
+
+## IA: moderniza (no máximo 1 melhoria por ciclo) fábricas e extração quando sobra caixa.
+func _ai_modernize(c: Country, spare: int) -> void:
+	var best: int = 0
+	for m in Province.METHODS.size():
+		if c.tech_level() >= int((Province.METHODS[m] as Dictionary)["tech"]):
+			best = m
+	if best <= 0:
+		return
+	for pid in c.province_ids:
+		var p := provinces[int(pid)]
+		if p.factory != "" and p.factory_level > 0 and p.method < best and method_cost(p, best) * 3 <= spare:
+			apply_command({"type": "set_method", "province": int(pid), "method": best, "issuer": c.id})
+			return
+		if p.extractor_level() > 0 and p.rmethod < best and rmethod_cost(p, best) * 3 <= spare:
+			apply_command({"type": "set_rmethod", "province": int(pid), "method": best, "issuer": c.id})
+			return
+
+
+func can_set_method(pid: int, issuer: int, m: int) -> bool:, issuer: int, m: int) -> bool:
 	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
 		return false
 	if m < 0 or m >= Province.METHODS.size():
@@ -2259,6 +2308,7 @@ func _ai_invest(c: Country) -> void:
 	var spare: int = c.treasury - reserve
 	if spare < 150:
 		return
+	_ai_modernize(c, spare)
 	var budget: int = clampi(spare / 800, 1, 5) + clampi(spare / 100000, 0, 20)   # potências ricas investem mais por ciclo
 	var at_war: bool = not wars_of(c.id).is_empty()
 	var order: Array = AiEconomy.build_order(AI_BUILD_ORDER, AiWar.personality_key(self, c), at_war, c.tag)
@@ -3030,7 +3080,7 @@ func country_pops(c: Country) -> Dictionary:
 		for kind in Province.JOBS_PER_LEVEL.keys():
 			var lv := p.building_level(str(kind))
 			if lv > 0:
-				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else 100
+				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else (p.rmethod_pct("jobs") if str(kind) == p.primary_extractor() else 100)
 				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv * jp / 100
 		var wt := [0, jobs, maxi(1, p.population / 1000),
 			1 + int(p.bld.get("market", 0)) + int(p.bld.get("bank", 0)) + p.factory_level,
@@ -3439,7 +3489,7 @@ func unemployment_pct(c: Country) -> int:
 		for kind in Province.JOBS_PER_LEVEL.keys():
 			var lv := p.building_level(str(kind))
 			if lv > 0:
-				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else 100
+				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else (p.rmethod_pct("jobs") if str(kind) == p.primary_extractor() else 100)
 				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv * jp / 100
 	jobs *= JOB_SCALE
 	return SURPLUS_LABOR_PCT * maxi(0, surplus - jobs) / surplus
@@ -4186,7 +4236,7 @@ func state_hash() -> int:
 		for k in Province.EXTRA_KINDS:
 			h = _mix(h, int(p.bld.get(k, 0)))
 		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
-		h = _mix(h, p.method)
+		h = _mix(h, p.method * 10 + p.rmethod)
 	for c in countries:
 		h = _mix(h, c.treasury)
 		h = _mix(h, c.tax_pct)
@@ -4400,6 +4450,7 @@ func serialize_state() -> Dictionary:
 	var fkinds: Array = []
 	var flevels: Array = []
 	var fmethods: Array = []
+	var rmethods: Array = []
 	for p in provinces:
 		owners.append(p.owner_id)
 		pops.append(p.population)
@@ -4409,6 +4460,7 @@ func serialize_state() -> Dictionary:
 		fkinds.append(p.factory)
 		flevels.append(p.factory_level)
 		fmethods.append(p.method)
+		rmethods.append(p.rmethod)
 		blds.append(_bld_str(p))
 	var treasury: Array = []
 	var taxes: Array = []
@@ -4466,6 +4518,7 @@ func serialize_state() -> Dictionary:
 		"factory": fkinds,
 		"factory_lvl": flevels,
 		"factory_method": fmethods,
+		"res_method": rmethods,
 		"treasury": treasury,
 		"taxes": taxes,
 		"capitals": capitals,
@@ -4540,6 +4593,8 @@ func load_state(d: Dictionary) -> bool:
 		provinces[i].factory_level = int(fl[i]) if i < fl.size() else 0
 		var fme: Array = d.get("factory_method", [])
 		provinces[i].method = int(fme[i]) if i < fme.size() else 0
+		var rme: Array = d.get("res_method", [])
+		provinces[i].rmethod = int(rme[i]) if i < rme.size() else 0
 		provinces[i].bld = {}
 		var bs: Array = d.get("bld", [])
 		if i < bs.size() and str(bs[i]) != "":

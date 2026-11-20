@@ -46,6 +46,7 @@ const SET_DRILL := "set_drill"
 const SEND_AID := "send_aid"
 const SPY := "spy"
 const SET_METHOD := "set_method"
+const SET_RMETHOD := "set_rmethod"
 const SET_BUDGET := "set_budget"
 const JUSTIFY := "justify"
 const PROPOSE_TREATY := "propose_treaty"
@@ -71,6 +72,11 @@ static func set_drill(level: int) -> Dictionary:
 ## Troca o método de produção da fábrica de uma província (índice em Province.METHODS).
 static func set_method(province: int, method: int) -> Dictionary:
 	return {"type": SET_METHOD, "province": province, "method": method}
+
+
+## Troca o método de extração da província (fazenda, mina ou madeireira).
+static func set_rmethod(province: int, method: int) -> Dictionary:
+	return {"type": SET_RMETHOD, "province": province, "method": method}
 
 
 ## Nível (0 cortado, 1 normal, 2 reforçado) de um ministério (índice em Government.MINISTRIES).

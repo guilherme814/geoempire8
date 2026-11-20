@@ -48,6 +48,24 @@ const METHODS := [
 	{"name": "Mecanizada", "out": 170, "inp": 150, "jobs": 70, "tech": 3, "cost": 320},
 ]
 var method: int = 0   # método de produção da fábrica (índice em METHODS)
+var rmethod: int = 0  # método de extração (fazenda, mina ou madeireira) — índice em METHODS
+
+
+## Construção de extração principal da província ("mine", "farm" ou "logging"), "" se não houver.
+func primary_extractor() -> String:
+	if resource_type in MINE_RES:
+		return "mine"
+	if resource_type == "timber":
+		return "logging"
+	return "farm"
+
+
+func extractor_level() -> int:
+	return int(bld.get(primary_extractor(), 0))
+
+
+func rmethod_pct(field: String) -> int:
+	return int((METHODS[clampi(rmethod, 0, METHODS.size() - 1)] as Dictionary)[field])
 
 
 func method_pct(field: String) -> int:
@@ -291,7 +309,8 @@ func _units_for(lv: Dictionary) -> int:
 	if resource_type != "timber" and not (resource_type in MINE_RES):
 		boost += 25 * int(lv["irrigation"])
 	boost += 20 * int(lv["power_plant"])
-	return base_units() * (100 + boost) / 100
+	var ext_pct: int = rmethod_pct("out") if extractor_level() > 0 else 100
+	return base_units() * (100 + boost) / 100 * ext_pct / 100
 
 
 @warning_ignore("integer_division")
@@ -390,6 +409,8 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 		"operating": 0, "tax": 0, "net": 0, "state_income": 0,
 		"jobs": int(JOBS_PER_LEVEL.get(kind, 0)) * maxi(0, level),
 	}
+	if kind == primary_extractor() and level > 0:
+		r["jobs"] = int(r["jobs"]) * rmethod_pct("jobs") / 100
 	if level <= 0 or not BUILDINGS.has(kind):
 		return r
 	var is_factory := FACTORIES.has(kind)

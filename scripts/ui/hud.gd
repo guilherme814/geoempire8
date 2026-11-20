@@ -608,6 +608,8 @@ func _refresh_build_panel() -> void:
 		box.add_child(tog)
 		if Province.FACTORIES.has(k) and p.factory == k and lv > 0 and p.owner_id == me:
 			_add_method_row(box, p, me)
+		elif k == p.primary_extractor() and lv > 0 and p.owner_id == me and Province.WAGE_PCT.has(k) and not Province.FACTORIES.has(k):
+			_add_method_row(box, p, me, true)
 		if bool(_build_open.get(k, false)):
 			var detail := UIKit.label(_building_detail(p, k, lv, me), 14, UIKit.TEXT_DIM)
 			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -615,8 +617,9 @@ func _refresh_build_panel() -> void:
 
 
 ## Linha "Método de produção" da fábrica: mostra o atual e botões para os outros.
-func _add_method_row(box: Control, p: Province, me: int) -> void:
-	var cur: Dictionary = Province.METHODS[p.method]
+func _add_method_row(box: Control, p: Province, me: int, res: bool = false) -> void:
+	var cur: Dictionary = Province.METHODS[p.rmethod if res else p.method]
+	var cur_m: int = p.rmethod if res else p.method
 	var info := UIKit.label("Método: %s (produção %d%%, insumos %d%%, empregos %d%%)" % [
 		cur["name"], int(cur["out"]), int(cur["inp"]), int(cur["jobs"])], 14, UIKit.GOLD)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -625,23 +628,24 @@ func _add_method_row(box: Control, p: Province, me: int) -> void:
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 	for m in Province.METHODS.size():
-		if m == p.method:
+		if m == cur_m:
 			continue
 		var d: Dictionary = Province.METHODS[m]
-		var b := _make_button("%s\n%s" % [d["name"], ("grátis" if Game.method_cost(p, m) == 0 else Money.fmt(Game.method_cost(p, m)))], Vector2(130, 48))
+		var mc: int = Game.rmethod_cost(p, m) if res else Game.method_cost(p, m)
+		var b := _make_button("%s\n%s" % [d["name"], ("grátis" if mc == 0 else Money.fmt(mc))], Vector2(130, 48))
 		b.add_theme_font_size_override("font_size", 14)
 		if Game.countries[me].tech_level() < int(d["tech"]):
 			b.text = "%s\nEra %d" % [d["name"], int(d["tech"])]
 			b.disabled = true
 		else:
-			b.disabled = not Game.can_set_method(p.id, me, m)
-			b.pressed.connect(_on_method_pressed.bind(m))
+			b.disabled = not (Game.can_set_rmethod(p.id, me, m) if res else Game.can_set_method(p.id, me, m))
+			b.pressed.connect(_on_method_pressed.bind(m, res))
 		row.add_child(b)
 
 
-func _on_method_pressed(m: int) -> void:
+func _on_method_pressed(m: int, res: bool = false) -> void:
 	if _selected >= 0:
-		Game.submit_command(Cmd.set_method(_selected, m))
+		Game.submit_command(Cmd.set_rmethod(_selected, m) if res else Cmd.set_method(_selected, m))
 
 
 func _on_build_details(kind: String) -> void:

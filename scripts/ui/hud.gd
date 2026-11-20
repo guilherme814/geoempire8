@@ -29,7 +29,7 @@ const RESOURCE_PT := {
 	"furs": "Peles", "wool": "Lã", "cotton": "Algodão", "coal": "Carvão", "iron": "Ferro",
 	"salt": "Sal", "wine": "Vinho", "sugar": "Açúcar", "tobacco": "Tabaco", "coffee": "Café",
 	"tea": "Chá", "silk": "Seda", "spices": "Especiarias", "opium": "Ópio", "gold": "Ouro",
-	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis", "steel": "Aço",
+	"fabric": "Tecido", "tools": "Ferramentas", "furniture": "Móveis", "steel": "Aço", "paper": "Papel", "machines": "Máquinas",
 }
 const CLASS_PT := ["Camponeses", "Operários", "Aristocratas", "Burguesia", "Funcionários", "Soldados"]
 const CLASS_WHY := [
@@ -49,7 +49,7 @@ const TAB_PT := {"gov": "Governo", "res": "Recursos", "ind": "Indústria", "inf"
 const BUILD_ICON := {
 	"school": "book", "university": "cap", "barracks": "tent", "hospital": "cross",
 	"mine": "pick", "farm": "wheat", "logging": "tree", "workshop": "hammer",
-	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot",
+	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot", "paper": "book", "machinery": "anvil",
 	"market": "stall", "railway": "rail", "dock": "anchor",
 	"library": "book", "sanitation": "cross", "academy": "shield", "arsenal": "anvil", "lab": "bulb",
 	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars", "depot": "tent",

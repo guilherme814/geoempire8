@@ -2238,7 +2238,7 @@ func _advance_ai() -> void:
 
 
 const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university",
-	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot"]
+	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery"]
 const AI_INVEST_RESERVE_MONTHS := 8
 
 
@@ -3876,7 +3876,7 @@ func _init_market() -> void:
 	var sup := market_supply()
 	for g in goods_list():
 		# bens processados começam sem oferta: demanda-base fixa cria escassez e lucro
-		market_dem[g] = 3000 if Province.PROCESSED.has(g) else int(sup[g])
+		market_dem[g] = int(Province.PROCESSED_DEM.get(g, 3000)) if Province.PROCESSED.has(g) else int(sup[g])
 	market_pop0 = market_population()
 	local_price.clear()
 	trade_imp.clear()

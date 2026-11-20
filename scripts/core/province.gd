@@ -27,13 +27,17 @@ const RESOURCE_PRICE := {
 }
 
 ## Bens processados (preço-base em décimos de ouro por unidade).
-const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28, "steel": 42}
+const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28, "steel": 42, "paper": 26, "machines": 60}
+## Demanda-base por habitante (escala do mercado) dos bens processados; padrão 3000.
+const PROCESSED_DEM := {"paper": 1500, "machines": 1200}
 ## Fábricas: por nível produzem `amount` unidades de `out` por mês e consomem `inputs` do mercado.
 const FACTORIES := {
 	"textile": {"out": "fabric", "amount": 100, "inputs": {"cotton": 60, "wool": 60}},
 	"smithy": {"out": "tools", "amount": 100, "inputs": {"iron": 80, "timber": 40}},
 	"carpentry": {"out": "furniture", "amount": 100, "inputs": {"timber": 100}},
 	"steel": {"out": "steel", "amount": 100, "inputs": {"iron": 100, "coal": 100}},
+	"paper": {"out": "paper", "amount": 100, "inputs": {"timber": 100}},
+	"machinery": {"out": "machines", "amount": 100, "inputs": {"steel": 60, "tools": 60}},
 }
 
 ## Métodos de produção das fábricas (estilo Victoria 3): trocam trabalho por produtividade.
@@ -76,6 +80,8 @@ const BUILDINGS := {
 	"logging": {"tab": "res", "name": "Madeireira", "cost": 110, "tech": 0, "desc": "+35% madeira (ou madeira extra em florestas)"},
 	"workshop": {"tab": "res", "name": "Oficina", "cost": 120, "tech": 0, "desc": "+25% produção do recurso"},
 	"textile": {"tab": "ind", "name": "Tecelagem", "cost": 150, "tech": 0, "desc": "Algodão + lã -> tecido"},
+	"paper": {"tab": "ind", "name": "Fábrica de papel", "cost": 170, "tech": 2, "desc": "Madeira -> papel (escolas, bibliotecas, bancos)"},
+	"machinery": {"tab": "ind", "name": "Fábrica de máquinas", "cost": 340, "tech": 4, "desc": "Aço + ferramentas -> máquinas (usinas, laboratórios)"},
 	"carpentry": {"tab": "ind", "name": "Marcenaria", "cost": 130, "tech": 0, "desc": "Madeira -> móveis"},
 	"smithy": {"tab": "ind", "name": "Ferraria", "cost": 180, "tech": 1, "desc": "Ferro + madeira -> ferramentas"},
 	"steel": {"tab": "ind", "name": "Siderúrgica", "cost": 260, "tech": 3, "desc": "Ferro + carvão -> aço"},
@@ -108,7 +114,7 @@ const FACTORIES_PRIVATE := true
 ## Salário pago por edifício produtivo, em % da receita que ele gera.
 const WAGE_PCT := {
 	"mine": 35, "farm": 28, "logging": 30, "workshop": 25,
-	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38, "railway": 28,
+	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38, "railway": 28, "paper": 28, "machinery": 36,
 	"irrigation": 26, "power_plant": 30,
 }
 ## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
@@ -118,7 +124,7 @@ const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3,
 ## Empregos criados por nível (informativo: aparece na interface).
 const JOBS_PER_LEVEL := {
 	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
-	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340,
+	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340, "paper": 150, "machinery": 280,
 	"hospital": 40, "market": 90, "railway": 200, "dock": 150,
 	"library": 10, "sanitation": 50, "academy": 25, "arsenal": 60, "lab": 35, "irrigation": 120,
 	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40, "depot": 60,
@@ -126,8 +132,8 @@ const JOBS_PER_LEVEL := {
 ## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
 ## de mercado do país, junto com o custo base (não há estoque no jogo).
 const BUILD_MATERIALS := {
-	"school": {"timber": 150},
-	"university": {"timber": 300, "tools": 80},
+	"school": {"timber": 150, "paper": 40},
+	"university": {"timber": 300, "tools": 80, "paper": 60},
 	"barracks": {"timber": 200, "iron": 60},
 	"mine": {"timber": 200, "tools": 60},
 	"farm": {"timber": 150, "tools": 40},
@@ -136,19 +142,21 @@ const BUILD_MATERIALS := {
 	"textile": {"timber": 250, "tools": 80},
 	"carpentry": {"timber": 200, "tools": 50},
 	"smithy": {"iron": 200, "timber": 150},
-	"steel": {"iron": 300, "coal": 200, "tools": 80},
+	"steel": {"iron": 300, "coal": 200, "tools": 80, "machines": 30},
+	"paper": {"timber": 200, "tools": 60},
+	"machinery": {"iron": 300, "timber": 150, "tools": 100},
 	"hospital": {"timber": 200, "tools": 40},
 	"market": {"timber": 180, "tools": 30},
 	"railway": {"iron": 250, "timber": 150, "tools": 60},
 	"dock": {"timber": 250, "iron": 80, "tools": 40},
-	"library": {"timber": 120},
+	"library": {"timber": 120, "paper": 60},
 	"sanitation": {"timber": 100, "iron": 120, "tools": 40},
 	"academy": {"timber": 200, "iron": 60},
 	"arsenal": {"iron": 250, "timber": 150, "tools": 60},
-	"lab": {"timber": 200, "tools": 120, "iron": 40},
+	"lab": {"timber": 200, "tools": 120, "iron": 40, "machines": 30},
 	"irrigation": {"timber": 100, "tools": 60},
-	"power_plant": {"iron": 300, "coal": 200, "tools": 100},
-	"bank": {"timber": 150, "tools": 30},
+	"power_plant": {"iron": 300, "coal": 200, "tools": 100, "machines": 60},
+	"bank": {"timber": 150, "tools": 30, "paper": 40},
 	"shipyard": {"timber": 350, "iron": 150, "tools": 60},
 	"telegraph": {"iron": 120, "tools": 60},
 	"depot": {"timber": 200, "iron": 60, "tools": 20},

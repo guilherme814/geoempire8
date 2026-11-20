@@ -25,7 +25,7 @@ Economia
 | B2 | Salários e padrão de vida por pop | feita no código (v0.20.0), só leitura |
 | B3 | Necessidades e consumo: cestas de bens por classe | feita no código (v0.21.0) |
 | B4 | Mercados: oferta, demanda e preço por mercado regional | feita no código (v0.22.0): alimento regional e fome; preço regional fica para B11 |
-| B5 | Cadeias produtivas ampliadas: novos bens e edifícios | pendente |
+| B5 | Cadeias produtivas ampliadas: novos bens e edifícios | feita no código (v0.23.0): papel e máquinas |
 | B6 | Métodos de produção para fazendas, minas e fábricas, por tecnologia | pendente |
 | B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | pendente |
 | B8 | Comércio exterior: rotas, tarifas, balança comercial | pendente |

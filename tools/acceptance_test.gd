@@ -669,6 +669,7 @@ func run_all() -> void:
 	_class_income()
 	_consumption()
 	_regional_markets()
+	_new_chains()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1195,3 +1196,16 @@ func _regional_markets() -> void:
 	check("oferta e demanda regionais nao negativas", neg == 0)
 	check("regioes sao deterministicas", JSON.stringify(g.region_food()) == JSON.stringify(food))
 	print("INFO provincias em regiao com fome: %d de %d" % [famine, g.provinces.size()])
+
+
+func _new_chains() -> void:
+	for k in ["paper", "machinery"]:
+		check("fabrica %s registrada" % k, Province.FACTORIES.has(k) and Province.BUILDINGS.has(k) and Province.JOBS_PER_LEVEL.has(k) and Province.BUILD_MATERIALS.has(k) and Province.WAGE_PCT.has(k))
+		var out: String = str(Province.FACTORIES[k]["out"])
+		check("bem %s no mercado" % out, Province.PROCESSED.has(out) and g.goods_list().has(out))
+	var bad := 0
+	for b in Province.BUILD_MATERIALS.keys():
+		for good in Province.BUILD_MATERIALS[b].keys():
+			if not (Province.RESOURCE_PRICE.has(good) or Province.PROCESSED.has(good)):
+				bad += 1
+	check("materiais de obra so usam bens existentes", bad == 0, "%d invalidos" % bad)

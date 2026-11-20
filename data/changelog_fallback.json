@@ -1,8 +1,13 @@
 {
- "version": "0.22.0",
- "title": "GeoEmpire 8 — v0.22.0 (Economia B4)",
- "body": "## Etapa B4 — Mercados regionais\n- **Alimento por região:** cada região histórica soma sua oferta de grãos, peixe e gado e compara com a demanda da sua população.\n- **Fome regional:** região com oferta abaixo de 50% da demanda tem o crescimento populacional cortado pela metade.\n- **Tela de Política:** card com as 5 regiões do país com pior abastecimento.\n- **Sem estado novo:** tudo é calculado a cada mês.",
+ "version": "0.23.0",
+ "title": "GeoEmpire 8 — v0.23.0 (Economia B5)",
+ "body": "## Etapa B5 — Cadeias produtivas\n- **Fábrica de papel** (era 2): madeira vira papel, usado em escolas, universidades, bibliotecas e bancos.\n- **Fábrica de máquinas** (era 4): aço e ferramentas viram máquinas, usadas em siderúrgicas, laboratórios e usinas.\n- **Mercado:** papel e máquinas entram nos preços, no comércio e nos materiais de obra. A IA também constrói as duas fábricas.\n- **Saves antigos:** carregam normalmente; os bens novos começam sem demanda neles.",
  "history": [
+  {
+   "version": "0.22.0",
+   "title": "GeoEmpire 8 — v0.22.0 (Economia B4)",
+   "body": "## Etapa B4 — Mercados regionais\n- **Alimento por região:** cada região histórica soma sua oferta de grãos, peixe e gado e compara com a demanda da sua população.\n- **Fome regional:** região com oferta abaixo de 50% da demanda tem o crescimento populacional cortado pela metade.\n- **Tela de Política:** card com as 5 regiões do país com pior abastecimento.\n- **Sem estado novo:** tudo é calculado a cada mês."
+  },
   {
    "version": "0.21.0",
    "title": "GeoEmpire 8 — v0.21.0 (Economia B3)",

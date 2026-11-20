@@ -1651,7 +1651,7 @@ func _ai_modernize(c: Country, spare: int) -> void:
 			return
 
 
-func can_set_method(pid: int, issuer: int, m: int) -> bool:, issuer: int, m: int) -> bool:
+func can_set_method(pid: int, issuer: int, m: int) -> bool:
 	if pid < 0 or pid >= provinces.size() or issuer < 0 or issuer >= countries.size():
 		return false
 	if m < 0 or m >= Province.METHODS.size():

@@ -1580,7 +1580,7 @@ func _refresh_politics() -> void:
 		var name_l := UIKit.label(CLASS_PT[i], 17, UIKit.TEXT)
 		name_l.custom_minimum_size = Vector2(112, 0)
 		grid.add_child(name_l)
-		var pop_l := UIKit.label("%.1f%%" % (float(sh[i]) / 10.0), 17, UIKit.TEXT)
+		var pop_l := UIKit.label("%.1f%% · %s" % [float(sh[i]) / 10.0, _fmt_pop(Game.population_of(c) * int(sh[i]) / 1000)], 17, UIKit.TEXT)
 		pop_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(pop_l)
 		var sat: int = int(c.sat[i])
@@ -2112,6 +2112,14 @@ func _refresh_info() -> void:
 	lines.append("País: %s" % owner_name)
 	lines.append("%s  ·  %s" % [TERRAIN_PT.get(p.terrain, p.terrain), RESOURCE_PT.get(p.resource_type, p.resource_type)])
 	lines.append("População: %s" % _fmt_pop(p.population))
+	if has_owner:
+		var pp: Array = Game.country_pops(Game.countries[p.owner_id]).get(p.id, [])
+		if pp.size() == 6 and p.population > 0:
+			var pl: Array[String] = []
+			for ci in 6:
+				if int(pp[ci]) * 100 / p.population >= 1:
+					pl.append("%s %d%%" % [CLASS_PT[ci], int(pp[ci]) * 100 / p.population])
+			lines.append("Profissões: " + " · ".join(pl))
 	lines.append("Preço do recurso: %d%%" % p.price_of(p.resource_type))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])

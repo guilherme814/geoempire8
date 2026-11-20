@@ -1,8 +1,13 @@
 {
- "version": "0.18.0",
- "title": "GeoEmpire 8 — v0.18.0 (Fase 6)",
- "body": "## Fase 6 — Diplomacia\n- **Casus belli:** justifique uma guerra por 150 de ouro; fica pronto em 90 dias e vale 720. Declarar guerra com casus belli não gera infâmia e as potências não formam coalizão contra você.\n- **Tratados:** Pacto de não agressão (bloqueia guerra entre os dois; romper custa 15 de infâmia e 30 de opinião) e Acordo comercial (+6% de comércio para cada lado, até 3 acordos). Duram 720 dias.\n- **IA:** uma vez por ano cada país busca o parceiro mais amigo para um acordo comercial (e pacto, se a opinião for alta).\n- **Desempenho:** o APK agora é exportado em modo release, bem mais rápido que o de debug.\n- **Onde:** tela de Diplomacia, nas ações do país escolhido.",
+ "version": "0.19.0",
+ "title": "GeoEmpire 8 — v0.19.0 (Economia B1)",
+ "body": "## Etapa B1 — Pops reais\n- **População por profissão:** cada província mostra quantos são camponeses, operários, aristocratas, burguesia, funcionários e soldados.\n- **Pesos locais:** operários seguem os empregos, burguesia segue mercados, bancos e fábricas, funcionários seguem escolas e universidades, soldados seguem quartéis.\n- **Tela de Política:** a tabela de classes agora mostra também o número de pessoas.\n- **Sem estado novo:** os números são calculados a partir da economia, então saves antigos continuam valendo.",
  "history": [
+  {
+   "version": "0.18.0",
+   "title": "GeoEmpire 8 — v0.18.0 (Fase 6)",
+   "body": "## Fase 6 — Diplomacia\n- **Casus belli:** justifique uma guerra por 150 de ouro; fica pronto em 90 dias e vale 720. Declarar guerra com casus belli não gera infâmia e as potências não formam coalizão contra você.\n- **Tratados:** Pacto de não agressão (bloqueia guerra entre os dois; romper custa 15 de infâmia e 30 de opinião) e Acordo comercial (+6% de comércio para cada lado, até 3 acordos). Duram 720 dias.\n- **IA:** uma vez por ano cada país busca o parceiro mais amigo para um acordo comercial (e pacto, se a opinião for alta).\n- **Desempenho:** o APK agora é exportado em modo release, bem mais rápido que o de debug.\n- **Onde:** tela de Diplomacia, nas ações do país escolhido."
+  },
   {
    "version": "0.17.0",
    "title": "GeoEmpire 8 — v0.17.0 (Fase 5)",

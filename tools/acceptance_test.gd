@@ -665,6 +665,7 @@ func run_all() -> void:
 	_law_legitimacy()
 	_government()
 	_diplomacy_moves()
+	_pops()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1122,3 +1123,24 @@ func _diplomacy_moves() -> void:
 	g.apply_command({"type": "propose_treaty", "target": other, "kind": 0, "issuer": me})
 	check("sem opiniao suficiente a IA recusa", not g.treaty_active(me, other, 0))
 	g.load_state(blob)
+
+
+func _pops() -> void:
+	var c: Country = g.countries[g.player_country]
+	var pops: Dictionary = g.country_pops(c)
+	check("pops cobrem todas as provincias", pops.size() == c.province_ids.size())
+	var bad := 0
+	var neg := 0
+	for pid in pops.keys():
+		var v: Array = pops[pid]
+		var sum := 0
+		for i in 6:
+			sum += int(v[i])
+			if int(v[i]) < 0:
+				neg += 1
+		if sum != g.provinces[int(pid)].population:
+			bad += 1
+	check("soma das pops = populacao da provincia", bad == 0, "%d provincias" % bad)
+	check("nenhuma pop negativa", neg == 0)
+	var again: Dictionary = g.country_pops(c)
+	check("pops sao deterministicas", JSON.stringify(again) == JSON.stringify(pops))

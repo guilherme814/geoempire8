@@ -2974,6 +2974,52 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 			provinces[pid].population += provinces[pid].population * pct / 100
 
 
+## Pops (B1): população de cada província por profissão/classe [camponeses, operários, aristocratas,
+## burguesia, funcionários, soldados], em pessoas. Derivado (não é estado): reparte os totais
+## nacionais de `politics_of` entre as províncias por pesos (empregos, mercados, escolas, quartéis).
+## Soma de cada província = população da província. Retorna {pid: [6 ints]}.
+@warning_ignore("integer_division")
+func country_pops(c: Country) -> Dictionary:
+	var out: Dictionary = {}
+	if c.province_ids.is_empty():
+		return out
+	var pop_nat := maxi(1, population_of(c))
+	var sh: Array = politics_of(c)["share"]
+	var w: Array = []        # pesos por classe 1..5 e província
+	var wsum := [0, 0, 0, 0, 0, 0]
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		var jobs := 0
+		for kind in Province.JOBS_PER_LEVEL.keys():
+			var lv := p.building_level(str(kind))
+			if lv > 0:
+				var jp: int = p.method_pct("jobs") if Province.FACTORIES.has(str(kind)) else 100
+				jobs += int(Province.JOBS_PER_LEVEL[kind]) * lv * jp / 100
+		var wt := [0, jobs, maxi(1, p.population / 1000),
+			1 + int(p.bld.get("market", 0)) + int(p.bld.get("bank", 0)) + p.factory_level,
+			1 + int(p.bld.get("school", 0)) + 2 * int(p.bld.get("university", 0)) + (4 if pid == c.capital else 0),
+			1 + p.barracks]
+		w.append(wt)
+		for i in range(1, 6):
+			wsum[i] += int(wt[i])
+	var idx := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		var wt: Array = w[idx]
+		idx += 1
+		var v := [0, 0, 0, 0, 0, 0]
+		for i in range(1, 6):
+			var total: int = pop_nat * int(sh[i]) / 1000
+			v[i] = total * int(wt[i]) / maxi(1, int(wsum[i])) if int(wsum[i]) > 0 else total / c.province_ids.size()
+		var remaining: int = p.population
+		for i in [5, 4, 3, 2, 1]:
+			v[i] = mini(int(v[i]), remaining)
+			remaining -= int(v[i])
+		v[0] = remaining
+		out[pid] = v
+	return out
+
+
 ## Previsão mensal de um país (usada pela simulação e pela UI).
 ## Classes do país: participação (permil), satisfação-alvo, influência, correntes (permil) e
 ## estabilidade. Tudo derivado da economia; só `Country.sat` e `stability` são estado.

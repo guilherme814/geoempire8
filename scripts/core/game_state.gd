@@ -110,7 +110,11 @@ const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor i
 # Diplomacia
 const IMPROVE_COST := 50
 const LOAN_STEP := 500           # valor de cada empréstimo/amortização
-const LOAN_RATE_PCT := 2         # juros mensais sobre a dívida
+const LOAN_RATE_PCT := 2         # juros mensais padrão sobre a dívida
+const RATE_MIN := 1
+const RATE_MAX := 4
+const PRINT_STEP := 1000         # moeda emitida por comando
+const INFLATION_MAX := 40
 const DRILL_NAMES := ["Recrutas", "Regulares", "Elite"]
 const DRILL_UPKEEP_PCT := 20     # +% de manutenção do exército por nível de instrução
 const DRILL_LOSS_PCT := 10       # -% de perdas em batalha por nível de instrução
@@ -923,6 +927,21 @@ func apply_command(cmd: Dictionary) -> void:
 	elif t == Cmd.SET_AUTO_FRONT:
 		if issuer >= 0 and issuer < countries.size():
 			countries[issuer].auto_front = bool(cmd.get("enabled", true))
+
+	elif t == Cmd.SET_RATE:
+		var rp: int = int(cmd.get("pct", -1))
+		if not can_set_rate(issuer, rp):
+			return
+		countries[issuer].interest = rp
+		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.PRINT_MONEY:
+		if not can_print(issuer):
+			return
+		var pc := countries[issuer]
+		pc.inflation += print_inflation(pc)
+		pc.treasury += PRINT_STEP
+		Events.treasury_changed.emit(issuer)
 
 	elif t == Cmd.SET_TARIFF:
 		var tp: int = int(cmd.get("pct", -1))
@@ -1777,6 +1796,22 @@ func can_set_tariff(issuer: int, pct: int) -> bool:
 	return countries[issuer].tariff != pct
 
 
+func can_set_rate(issuer: int, pct: int) -> bool:
+	if issuer < 0 or issuer >= countries.size() or pct < RATE_MIN or pct > RATE_MAX:
+		return false
+	return countries[issuer].interest != pct
+
+
+## Pontos de inflação gerados ao emitir PRINT_STEP de moeda (mais caro para economias pequenas).
+@warning_ignore("integer_division")
+func print_inflation(c: Country) -> int:
+	return clampi(PRINT_STEP * 6 / maxi(500, c.last_income), 1, 10)
+
+
+func can_print(issuer: int) -> bool:
+	return issuer >= 0 and issuer < countries.size() and countries[issuer].inflation + print_inflation(countries[issuer]) <= INFLATION_MAX
+
+
 func can_spy(issuer: int, target: int) -> bool:
 	if issuer < 0 or target < 0 or issuer >= countries.size() or target >= countries.size() or issuer == target:
 		return false
@@ -2474,6 +2509,8 @@ func _ai_spy(c: Country, tid: int) -> void:
 
 ## Finanças da IA: toma empréstimo quando o caixa fica negativo e amortiza quando sobra dinheiro.
 func _ai_finance(c: Country) -> void:
+	if c.treasury < -200 and c.debt >= loan_limit(c) and can_print(c.id):
+		apply_command({"type": "print_money", "issuer": c.id})
 	if c.treasury < 0 and decree_block_reason(c.id, 0) == "":
 		apply_command({"type": "decree", "id": 0, "issuer": c.id})
 	if c.treasury < 0 and can_take_loan(c.id):
@@ -2825,6 +2862,7 @@ func _private_invest(c: Country) -> void:
 	var gi: int = Laws.group_index("economy")
 	var opt: int = int(c.laws[gi]) if gi >= 0 and gi < c.laws.size() else 1
 	var pct: int = int(PRIVATE_INVEST_PCT[clampi(opt, 0, PRIVATE_INVEST_PCT.size() - 1)])
+	pct = clampi(pct * (100 - (c.interest - LOAN_RATE_PCT) * 20) / 100, 5, 90)    # juros altos freiam o investimento
 	var profit := 0
 	var best: Province = null
 	var best_fp := 0
@@ -2851,6 +2889,7 @@ func _private_invest(c: Country) -> void:
 
 func _country_month(c: Country) -> void:
 	_private_invest(c)
+	c.inflation = maxi(0, c.inflation - (2 if c.interest >= 3 else 1))
 	var edu := edu_levels(c)
 	var lmod := law_mods(c)
 	var lit_base: int = 100 + (edu.x + 2 * edu.y + bld_total(c, "library")) * 400 / maxi(1, c.province_ids.size())
@@ -3290,6 +3329,8 @@ func politics_of(c: Country) -> Dictionary:
 	var cterm: Array = []
 	for ci in 6:
 		cterm.append(Consumption.comfort_term(lp, ci))
+	for ci in [0, 1, 4]:
+		cterm[ci] = int(cterm[ci]) - c.inflation / 2          # renda fixa perde com a inflação
 	var fit: Array = Laws.fit_all(c.laws)
 	var legit := 0
 	for j in 5:
@@ -3514,6 +3555,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	if c.stability < UNREST_TAX_STABILITY:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
+	tax = tax * (100 - c.inflation / 2) / 100                  # inflação corrói a arrecadação real
 	industry_state = industry_state * (100 + Government.decree_field(c.decree, "ind")) / 100
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
@@ -3532,7 +3574,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	up_edu = up_edu * Government.pct(bc, 0) / 100 * dexp / 100
 	var up_welfare: int = c.province_ids.size() * Government.WELFARE_PER_PROVINCE * Government.pct(bc, 3) / 100
 	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
-	var up_debt: int = c.debt * LOAN_RATE_PCT / 100
+	var up_debt: int = c.debt * c.interest / 100
 	return {
 		"upkeep_research": up_research,
 		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
@@ -4393,6 +4435,7 @@ func state_hash() -> int:
 		h = _mix(h, c.decree_cd)
 		h = _mix(h, c.private_capital)
 		h = _mix(h, c.tariff)
+		h = _mix(h, c.interest * 1000 + c.inflation)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
 		for tt in c.techs:
@@ -4579,6 +4622,8 @@ func serialize_state() -> Dictionary:
 		"decree_cd": _country_ints("decree_cd"),
 		"private_capital": _country_ints("private_capital"),
 		"tariff": _country_ints("tariff"),
+		"interest": _country_ints("interest"),
+		"inflation": _country_ints("inflation"),
 		"infamy": _country_ints("infamy"),
 		"ai_heg": ai_heg,
 		"victories": victories.duplicate(),
@@ -4772,6 +4817,8 @@ func load_state(d: Dictionary) -> bool:
 	var dcd: Array = d.get("decree_cd", [])
 	var pcs: Array = d.get("private_capital", [])
 	var trs: Array = d.get("tariff", [])
+	var ints: Array = d.get("interest", [])
+	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
 	victories = (d.get("victories", []) as Array).duplicate()
 	defeated = bool(d.get("defeated", false))
@@ -4786,6 +4833,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].decree_cd = int(dcd[i]) if i < dcd.size() else 0
 		countries[i].private_capital = int(pcs[i]) if i < pcs.size() else 0
 		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
+		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
+		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

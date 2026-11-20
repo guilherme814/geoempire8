@@ -49,6 +49,8 @@ const SET_METHOD := "set_method"
 const SET_RMETHOD := "set_rmethod"
 const SET_BUDGET := "set_budget"
 const SET_TARIFF := "set_tariff"
+const SET_RATE := "set_rate"
+const PRINT_MONEY := "print_money"
 const JUSTIFY := "justify"
 const PROPOSE_TREATY := "propose_treaty"
 const BREAK_TREATY := "break_treaty"
@@ -83,6 +85,16 @@ static func set_rmethod(province: int, method: int) -> Dictionary:
 ## Define a tarifa de importação (0 a 30%, em passos de 5).
 static func set_tariff(pct: int) -> Dictionary:
 	return {"type": SET_TARIFF, "pct": pct}
+
+
+## Define os juros mensais do banco central (1 a 4%).
+static func set_rate(pct: int) -> Dictionary:
+	return {"type": SET_RATE, "pct": pct}
+
+
+## Emite moeda: ganha caixa agora e paga com inflação.
+static func print_money() -> Dictionary:
+	return {"type": PRINT_MONEY}
 
 
 ## Nível (0 cortado, 1 normal, 2 reforçado) de um ministério (índice em Government.MINISTRIES).

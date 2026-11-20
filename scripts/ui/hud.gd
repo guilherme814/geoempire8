@@ -1473,6 +1473,35 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 	return pc
 
 
+## Card "Moeda e crédito": juros do banco central, inflação e emissão de moeda.
+func _add_money_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Moeda e crédito", "coins")
+	var il := UIKit.label("Inflação: %d%% (corrói impostos e o poder de compra de camponeses, operários e funcionários). Dívida: %s a %d%% ao mês." % [c.inflation, Money.fmt(c.debt), c.interest], 15, UIKit.NEG if c.inflation >= 10 else UIKit.TEXT)
+	il.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(il)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	card.add_child(row)
+	for pct in range(Game.RATE_MIN, Game.RATE_MAX + 1):
+		var b := _make_button("Juros %d%%" % pct, Vector2(96, 40))
+		b.disabled = pct == c.interest
+		b.pressed.connect(_on_rate_pressed.bind(pct))
+		row.add_child(b)
+	var pb := _make_button("Emitir moeda (+%s, +%d inflação)" % [Money.fmt(Game.PRINT_STEP), Game.print_inflation(c)], Vector2(320, 44))
+	pb.disabled = not Game.can_print(c.id)
+	pb.pressed.connect(_on_print_pressed)
+	card.add_child(pb)
+	card.add_child(UIKit.label("Juros altos encarecem a dívida e freiam o investimento privado; a inflação cai 1 ponto por mês (2 com juros de 3% ou mais).", 14, UIKit.GOLD))
+
+
+func _on_rate_pressed(pct: int) -> void:
+	Game.submit_command(Cmd.set_rate(pct))
+
+
+func _on_print_pressed() -> void:
+	Game.submit_command(Cmd.print_money())
+
+
 ## Card "Comércio exterior": balança comercial do último mês e tarifa de importação.
 func _add_trade_card(body: Control, c: Country) -> void:
 	var card := _card(body, "Comércio exterior", "scroll")
@@ -1705,6 +1734,7 @@ func _refresh_politics() -> void:
 	_add_income_card(body, c)
 	_add_region_card(body, c)
 	_add_trade_card(body, c)
+	_add_money_card(body, c)
 	_add_government_cards(body, c)
 
 	var gcard := _card(body, "Queixas da população", "book")

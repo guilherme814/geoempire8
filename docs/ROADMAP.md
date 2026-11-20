@@ -29,7 +29,7 @@ Economia
 | B6 | Métodos de produção para fazendas, minas e fábricas, por tecnologia | feita no código (v0.24.0) |
 | B7 | Propriedade: capitalistas privados x Estado, dividendos, investimento privado | feita no código (v0.25.0); nacionalização fica para B23 |
 | B8 | Comércio exterior: rotas, tarifas, balança comercial | feita no código (v0.26.0) |
-| B9 | Moeda, inflação, juros e dívida pública | pendente |
+| B9 | Moeda, inflação, juros e dívida pública | feita no código (v0.27.0) |
 | B10 | Impostos detalhados por classe, consumo e tarifa; evasão | pendente |
 | B11 | Infraestrutura e transporte entre mercados | pendente |
 | B12 | Ciclos econômicos: expansão, recessão, crises | pendente |
@@ -54,6 +54,23 @@ Fechamento
 | # | Etapa | Estado |
 |---|-------|--------|
 | B25 | Balanceamento, painéis finais de economia e política, auditorias | pendente |
+
+## Trilha C — Nova HUD (referência visual enviada em 20/11/2026)
+
+Identidade: interface estratégica premium, painéis modulares, cores vivas, leve para celular (sem transparência pesada nem animação constante). Mantém todos os sistemas existentes.
+Layout de referência: topo com indicadores nacionais e velocidade; esquerda com ficha do país; centro com o mapa; direita com eventos e província selecionada; parte inferior com Governo, Economia, Sociedade, Diplomacia, Militar, Pesquisa, Leis e Estatísticas.
+Não serão usados retratos, bandeiras reais nem imagens do mockup; todo o visual será desenhado no próprio jogo.
+
+| # | Etapa | Estado |
+|---|-------|--------|
+| C1 | Tema visual: paleta, molduras e tipografia no UIKit | pendente |
+| C2 | Barra superior com indicadores e controle de velocidade | pendente |
+| C3 | Ficha do país à esquerda, recolhível | pendente |
+| C4 | Eventos e província selecionada à direita | pendente |
+| C5 | Barra inferior de 8 categorias, cada uma abrindo seu painel | pendente |
+| C6 | Painéis Governo, Sociedade e Estatísticas reorganizados | pendente |
+| C7 | Adaptação a telas pequenas e modo paisagem | pendente |
+| C8 | Passada de desempenho e teste no aparelho | pendente |
 
 Regra de ritmo: uma etapa por vez, com CI verde, changelog e versão; entre etapas o log do aparelho é conferido.
 

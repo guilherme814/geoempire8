@@ -673,6 +673,7 @@ func run_all() -> void:
 	_resource_methods()
 	_private_capital()
 	_tariffs()
+	_money()
 
 
 ## Empréstimos, instrução das tropas, ajuda financeira e cooperação científica.
@@ -1290,4 +1291,35 @@ func _tariffs() -> void:
 	check("tarifa persiste", g.countries[me].tariff == 25 and g.state_hash() == hh)
 	var bal: Array = g.trade_balance(me)
 	check("balanca comercial nao negativa", int(bal[0]) >= 0 and int(bal[1]) >= 0)
+	g.load_state(blob)
+
+
+func _money() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.interest = 2
+	c.inflation = 0
+	check("juros invalidos recusados", not g.can_set_rate(me, 0) and not g.can_set_rate(me, 9) and not g.can_set_rate(me, 2))
+	var e2: int = int(g.estimate_monthly(c)["upkeep_debt"])
+	c.debt = 10000
+	var d2: int = int(g.estimate_monthly(c)["upkeep_debt"])
+	g.apply_command({"type": "set_rate", "pct": 4, "issuer": me})
+	var d4: int = int(g.estimate_monthly(c)["upkeep_debt"])
+	check("juros maiores encarecem a divida", c.interest == 4 and d4 == 2 * d2 and d2 > e2)
+	var t0: int = c.treasury
+	g.apply_command({"type": "print_money", "issuer": me})
+	check("emitir moeda da caixa e inflacao", c.treasury == t0 + g.PRINT_STEP and c.inflation > 0)
+	var tax0: int = int(g.estimate_monthly(c)["tax"])
+	c.inflation = 0
+	var tax1: int = int(g.estimate_monthly(c)["tax"])
+	check("inflacao corroi a arrecadacao", tax0 <= tax1)
+	c.inflation = 20
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	c.inflation = 0
+	g.load_state(bl)
+	check("juros e inflacao persistem", g.countries[me].interest == 4 and g.countries[me].inflation == 20 and g.state_hash() == hh)
+	g._country_month(g.countries[me])
+	check("inflacao cai com juros altos", g.countries[me].inflation == 18)
 	g.load_state(blob)

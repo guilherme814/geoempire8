@@ -38,8 +38,8 @@ Economia
 Política
 | # | Etapa | Estado |
 |---|-------|--------|
-| B14 | Partidos por corrente, programas e filiação por classe | pendente |
-| B15 | Eleições e parlamento: cadeiras, coalizão, aprovação | pendente |
+| B14 | Partidos por corrente, programas e filiação por classe | feita no código (v0.34.0): partidos por corrente |
+| B15 | Eleições e parlamento: cadeiras, coalizão, aprovação | feita no código (v0.34.0): eleições a cada 4 anos, 100 cadeiras |
 | B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | pendente |
 | B17 | Leis ampliadas e votação das leis no parlamento | pendente |
 | B18 | Movimentos: sindicatos, greves, protestos | pendente |
@@ -105,4 +105,4 @@ Regra de ritmo: uma etapa por vez, com CI verde, changelog e versão; entre etap
 Victoria 3 (métodos de produção, infâmia), Age of History 3, Geopolitical Simulator. Código proprietário desses jogos não é usado.
 
 
-Pesquisa de referência (Victoria 3 e história econômica): `docs/ECONOMIA_PESQUISA.md`.
+Pesquisa de referência (Victoria 3 e história econômica): `docs/ECONOMIA_PESQUISA.md` e `docs/POLITICA_PESQUISA.md`.

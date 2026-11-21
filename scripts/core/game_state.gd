@@ -5063,7 +5063,7 @@ func load_state(d: Dictionary) -> bool:
 	var exs: Array = d.get("excise", [])
 	var pls: Array = d.get("panic_left", [])
 	var ecs: Array = d.get("elect_cd", [])
-	var sts: Array = d.get("seats", [])
+	var parl: Array = d.get("seats", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -5083,7 +5083,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].excise = int(exs[i]) if i < exs.size() else 0
 		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
 		countries[i].elect_cd = int(ecs[i]) if i < ecs.size() else 6 + i % 42
-		countries[i].seats = (sts[i] as Array).duplicate() if i < sts.size() and sts[i] is Array and (sts[i] as Array).size() == 5 else [0, 0, 0, 0, 0]
+		countries[i].seats = (parl[i] as Array).duplicate() if i < parl.size() and parl[i] is Array and (parl[i] as Array).size() == 5 else [0, 0, 0, 0, 0]
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

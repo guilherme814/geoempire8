@@ -1644,6 +1644,39 @@ func _on_excise_pressed(pct: int) -> void:
 	Game.submit_command(Cmd.set_excise(pct))
 
 
+## Card "Parlamento e partidos" (B14/B15): cadeiras por partido, apoio ao governo e próxima eleição.
+func _add_parliament_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Parlamento e partidos", "scales")
+	var suf: int = Game.suffrage_of(c)
+	if suf <= 0:
+		var al := UIKit.label("Autocracia: sem eleições nem partidos. Adote a Monarquia constitucional (voto censitário) ou a República (voto amplo) para ter parlamento.", 15, UIKit.TEXT_DIM)
+		al.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(al)
+		return
+	var tot := 0
+	for j in 5:
+		tot += int(c.seats[j])
+	var fit: Array = Laws.fit_all(c.laws)
+	if tot <= 0:
+		var fl := UIKit.label("Sufrágio %s. Primeira eleição em %d meses." % ["censitário (aristocratas, burguesia e funcionários)" if suf == 1 else "amplo (todas as classes)", c.elect_cd], 15, UIKit.TEXT)
+		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(fl)
+		return
+	var order: Array = [0, 1, 2, 3, 4]
+	order.sort_custom(func(a, b): return int(c.seats[a]) > int(c.seats[b]))
+	var rows: Array = []
+	for j in order:
+		if int(c.seats[j]) > 0:
+			rows.append({"rank": "·", "label": str(Game.PARTY_NAMES[j]), "value": int(c.seats[j]), "text": "%d cad." % int(c.seats[j]), "highlight": int(fit[j]) > 0})
+	var chart := BarChart.new()
+	chart.set_rows(rows, "PARLAMENTO (%d CADEIRAS) — dourado = apoia o governo" % Game.SEAT_TOTAL)
+	card.add_child(chart)
+	var sup: int = Game.parliament_support(c)
+	var sl := UIKit.label("Apoio ao governo: %d%% · sufrágio %s · próxima eleição em %d meses (a cada 4 anos). Maioria a favor das leis aumenta a estabilidade; contra, derruba." % [sup, "censitário" if suf == 1 else "amplo", c.elect_cd], 15, UIKit.POS if sup >= 50 else UIKit.WARN)
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(sl)
+
+
 ## Card "Arrecadação": evasão fiscal e imposto de consumo (B10).
 func _add_tax_card(body: Control, c: Country) -> void:
 	var card := _card(body, "Arrecadação e evasão", "coin")
@@ -1792,6 +1825,8 @@ func _refresh_politics() -> void:
 	var st := UIKit.label(_stability_text(c.stability), 18, _sat_color(c.stability))
 	st.custom_minimum_size = Vector2(230, 0)
 	srow.add_child(st)
+
+	_add_parliament_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())

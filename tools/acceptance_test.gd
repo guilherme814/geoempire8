@@ -676,6 +676,7 @@ func run_all() -> void:
 	_excise()
 	_transport()
 	_cycles()
+	_parliament()
 	_money()
 
 
@@ -1432,4 +1433,51 @@ func _cycles() -> void:
 	var so: Array = em.sort_by(wt, "population")
 	check("ranking ordenado em ordem decrescente", int(so[0]["population"]) >= int(so[1]["population"]) and int(so[so.size() - 2]["population"]) >= int(so[so.size() - 1]["population"]))
 	em.free()
+	g.load_state(blob)
+
+
+func _parliament() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var gi: int = Laws.group_index("gov")
+	c.laws[gi] = 0
+	var none: Array = g.election_seats(c)
+	check("autocracia: sem eleicao", g.suffrage_of(c) == 0 and int(none[0]) + int(none[1]) + int(none[2]) + int(none[3]) + int(none[4]) == 0)
+	c.laws[gi] = 2
+	var s2: Array = g.election_seats(c)
+	var t2 := 0
+	var neg := false
+	for j in 5:
+		t2 += int(s2[j])
+		if int(s2[j]) < 0:
+			neg = true
+	check("republica: 100 cadeiras, nenhuma negativa", t2 == g.SEAT_TOTAL and not neg)
+	c.laws[gi] = 1
+	var s1: Array = g.election_seats(c)
+	var t1 := 0
+	for j in 5:
+		t1 += int(s1[j])
+	check("monarquia constitucional: 100 cadeiras", t1 == g.SEAT_TOTAL)
+	check("eleicao deterministica", g.election_seats(c) == s1)
+	c.elect_cd = 2
+	var st0: int = c.stability
+	g._election_step(c)
+	check("contagem regressiva da eleicao", c.elect_cd == 1)
+	g._election_step(c)
+	check("eleicao reinicia o ciclo de 48 meses", c.elect_cd == g.ELECTION_MONTHS)
+	var tt := 0
+	for j in 5:
+		tt += int(c.seats[j])
+	check("eleicao preenche o parlamento", tt == g.SEAT_TOTAL)
+	check("efeito na estabilidade e limitado", absi(c.stability - st0) <= g.ELECTION_STAB_MAX)
+	var sup: int = g.parliament_support(c)
+	check("apoio ao governo entre 0 e 100", sup >= 0 and sup <= 100)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	var keep: Array = c.seats.duplicate()
+	c.seats = [0, 0, 0, 0, 0]
+	c.elect_cd = 1
+	g.load_state(bl)
+	check("parlamento persiste no save", g.countries[me].seats == keep and g.countries[me].elect_cd == g.ELECTION_MONTHS and g.state_hash() == hh)
 	g.load_state(blob)

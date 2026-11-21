@@ -1,8 +1,13 @@
 {
- "version": "0.33.0",
- "title": "GeoEmpire 8 — v0.33.0 (Economia B12 + Ranking)",
- "body": "## Etapa B12 — Ciclos e Pânico financeiro\n- **Risco financeiro (0–100%)** derivado de juros, inflação, dívida e capital privado. Em 1837 há contágio histórico (+25).\n- **Pânico (12 meses):** corrida aos bancos tira 40% do capital privado, congela o crédito e corta 8% da arrecadação. Fases: Expansão, Estável, Tensão e Pânico.\n\n## Ranking mundial e gráficos\n- Nova janela **Ranking mundial e gráficos** (botão na tela de Economia): 10 rankings (PIB, per capita, população, indústria, exportações, tesouro, exército, padrão de vida, alfabetização, estabilidade) em gráfico de barras, com sua posição e distância do líder.\n- 6 séries históricas do seu país: PIB real, inflação, balança comercial, saldo fiscal, investimento privado e desemprego.\n- Saves antigos funcionam.",
+ "version": "0.34.0",
+ "title": "GeoEmpire 8 — v0.34.0 (Política B14/B15)",
+ "body": "## Política: partidos, eleições e parlamento\n- **Partidos por corrente:** Conservador, Liberal, Socialista, Nacionalista e Reacionário, com cadeiras no parlamento (100).\n- **Eleições a cada 4 anos** em monarquias constitucionais (voto censitário: aristocratas, burguesia e funcionários) e repúblicas (voto amplo). Autocracias não têm eleições.\n- **Apoio ao governo:** cadeiras dos partidos que combinam com suas leis. Maioria a favor dá até +4 de estabilidade; contra, até −4.\n- Novo card \"Parlamento e partidos\" na tela de Sociedade.\n- Pesquisa: `docs/POLITICA_PESQUISA.md` (Victoria 3: grupos de interesse, eleições, partidos, leis em 3 fases, revolução).\n- Saves antigos funcionam (primeira eleição escalonada).",
  "history": [
+  {
+   "version": "0.33.0",
+   "title": "GeoEmpire 8 — v0.33.0 (Economia B12 + Ranking)",
+   "body": "## Etapa B12 — Ciclos e Pânico financeiro\n- **Risco financeiro (0–100%)** derivado de juros, inflação, dívida e capital privado. Em 1837 há contágio histórico (+25).\n- **Pânico (12 meses):** corrida aos bancos tira 40% do capital privado, congela o crédito e corta 8% da arrecadação. Fases: Expansão, Estável, Tensão e Pânico.\n\n## Ranking mundial e gráficos\n- Nova janela **Ranking mundial e gráficos** (botão na tela de Economia): 10 rankings (PIB, per capita, população, indústria, exportações, tesouro, exército, padrão de vida, alfabetização, estabilidade) em gráfico de barras, com sua posição e distância do líder.\n- 6 séries históricas do seu país: PIB real, inflação, balança comercial, saldo fiscal, investimento privado e desemprego.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.32.0",
    "title": "GeoEmpire 8 — v0.32.0 (Economia B11)",

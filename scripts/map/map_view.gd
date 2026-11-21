@@ -49,6 +49,7 @@ var _mesh_node: MeshInstance2D
 var _font: Font
 var _max_pop: int = 1
 var _bucket: int = 0
+var _debug_draw := true
 
 
 func _ready() -> void:
@@ -109,6 +110,21 @@ func set_zoom_level(z: float) -> void:
 	if _halo != null:
 		_halo.set_zoom(zoom_level)
 	queue_redraw()
+
+
+## Só para o teste de desempenho: liga/desliga camadas.
+func debug_layers(halo: bool, mesh: bool, ocean: bool, draw: bool) -> void:
+	if _halo != null:
+		_halo.visible = halo
+	if _mesh_node != null:
+		_mesh_node.visible = mesh
+	if _ocean != null:
+		_ocean.visible = ocean
+	if _vignette != null:
+		_vignette.visible = ocean
+	if draw != _debug_draw:
+		_debug_draw = draw
+		queue_redraw()
 
 
 func set_mode(m: int) -> void:
@@ -309,7 +325,7 @@ func _rebuild_mesh() -> void:
 # Desenho
 # ---------------------------------------------------------------------------
 func _draw() -> void:
-	if not Game.loaded:
+	if not Game.loaded or not _debug_draw:
 		return
 	var z := maxf(zoom_level, 0.05)
 

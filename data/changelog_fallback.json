@@ -1,8 +1,13 @@
 {
- "version": "0.30.0",
- "title": "GeoEmpire 8 — v0.30.0 (Desempenho)",
- "body": "## Desempenho\n- **Resolução econômica (720p):** nova opção em Opções > Resolução (padrão: econômica). Reduz muito o trabalho da GPU em telas 1080p. Se achar o texto borrado, volte para Nativa.\n- **IA sem travadas:** o planejamento da IA agora é espalhado por dia (2–3 países por dia) em vez de ~13 de uma vez a cada 5 dias.\n- **Suprimentos:** a capacidade da capital cresce com o tamanho do país; o exército inicial do Japão não perde mais regimentos de fome em casa.\n- Mapa: melhorias gráficas da v0.29.0 incluídas.",
+ "version": "0.30.1",
+ "title": "GeoEmpire 8 — v0.30.1 (Diagnóstico)",
+ "body": "## Diagnóstico de desempenho\n- **Teste de desempenho do mapa** em Opções: mede o tempo de quadro com cada camada do mapa ligada/desligada (≈15 s) e grava no log.\n- A resolução econômica (720p) não melhorou o FPS no seu aparelho; o padrão voltou para Nativa (a opção continua disponível).",
  "history": [
+  {
+   "version": "0.30.0",
+   "title": "GeoEmpire 8 — v0.30.0 (Desempenho)",
+   "body": "## Desempenho\n- **Resolução econômica (720p):** nova opção em Opções > Resolução (padrão: econômica). Reduz muito o trabalho da GPU em telas 1080p. Se achar o texto borrado, volte para Nativa.\n- **IA sem travadas:** o planejamento da IA agora é espalhado por dia (2–3 países por dia) em vez de ~13 de uma vez a cada 5 dias.\n- **Suprimentos:** a capacidade da capital cresce com o tamanho do país; o exército inicial do Japão não perde mais regimentos de fome em casa.\n- Mapa: melhorias gráficas da v0.29.0 incluídas."
+  },
   {
    "version": "0.29.0",
    "title": "GeoEmpire 8 — v0.29.0 (Mapa)",

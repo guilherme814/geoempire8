@@ -593,6 +593,20 @@ func _show_options() -> void:
 		b_res.text = "Resolução: " + str(AppSettings.RENDER_NAMES[AppSettings.render_mode()])
 		Events.trace.emit("graficos", "Resolução: " + str(AppSettings.RENDER_NAMES[AppSettings.render_mode()])))
 	body.add_child(b_res)
+	var b_probe := UIKit.button("Teste de desempenho do mapa (≈15 s)", Vector2(0, 56))
+	var probe_out := UIKit.label("", 14, UIKit.TEXT_DIM)
+	probe_out.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b_probe.pressed.connect(func():
+		b_probe.disabled = true
+		probe_out.text = "Medindo… não toque na tela."
+		var probe := PerfProbe.new()
+		get_tree().root.add_child(probe)
+		probe.run(get_parent(), func(r: String):
+			probe_out.text = r
+			b_probe.disabled = false
+			probe.queue_free()))
+	body.add_child(b_probe)
+	body.add_child(probe_out)
 	_add_log_options(body)
 	_add_close()
 

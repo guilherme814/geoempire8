@@ -56,7 +56,7 @@ const RENDER_NAMES := ["Nativa", "Econômica (720p)"]
 
 
 static func render_mode() -> int:
-	return clampi(get_int("graficos", "resolucao", 1), 0, 1)
+	return clampi(get_int("graficos", "resolucao", 0), 0, 1)
 
 
 static func set_render_mode(m: int) -> void:

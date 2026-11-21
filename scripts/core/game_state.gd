@@ -5083,7 +5083,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].excise = int(exs[i]) if i < exs.size() else 0
 		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
 		countries[i].elect_cd = int(ecs[i]) if i < ecs.size() else 6 + i % 42
-		countries[i].seats = (parl[i] as Array).duplicate() if i < parl.size() and parl[i] is Array and (parl[i] as Array).size() == 5 else [0, 0, 0, 0, 0]
+		var sv: Array = [0, 0, 0, 0, 0]
+		if i < parl.size() and parl[i] is Array and (parl[i] as Array).size() == 5:
+			for sj in 5:
+				sv[sj] = int(parl[i][sj])
+		countries[i].seats = sv
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

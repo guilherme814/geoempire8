@@ -1426,8 +1426,10 @@ func _cycles() -> void:
 	g.load_state(bl)
 	check("panico persiste no save", g.countries[me].panic_left == g.PANIC_MONTHS - 1 and g.state_hash() == hh)
 	# Tabela de ranking mundial.
-	var wt: Array = EconomyManager.world_table(g)
+	var em: Node = load("res://scripts/core/economy_manager.gd").new()
+	var wt: Array = em.world_table(g)
 	check("tabela mundial tem os paises vivos", wt.size() > 10 and wt[0].has("gdp_nominal") and wt[0].has("army"))
-	var so: Array = EconomyManager.sort_by(wt, "population")
+	var so: Array = em.sort_by(wt, "population")
 	check("ranking ordenado em ordem decrescente", int(so[0]["population"]) >= int(so[1]["population"]) and int(so[so.size() - 2]["population"]) >= int(so[so.size() - 1]["population"]))
+	em.free()
 	g.load_state(blob)

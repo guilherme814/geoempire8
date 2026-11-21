@@ -1812,8 +1812,8 @@ func can_set_excise(issuer: int, pct: int) -> bool:
 ## imposto de consumo) e cai com alfabetização (administração) e bancos. Derivada, sem estado.
 @warning_ignore("integer_division")
 func tax_evasion(c: Country) -> int:
-	var ev: int = 6 + maxi(0, c.tax_pct - 25) * 6 / 10 + maxi(0, c.tariff - 10) * 8 / 10 + c.excise / 2
-	ev -= c.literacy / 12 + mini(6, 2 * bld_total(c, "bank"))
+	var ev: int = 14 + maxi(0, c.tax_pct - 25) * 6 / 10 + maxi(0, c.tariff - 10) * 8 / 10 + c.excise / 2
+	ev -= c.literacy / 60 + mini(6, 2 * bld_total(c, "bank"))   # alfabetização vai de 0 a 1000
 	return clampi(ev, EVASION_MIN, EVASION_MAX)
 
 

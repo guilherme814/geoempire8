@@ -64,6 +64,7 @@ Não serão usados retratos, bandeiras reais nem imagens do mockup; todo o visua
 | # | Etapa | Estado |
 |---|-------|--------|
 | C1 | Tema visual: paleta, molduras e bandeira ondulando | feita no código (v0.28.0), falta ver no aparelho |
+| C1b | Gráfico do mapa-múndi: oceano, costas, fronteiras, cores | feita no código (v0.29.0), falta ver no aparelho |
 | C2 | Barra superior com indicadores e controle de velocidade | pendente |
 | C3 | Ficha do país à esquerda, recolhível | pendente |
 | C4 | Eventos e província selecionada à direita | pendente |

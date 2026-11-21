@@ -29,6 +29,7 @@ func _draw() -> void:
 		draw_multiline(lines, Color(0.30, 0.64, 0.80, 0.12), 14.0 / z)
 		draw_multiline(lines, Color(0.42, 0.74, 0.88, 0.20), 8.0 / z)
 		draw_multiline(lines, Color(0.62, 0.88, 0.96, 0.34), 3.6 / z)
+		draw_multiline(lines, Color(0.85, 0.98, 1.0, 0.22), 1.6 / z)
 	elif q == 1:
 		# Média: três camadas (visual original, bem mais leve para a GPU).
 		draw_multiline(lines, Color(0.28, 0.60, 0.76, 0.10), 20.0 / z)

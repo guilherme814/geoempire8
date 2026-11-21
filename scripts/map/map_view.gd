@@ -13,6 +13,7 @@ const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recur
 const GRID_SIZE := 100.0
 const OCEAN_COLOR := Color(0.045, 0.125, 0.185)  # azul petróleo escuro (borda do mapa)
 const OCEAN_CENTER := Color(0.10, 0.27, 0.36)    # azul mais claro no centro (vinheta)
+const OCEAN_GLOW := Color(0.14, 0.38, 0.49)      # brilho suave no centro do oceano
 const UNOWNED_COLOR := Color(0.86, 0.80, 0.64)  # pergaminho: terra sem dono
 const ZOOM_STEP := 1.35   # o zoom é agrupado em faixas deste fator para redesenhar pouco
 
@@ -63,8 +64,9 @@ func _ready() -> void:
 	add_child(_ocean)
 	# Vinheta do oceano: gradiente radial (centro claro, bordas escuras).
 	var grad := Gradient.new()
-	grad.set_color(0, Color(OCEAN_CENTER, 1.0))
+	grad.set_color(0, Color(OCEAN_GLOW, 1.0))
 	grad.set_color(1, Color(OCEAN_CENTER, 0.0))
+	grad.add_point(0.45, Color(OCEAN_CENTER, 0.85))
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
 	gt.fill = GradientTexture2D.FILL_RADIAL
@@ -274,6 +276,8 @@ func _province_color(p: Province) -> Color:
 	if p.owner_id < 0 or p.owner_id >= Game.countries.size():
 		return UNOWNED_COLOR.darkened(shade)
 	var base: Color = Game.countries[p.owner_id].color
+	base.s = minf(base.s * 1.12, 1.0)   # cores um pouco mais vivas
+	base.v = minf(base.v * 1.04 + 0.02, 1.0)
 	var tc2: Color = _terrain_colors.get(p.terrain, base)
 	return base.lerp(tc2, 0.16).darkened(shade * 0.8)
 
@@ -316,10 +320,18 @@ func _draw() -> void:
 	var prov_alpha := clampf((z - 1.2) / 1.2, 0.0, 1.0) * 0.35
 	if prov_alpha > 0.01:
 		draw_multiline(_prov_lines, Color(1.0, 1.0, 1.0, prov_alpha * 0.9), -1.0)       # 1 px fixo na tela
-	draw_multiline(_country_lines, Color(0.0, 0.0, 0.0, 0.14), 5.5 / z)               # sombra suave
+	var q := AppSettings.gfx_quality()
+	if q >= 2:
+		draw_multiline(_country_lines, Color(1.0, 0.95, 0.80, 0.10), 9.0 / z)          # brilho quente da fronteira
+	if q >= 1:
+		draw_multiline(_country_lines, Color(0.0, 0.0, 0.0, 0.16), 5.5 / z)            # sombra suave
 	draw_multiline(_country_lines, Color(0.07, 0.09, 0.12, 0.92), 1.9 / z)
+	if q >= 1:
+		draw_multiline(_country_lines, Color(0.98, 0.84, 0.50, 0.28), 0.8 / z)         # filete dourado fino
 	if not _front_lines.is_empty():
 		draw_multiline(_front_lines, Color(0.95, 0.18, 0.12, 0.95), 3.6 / z)
+	if q >= 1:
+		draw_multiline(_coast_lines, Color(0.80, 0.95, 1.0, 0.30), 3.0 / z)            # aro claro da costa
 	draw_multiline(_coast_lines, Color(0.04, 0.12, 0.18, 0.85), 1.3 / z)
 	if mode == Mode.POLITICAL:
 		if z >= 2.0 and AppSettings.gfx_quality() >= 1:
@@ -352,7 +364,7 @@ const OCEAN_NAMES := [
 func _draw_graticule(z: float) -> void:
 	var w := Game.map_size.x
 	var h := Game.map_size.y
-	var col := Color(0.55, 0.78, 0.88, 0.06)
+	var col := Color(0.55, 0.78, 0.88, 0.08)
 	for lon in range(-150, 180, 30):
 		var x := (float(lon) + 180.0) / 360.0 * w
 		draw_line(Vector2(x, 0), Vector2(x, h), col, -1.0)

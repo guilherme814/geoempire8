@@ -675,6 +675,7 @@ func run_all() -> void:
 	_tariffs()
 	_excise()
 	_transport()
+	_cycles()
 	_money()
 
 
@@ -1385,4 +1386,48 @@ func _transport() -> void:
 	check("sem cais, sem bonus portuario", g.port_trade_pct(c) == 0)
 	g.provinces[c.province_ids[0]].bld["dock"] = 50
 	check("bonus portuario limitado a 30%", g.port_trade_pct(c) == g.PORT_TRADE_MAX)
+	g.load_state(blob)
+
+
+func _cycles() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.panic_left = 0
+	c.interest = 2
+	c.inflation = 0
+	c.debt = 0
+	c.private_capital = 0
+	var low: int = g.panic_risk(c)
+	check("risco financeiro baixo com juros normais e sem divida", low >= 0 and low < g.PANIC_RISK)
+	c.interest = 4
+	c.inflation = 30
+	c.private_capital = g.PRIVATE_CAPITAL_MAX
+	var high: int = g.panic_risk(c)
+	check("juros, inflacao e capital elevam o risco, limitado a 100", high > low and high <= 100 and high >= g.PANIC_RISK)
+	check("fase do ciclo reflete o risco", g.cycle_phase(c) == 2)
+	# Pânico: corrida aos bancos destrói capital privado e arrecadação.
+	c.panic_left = 0
+	var tax0: int = int(g.estimate_monthly(c)["tax"])
+	var cap0: int = c.private_capital
+	c.panic_left = g.PANIC_MONTHS
+	var tax1: int = int(g.estimate_monthly(c)["tax"])
+	check("panico corta a arrecadacao", tax1 < tax0)
+	check("fase de panico", g.cycle_phase(c) == 3)
+	g._private_invest(c)
+	check("credito congelado no panico", c.private_capital == cap0)
+	g._panic_step(c)
+	check("panico dura meses e conta regressiva", c.panic_left == g.PANIC_MONTHS - 1)
+	# Rolagem determinística: mesma data e país, mesmo resultado.
+	check("rolagem do panico e deterministica", g._panic_roll(c) == g._panic_roll(c) and g._panic_roll(c) >= 0 and g._panic_roll(c) < 100)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	c.panic_left = 0
+	g.load_state(bl)
+	check("panico persiste no save", g.countries[me].panic_left == g.PANIC_MONTHS - 1 and g.state_hash() == hh)
+	# Tabela de ranking mundial.
+	var wt: Array = EconomyManager.world_table(g)
+	check("tabela mundial tem os paises vivos", wt.size() > 10 and wt[0].has("gdp_nominal") and wt[0].has("army"))
+	var so: Array = EconomyManager.sort_by(wt, "population")
+	check("ranking ordenado em ordem decrescente", int(so[0]["population"]) >= int(so[1]["population"]) and int(so[so.size() - 2]["population"]) >= int(so[so.size() - 1]["population"]))
 	g.load_state(blob)

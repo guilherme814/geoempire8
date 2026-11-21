@@ -309,3 +309,37 @@ func bottlenecks(game: Node, country_id: int) -> Array:
 				"message": "Excesso de oferta: considere novos consumidores ou exportações."
 			})
 	return result
+
+
+## Tabela mundial com todas as métricas de ranking (uma passagem; a UI ordena por categoria).
+func world_table(game: Node) -> Array:
+	var rows: Array = []
+	var tables: Array = game.market_tables_cached()
+	for c in game.countries:
+		if not c.is_alive():
+			continue
+		var r := _calculate_country_report(game, c.id, tables)
+		rows.append({
+			"id": c.id, "name": c.name, "tag": c.tag,
+			"gdp_nominal": int(r["gdp_nominal"]),
+			"gdp_per_capita_x100": int(r["gdp_per_capita_x100"]),
+			"population": int(r["population"]),
+			"treasury": int(c.treasury),
+			"industry": int(r["industry_value_added"]),
+			"exports": int(r["exports_value"]),
+			"army": int(game.regiments_of(c.id)),
+			"living": int(r["standard_of_living_x10"]),
+			"literacy": int(c.literacy),
+			"stability": int(c.stability),
+		})
+	return rows
+
+
+## Ordena a tabela por `key` (decrescente; empate pelo id) e devolve uma cópia.
+func sort_by(rows: Array, key: String) -> Array:
+	var out: Array = rows.duplicate()
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a[key]) == int(b[key]):
+			return int(a["id"]) < int(b["id"])
+		return int(a[key]) > int(b[key]))
+	return out

@@ -106,6 +106,11 @@ const PRICE_MIN := 70
 const PRICE_MAX := 140
 const TARIFF_MAX := 30
 const TARIFF_STEP := 5
+const PANIC_RISK := 50               # risco financeiro a partir do qual pode haver pânico
+const PANIC_MONTHS := 12
+const PANIC_CAPITAL_LOSS_PCT := 40   # corrida aos bancos: capital privado perdido
+const PANIC_TAX_PCT := 8             # arrecadação perdida durante o pânico
+const PANIC_CONTAGION := 25          # risco extra em 1837 (contágio do Pânico de 1837)
 const EXCISE_MAX := 20
 const EXCISE_STEP := 5
 const EXCISE_BASE_PCT := 60          # parte da produção que vira consumo tributável
@@ -1815,6 +1820,50 @@ func trade_balance(cid: int) -> Array:
 	return [ex, im]
 
 
+## Risco financeiro (0..100), derivado: juros altos, inflação, dívida sobre a renda anual e capital
+## privado alavancado; em 1837 soma o contágio do pânico daquele ano.
+@warning_ignore("integer_division")
+func panic_risk(c: Country) -> int:
+	var r: int = (c.interest - 1) * 12 + c.inflation
+	if c.debt > 0:          # só calcula a renda (cara) quando há dívida
+		var income: int = maxi(1, int(estimate_monthly(c)["income"]))
+		r += mini(30, c.debt * 30 / (income * 24))
+	r += mini(20, c.private_capital * 20 / PRIVATE_CAPITAL_MAX)
+	if clock.year == 1837 and clock.month >= 3:
+		r += PANIC_CONTAGION
+	return clampi(r, 0, 100)
+
+
+## Fase do ciclo: 0 expansão, 1 estável, 2 tensão financeira, 3 pânico.
+func cycle_phase(c: Country) -> int:
+	if c.panic_left > 0:
+		return 3
+	var r := panic_risk(c)
+	if r >= PANIC_RISK:
+		return 2
+	return 0 if r < 25 else 1
+
+
+@warning_ignore("integer_division")
+func _panic_roll(c: Country) -> int:
+	var h: int = (clock.year * 12 + clock.month) * 7919 + c.id * 104729
+	h = (h * 1103515245 + 12345) & 0x7fffffff
+	return (h >> 8) % 100
+
+
+func _panic_step(c: Country) -> void:
+	if c.panic_left > 0:
+		c.panic_left -= 1
+		return
+	var r := panic_risk(c)
+	if r >= PANIC_RISK and _panic_roll(c) < r - PANIC_RISK + 5:
+		c.panic_left = PANIC_MONTHS
+		c.private_capital = c.private_capital * (100 - PANIC_CAPITAL_LOSS_PCT) / 100
+		c.stability = maxi(0, c.stability - 3)
+		if is_human(c.id):
+			Events.notice.emit("Pânico financeiro! Corrida aos bancos: capital privado e arrecadação caem por %d meses." % PANIC_MONTHS)
+
+
 func can_set_excise(issuer: int, pct: int) -> bool:
 	if issuer < 0 or issuer >= countries.size() or pct < 0 or pct > EXCISE_MAX or pct % EXCISE_STEP != 0:
 		return false
@@ -2900,6 +2949,8 @@ const PRIVATE_CAPITAL_MAX := 200000
 
 @warning_ignore("integer_division")
 func _private_invest(c: Country) -> void:
+	if c.panic_left > 0:
+		return          # crédito congelado durante o pânico
 	var gi: int = Laws.group_index("economy")
 	var opt: int = int(c.laws[gi]) if gi >= 0 and gi < c.laws.size() else 1
 	var pct: int = int(PRIVATE_INVEST_PCT[clampi(opt, 0, PRIVATE_INVEST_PCT.size() - 1)])
@@ -2929,6 +2980,7 @@ func _private_invest(c: Country) -> void:
 
 
 func _country_month(c: Country) -> void:
+	_panic_step(c)
 	_private_invest(c)
 	c.inflation = maxi(0, c.inflation - (2 if c.interest >= 3 else 1))
 	var edu := edu_levels(c)
@@ -3634,6 +3686,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 	tax = tax * (100 - c.inflation / 2) / 100                  # inflação corrói a arrecadação real
 	var evasion: int = tax_evasion(c)
 	tax = tax * (100 - evasion) / 100                          # evasão fiscal
+	if c.panic_left > 0:
+		tax = tax * (100 - PANIC_TAX_PCT) / 100                # pânico financeiro
 	industry_state = industry_state * (100 + Government.decree_field(c.decree, "ind")) / 100
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
@@ -4525,7 +4579,7 @@ func state_hash() -> int:
 		h = _mix(h, c.decree_cd)
 		h = _mix(h, c.private_capital)
 		h = _mix(h, c.tariff)
-		h = _mix(h, c.excise)
+		h = _mix(h, c.excise * 100 + c.panic_left)
 		h = _mix(h, c.interest * 1000 + c.inflation)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
@@ -4714,6 +4768,7 @@ func serialize_state() -> Dictionary:
 		"private_capital": _country_ints("private_capital"),
 		"tariff": _country_ints("tariff"),
 		"excise": _country_ints("excise"),
+		"panic_left": _country_ints("panic_left"),
 		"interest": _country_ints("interest"),
 		"inflation": _country_ints("inflation"),
 		"infamy": _country_ints("infamy"),
@@ -4910,6 +4965,7 @@ func load_state(d: Dictionary) -> bool:
 	var pcs: Array = d.get("private_capital", [])
 	var trs: Array = d.get("tariff", [])
 	var exs: Array = d.get("excise", [])
+	var pls: Array = d.get("panic_left", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -4927,6 +4983,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].private_capital = int(pcs[i]) if i < pcs.size() else 0
 		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
 		countries[i].excise = int(exs[i]) if i < exs.size() else 0
+		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

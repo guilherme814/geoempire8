@@ -723,6 +723,7 @@ func _build_windows() -> void:
 	_make_window("tech", "Pesquisa tecnológica", Vector2(1060, 680), "bulb")
 	_make_window("eco", "Economia", Vector2(860, 520), "coin")
 	_make_window("market", "Mercado nacional", Vector2(760, 540), "bars")
+	_make_window("ranking", "Ranking mundial e gráficos", Vector2(980, 620), "bars")
 	var menu := _make_window("menu", "Menu", Vector2(420, 480), "menu")
 	var b_save := _make_button("Salvar jogo", Vector2(0, 52))
 	b_save.pressed.connect(_on_save_pressed)
@@ -810,6 +811,8 @@ func _refresh_windows(force: bool = true) -> void:
 		_refresh_economy()
 	if _windows["market"].visible:
 		_refresh_market()
+	if _windows["ranking"].visible:
+		_refresh_ranking()
 	if _windows["politics"].visible:
 		_refresh_politics()
 	if _windows["leaders"].visible:
@@ -1047,6 +1050,10 @@ func _refresh_economy() -> void:
 	_big_number(top, "Despesa mensal", Money.signed(-expense), UIKit.NEG)
 	_big_number(top, "Saldo mensal", Money.signed(net), _signed_color(net))
 	_big_number(top, "Tesouro", Money.fmt(c.treasury), UIKit.NEG if c.treasury < 0 else UIKit.GOLD_BRIGHT)
+
+	var bt := _make_button("Ranking mundial e gráficos", Vector2(0, 46))
+	bt.pressed.connect(func(): _toggle_window("ranking"))
+	body.add_child(bt)
 
 	_economy_dashboard(body, c)
 
@@ -1332,6 +1339,107 @@ func _refresh_leaders() -> void:
 			cell.add_child(_leader_label(str(ent["title"]), 13, UIKit.TEXT_DIM, 150))
 			cell.add_child(_leader_label("Assume em %d" % int(ent["from"]), 14, UIKit.TEXT, 150))
 	right.add_child(UIKit.label("Os governantes seguem a história real; o rumo do seu país pode divergir dela.", 14, UIKit.TEXT_DIM))
+
+
+const RANK_CATS := [
+	["gdp_nominal", "PIB", "gdp"], ["gdp_per_capita_x100", "PIB per capita", "pc"], ["population", "População", "pop"],
+	["industry", "Indústria", "n"], ["exports", "Exportações", "n"], ["treasury", "Tesouro", "money"],
+	["army", "Exército", "reg"], ["living", "Padrão de vida", "liv"], ["literacy", "Alfabetização", "lit"],
+	["stability", "Estabilidade", "pct"],
+]
+var _rank_cat: String = "gdp_nominal"
+var _wtab_cache: Array = []
+var _wtab_stamp: int = -1
+
+
+func _rank_fmt(kind: String, v: int) -> String:
+	match kind:
+		"pc": return "%.2f" % (float(v) / 100.0)
+		"pop":
+			if v >= 1000000000:
+				return "%.2f bi" % (float(v) / 1000000000.0)
+			if v >= 1000000:
+				return "%.1f mi" % (float(v) / 1000000.0)
+			return "%d mil" % (v / 1000)
+		"money": return Money.fmt(v)
+		"reg": return "%d reg." % v
+		"liv": return "%.1f" % (float(v) / 10.0)
+		"lit": return "%.1f%%" % (float(v) / 10.0)
+		"pct": return "%d%%" % v
+	return Money.fmt(v) if kind == "gdp" else str(v)
+
+
+func _on_rank_cat(key: String) -> void:
+	_rank_cat = key
+	_refresh_ranking()
+
+
+func _refresh_ranking() -> void:
+	var body: VBoxContainer = _win_bodies["ranking"]
+	UIKit.clear(body)
+	var c := Game.countries[Game.player_country]
+	var stamp: int = Game.clock.year * 12 + Game.clock.month
+	if stamp != _wtab_stamp:
+		_wtab_stamp = stamp
+		_wtab_cache = EconomyManager.world_table(Game)
+	var cats := HFlowContainer.new()
+	cats.add_theme_constant_override("h_separation", 6)
+	cats.add_theme_constant_override("v_separation", 6)
+	body.add_child(cats)
+	var kind := "n"
+	var cat_name := "PIB"
+	for cd in RANK_CATS:
+		var b := _make_button(str(cd[1]), Vector2(0, 38))
+		b.toggle_mode = true
+		b.set_pressed_no_signal(str(cd[0]) == _rank_cat)
+		b.pressed.connect(_on_rank_cat.bind(str(cd[0])))
+		cats.add_child(b)
+		if str(cd[0]) == _rank_cat:
+			kind = str(cd[2])
+			cat_name = str(cd[1])
+	var sorted: Array = EconomyManager.sort_by(_wtab_cache, _rank_cat)
+	var rows: Array = []
+	var my_pos := -1
+	for i in sorted.size():
+		var r: Dictionary = sorted[i]
+		var me: bool = int(r["id"]) == c.id
+		if me:
+			my_pos = i
+		if i < 10:
+			rows.append({"rank": i + 1, "label": str(r["name"]), "value": int(r[_rank_cat]), "text": _rank_fmt(kind, int(r[_rank_cat])), "highlight": me})
+	if my_pos >= 10:
+		rows.append({"rank": my_pos + 1, "label": c.name, "value": int(sorted[my_pos][_rank_cat]), "text": _rank_fmt(kind, int(sorted[my_pos][_rank_cat])), "highlight": true})
+	var chart := BarChart.new()
+	chart.set_rows(rows, "RANKING MUNDIAL — %s (%d países)" % [cat_name.to_upper(), sorted.size()])
+	body.add_child(chart)
+	if my_pos >= 0 and not sorted.is_empty():
+		var lead: Dictionary = sorted[0]
+		var mine: int = int(sorted[my_pos][_rank_cat])
+		var pct: int = mine * 100 / maxi(1, int(lead[_rank_cat]))
+		var sl := UIKit.label("Você está em %dº de %d em %s, com %d%% do valor do líder (%s)." % [my_pos + 1, sorted.size(), cat_name.to_lower(), pct, str(lead["name"])], 15, UIKit.TEXT)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		body.add_child(sl)
+	# Ciclo econômico e risco financeiro (B12).
+	var phases := ["Expansão", "Estável", "Tensão financeira", "PÂNICO"]
+	var ph: int = Game.cycle_phase(c)
+	var risk: int = Game.panic_risk(c)
+	var cl := UIKit.label("Ciclo econômico: %s · risco de pânico %d%%%s. Juros altos, inflação, dívida e capital privado elevam o risco; o pânico (12 meses) destrói capital privado e corta a arrecadação." % [phases[ph], risk, (" · %d meses restantes" % c.panic_left) if c.panic_left > 0 else ""], 15, UIKit.NEG if ph >= 2 else UIKit.TEXT_DIM)
+	cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(cl)
+	# Séries históricas do seu país.
+	var hist: Array = EconomyManager.get_history(c.id)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	body.add_child(grid)
+	for m in [["gdp_real", "PIB REAL"], ["inflation_pct", "INFLAÇÃO MENSAL (%)"], ["trade_balance", "BALANÇA COMERCIAL"], ["monthly_balance", "SALDO FISCAL"], ["investment_flow", "INVESTIMENTO PRIVADO"], ["unemployment_proxy_pct", "DESEMPREGO (%)"]]:
+		var gc := GDPChartPanel.new()
+		gc.custom_minimum_size = Vector2(0, 150)
+		gc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gc.set_metric(str(m[0]), str(m[1]))
+		gc.update_chart(hist)
+		grid.add_child(gc)
 
 
 func _refresh_market() -> void:

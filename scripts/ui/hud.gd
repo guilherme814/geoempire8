@@ -1671,6 +1671,43 @@ func _on_excise_pressed(pct: int) -> void:
 
 
 ## Card "Grupos de interesse" (B16): clout, nível, aprovação e efeito de cada grupo.
+## Card "Movimentos e revolta" (B18): radicalização, protestos, rebeldes e relógio da revolução.
+func _add_unrest_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Movimentos e revolta", "shield")
+	var cnt: Dictionary = Game.unrest_counts(c)
+	var names := ["Conservadores", "Liberais", "Socialistas", "Nacionalistas", "Reacionários"]
+	for j in 5:
+		var rv: int = int(c.radical[j])
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		card.add_child(row)
+		var nm := UIKit.label("Movimento %s" % names[j].to_lower(), 16, UIKit.TEXT)
+		nm.custom_minimum_size = Vector2(250, 0)
+		row.add_child(nm)
+		var col: Color = UIKit.NEG if rv >= Game.RADICAL_ACTIVE else (UIKit.WARN if rv >= 100 else UIKit.POS)
+		row.add_child(UIKit.bar(float(rv), 1000.0, col, 14.0))
+		var tl := UIKit.label("%d%%%s" % [rv / 10, " · ativo" if rv >= Game.RADICAL_ACTIVE else ""], 14, col)
+		tl.custom_minimum_size = Vector2(110, 0)
+		row.add_child(tl)
+	var sl := UIKit.label("Províncias: %d rebeldes · %d propensas à revolução · %d em protesto. Greves: arrecadação −%d%%." % [int(cnt["rebel"]), int(cnt["prone"]), int(cnt["protest"]), c.strikes / 2], 15, UIKit.NEG if int(cnt["rebel"]) > 0 else UIKit.TEXT)
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(sl)
+	var crow := HBoxContainer.new()
+	crow.add_theme_constant_override("separation", 10)
+	card.add_child(crow)
+	var cl := UIKit.label("Relógio da revolução", 16, UIKit.TEXT)
+	cl.custom_minimum_size = Vector2(250, 0)
+	crow.add_child(cl)
+	var cc: Color = UIKit.NEG if c.rev_clock >= 6 else (UIKit.WARN if c.rev_clock > 0 else UIKit.POS)
+	crow.add_child(UIKit.bar(float(c.rev_clock), float(Game.REV_CLOCK_MAX), cc, 14.0))
+	var ct := UIKit.label("%d/%d" % [c.rev_clock, Game.REV_CLOCK_MAX], 14, cc)
+	ct.custom_minimum_size = Vector2(110, 0)
+	crow.add_child(ct)
+	var hint := UIKit.label("Cada classe insatisfeita radicaliza uma corrente. Movimentos ativos e baixa estabilidade agitam as províncias (ocupadas, mais ainda). Com %d%% das províncias rebeldes o relógio corre; ao chegar a %d a revolução derruba o regime. Use o modo de mapa \"Revolta\" para ver as regiões." % [Game.REV_REBEL_SHARE, Game.REV_CLOCK_MAX], 14, UIKit.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(hint)
+
+
 func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
 	var card := _card(body, "Grupos de interesse", "people")
 	var groups: Array = Game.interest_groups(c, pol)
@@ -1881,6 +1918,7 @@ func _refresh_politics() -> void:
 
 	_add_parliament_card(body, c)
 	_add_groups_card(body, c, pol)
+	_add_unrest_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())
@@ -2470,6 +2508,8 @@ func _refresh_info() -> void:
 	lines.append("Preço do recurso: %d%%" % p.price_of(p.resource_type))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
+	if has_owner:
+		lines.append("Agitação: %d%% — %s" % [p.unrest, "REBELDES" if p.unrest >= Game.UNREST_REBEL else ("propensa à revolução" if p.unrest >= Game.UNREST_PRONE else ("protestos e greves" if p.unrest >= Game.UNREST_PROTEST else "calma"))])
 	var bl := _buildings_summary(p)
 	if bl != "":
 		lines.append(bl)

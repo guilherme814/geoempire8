@@ -42,7 +42,7 @@ Política
 | B15 | Eleições e parlamento: cadeiras, coalizão, aprovação | feita no código (v0.34.0): eleições a cada 4 anos, 100 cadeiras |
 | B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | feita no código (v0.35.0) |
 | B17 | Leis ampliadas e votação das leis no parlamento | feita no código (v0.36.0): votação em 3 fases; leis novas ficam para depois |
-| B18 | Movimentos: sindicatos, greves, protestos | pendente |
+| B18 | Movimentos: sindicatos, greves, protestos | feita no código (v0.37.0): radicalização, agitação por província, rebeldes e relógio; efeitos no mapa |
 | B19 | Golpes, revoluções e guerras civis; mudança de regime | pendente |
 | B20 | Reformas, concessões e repressão: crise de legitimidade | pendente |
 | B21 | Burocracia: capacidade do Estado e corrupção | pendente |

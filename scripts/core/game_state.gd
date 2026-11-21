@@ -118,6 +118,13 @@ const CLOUT_INFLUENT := 8            # % do poder político: Influente a partir 
 const CLOUT_POWERFUL := 20           # Poderoso a partir daqui
 const GROUP_HAPPY := 60
 const GROUP_ANGRY := 35
+const UNREST_PROTEST := 40           # agitação local que vira protesto/greve (B18)
+const UNREST_PRONE := 55             # província propensa à revolução
+const UNREST_REBEL := 70             # rebeldes tomam a província
+const RADICAL_DECAY := 6             # radicalização perdida por mês
+const RADICAL_ACTIVE := 200          # movimento ativo: agita as províncias
+const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
+const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
 const BILL_PHASES := 3               # fases a vencer para a lei passar
 const BILL_MAX_SETBACKS := 3         # o terceiro revés derruba o projeto
 const BILL_BLOCK_MONTHS := 24        # carência após derrota ou cancelamento (2 anos)
@@ -3782,6 +3789,72 @@ func _update_politics(c: Country) -> void:
 			Events.province_updated.emit(pid)
 			if c.id == player_country:
 				Events.notice.emit("Revolta em %s! O país está instável." % p.name)
+	_unrest_step(c, pol)
+
+
+## Movimentos (B18): a insatisfação das classes radicaliza correntes; a agitação local sobe com
+## instabilidade, ocupação estrangeira e movimentos ativos. >=40 protesto/greve (corta imposto),
+## >=70 rebeldes (perde mão de obra e população). Muitas províncias rebeldes correm o relógio da revolução.
+@warning_ignore("integer_division")
+func _unrest_step(c: Country, pol: Dictionary) -> void:
+	var sh: Array = pol["share"]
+	var press := [0, 0, 0, 0, 0]
+	for i in 6:
+		var unh := maxi(0, 50 - int(c.sat[i]))
+		press[int(CLASS_RADICAL[i])] += unh * int(sh[i]) / 100
+	var rmax := 0
+	for j in 5:
+		c.radical[j] = clampi(int(c.radical[j]) + press[j] / 10 - RADICAL_DECAY, 0, 1000)
+		rmax = maxi(rmax, int(c.radical[j]))
+	var n := c.province_ids.size()
+	if n == 0:
+		c.strikes = 0
+		c.rev_clock = 0
+		return
+	var base := clampi((50 - c.stability) * 2, 0, 100)
+	if rmax >= RADICAL_ACTIVE:
+		base += mini(30, (rmax - RADICAL_ACTIVE) / 20)
+	var protest := 0
+	var rebels := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		var occ := 25 if (p.core_owner >= 0 and p.core_owner != c.id) else 0
+		var tg := maxi(0, base + occ + (pid * 37 % 11) - 5)
+		var was := p.unrest
+		p.unrest = clampi(p.unrest + clampi(tg - p.unrest, -3, 3), 0, 100)
+		if p.unrest >= UNREST_PROTEST:
+			protest += 1
+		if p.unrest >= UNREST_REBEL:
+			rebels += 1
+			p.manpower -= p.manpower / 20
+			p.population -= p.population / 300
+			if was < UNREST_REBEL:
+				Events.province_updated.emit(pid)
+				if c.id == player_country:
+					Events.notice.emit("Rebeldes tomaram %s!" % p.name)
+	c.strikes = protest * 100 / n
+	if rebels * 100 / n >= REV_REBEL_SHARE or c.stability < 15:
+		c.rev_clock = mini(REV_CLOCK_MAX, c.rev_clock + 1)
+		if c.id == player_country and (c.rev_clock == 6 or c.rev_clock == REV_CLOCK_MAX):
+			Events.notice.emit("Perigo de revolução! O relógio marca %d/%d." % [c.rev_clock, REV_CLOCK_MAX])
+	else:
+		c.rev_clock = maxi(0, c.rev_clock - 1)
+
+
+## Contagem de províncias por nível de agitação: {protest, prone, rebel}.
+func unrest_counts(c: Country) -> Dictionary:
+	var pr := 0
+	var po := 0
+	var rb := 0
+	for pid in c.province_ids:
+		var u: int = provinces[pid].unrest
+		if u >= UNREST_REBEL:
+			rb += 1
+		elif u >= UNREST_PRONE:
+			po += 1
+		elif u >= UNREST_PROTEST:
+			pr += 1
+	return {"protest": pr, "prone": po, "rebel": rb}
 
 
 ## Soma dos níveis de um tipo de construção em todas as províncias do país.
@@ -3936,6 +4009,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 	tax = tax * (100 + int(lm["tax"]) + tech_tax_bonus(c)) / 100
 	if c.stability < UNREST_TAX_STABILITY:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
+	if c.strikes > 0:
+		tax = tax * (100 - c.strikes / 2) / 100            # greves e protestos (B18)
 	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
 	tax = tax * (100 - c.inflation / 2) / 100                  # inflação corrói a arrecadação real
 	var evasion: int = tax_evasion(c)
@@ -4746,6 +4821,7 @@ func state_hash() -> int:
 		h = _mix(h, p.population)
 		h = _mix(h, p.manpower)
 		h = _mix(h, p.workshop * 10 + p.barracks)
+		h = _mix(h, p.unrest)
 		for k in Province.EXTRA_KINDS:
 			h = _mix(h, int(p.bld.get(k, 0)))
 		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
@@ -4838,6 +4914,9 @@ func state_hash() -> int:
 		h = _mix(h, c.elect_cd)
 		h = _mix(h, c.bill_g * 1000 + c.bill_o * 100 + c.bill_p * 10 + c.bill_s + c.bill_a * 10000)
 		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
+		h = _mix(h, c.rev_clock * 1000 + c.strikes)
+		for rj in 5:
+			h = _mix(h, int(c.radical[rj]))
 		for sj in 5:
 			h = _mix(h, int(c.seats[sj]))
 		h = _mix(h, c.interest * 1000 + c.inflation)
@@ -4900,6 +4979,13 @@ func _bld_str(p: Province) -> String:
 		if lv > 0:
 			parts.append("%s:%d" % [k, lv])
 	return ",".join(parts)
+
+
+func _country_radical() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.radical.duplicate())
+	return out
 
 
 func _country_seats() -> Array:
@@ -4980,7 +5066,9 @@ func serialize_state() -> Dictionary:
 	var flevels: Array = []
 	var fmethods: Array = []
 	var rmethods: Array = []
+	var unrests: Array = []
 	for p in provinces:
+		unrests.append(p.unrest)
 		owners.append(p.owner_id)
 		pops.append(p.population)
 		mps.append(p.manpower)
@@ -5014,6 +5102,10 @@ func serialize_state() -> Dictionary:
 		"pops": pops,
 		"manpower": mps,
 		"workshops": workshops,
+		"unrest": unrests,
+		"radical": _country_radical(),
+		"rev_clock": _country_ints("rev_clock"),
+		"strikes": _country_ints("strikes"),
 		"bld": blds,
 		"tech": _country_ints("tech_pts"),
 		"techs": _tech_lists(),
@@ -5131,6 +5223,8 @@ func load_state(d: Dictionary) -> bool:
 		provinces[i].manpower = int(mps[i])
 		provinces[i].workshop = int(workshops[i])
 		provinces[i].barracks = int(barracks[i])
+		var unr: Array = d.get("unrest", [])
+		provinces[i].unrest = int(unr[i]) if i < unr.size() else 0
 		var fk: Array = d.get("factory", [])
 		var fl: Array = d.get("factory_lvl", [])
 		provinces[i].factory = str(fk[i]) if i < fk.size() else ""
@@ -5251,6 +5345,9 @@ func load_state(d: Dictionary) -> bool:
 	var gtx: Array = d.get("grp_tax", [])
 	var gtr: Array = d.get("grp_trade", [])
 	var parl: Array = d.get("seats", [])
+	var rads: Array = d.get("radical", [])
+	var rvc: Array = d.get("rev_clock", [])
+	var stk: Array = d.get("strikes", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -5282,6 +5379,13 @@ func load_state(d: Dictionary) -> bool:
 			for sj in 5:
 				sv[sj] = int(parl[i][sj])
 		countries[i].seats = sv
+		var rv: Array = [0, 0, 0, 0, 0]
+		if i < rads.size() and rads[i] is Array and (rads[i] as Array).size() == 5:
+			for rj in 5:
+				rv[rj] = int(rads[i][rj])
+		countries[i].radical = rv
+		countries[i].rev_clock = int(rvc[i]) if i < rvc.size() else 0
+		countries[i].strikes = int(stk[i]) if i < stk.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

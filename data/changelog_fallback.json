@@ -1,8 +1,13 @@
 {
- "version": "0.36.0",
- "title": "GeoEmpire 8 — v0.36.0 (Política B17)",
- "body": "## Votação das leis no parlamento\n- Em países com parlamento (monarquia constitucional ou república, após a primeira eleição), cada lei vira **projeto** e é votada em **3 fases**, uma por mês.\n- **>50% das cadeiras a favor** avança a fase; **mais contra do que a favor** é um revés; senão há debate. **3 reveses** derrubam o projeto: metade do custo volta e o grupo de leis fica **bloqueado por 2 anos**.\n- Um projeto por vez; dá para **retirar** (bloqueio de 2 anos, sem reembolso).\n- Os partidos votam conforme a afinidade da corrente deles com a lei nova × a vigente.\n- Card \"Parlamento: votação de leis\" na tela de Leis. Autocracias continuam aprovando por decreto.\n- Saves antigos funcionam.",
+ "version": "0.37.0",
+ "title": "GeoEmpire 8 — v0.37.0 (Política B18)",
+ "body": "## Movimentos, rebeldes e relógio da revolução\n- Cada classe insatisfeita **radicaliza uma corrente** (conservadora, liberal, socialista, nacionalista, reacionária). Acima de 20% o movimento fica **ativo**.\n- Cada província tem **agitação** (0–100%): sobe com instabilidade, movimento ativo e **ocupação estrangeira**. 40%+ = **protestos e greves** (cortam a arrecadação); 55%+ = **propensa à revolução**; 70%+ = **rebeldes** (perde mão de obra e população).\n- **Relógio da revolução** (0–12): corre quando 25% das províncias estão rebeldes ou a estabilidade cai abaixo de 15%. A queda do regime vem na próxima etapa (B19).\n- **Mapa:** províncias com rebeldes ficam vermelhas e pulsam com espadas cruzadas; propensas ganham contorno âmbar; protestos, ponto laranja. Novo modo de mapa **Revolta** (mapa de calor).\n- Card \"Movimentos e revolta\" na tela de Política e linha de agitação na província.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.36.0",
+   "title": "GeoEmpire 8 — v0.36.0 (Política B17)",
+   "body": "## Votação das leis no parlamento\n- Em países com parlamento (monarquia constitucional ou república, após a primeira eleição), cada lei vira **projeto** e é votada em **3 fases**, uma por mês.\n- **>50% das cadeiras a favor** avança a fase; **mais contra do que a favor** é um revés; senão há debate. **3 reveses** derrubam o projeto: metade do custo volta e o grupo de leis fica **bloqueado por 2 anos**.\n- Um projeto por vez; dá para **retirar** (bloqueio de 2 anos, sem reembolso).\n- Os partidos votam conforme a afinidade da corrente deles com a lei nova × a vigente.\n- Card \"Parlamento: votação de leis\" na tela de Leis. Autocracias continuam aprovando por decreto.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.35.0",
    "title": "GeoEmpire 8 — v0.35.0 (Política B16)",

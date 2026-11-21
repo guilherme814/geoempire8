@@ -197,6 +197,7 @@ var resource_type: String = "grain"
 var coastal: bool = false
 var population: int = 0
 var core_owner: int = -1                          # dono no início (para marcar território conquistado)
+var unrest: int = 0                                # agitação local 0..100 (B18): >=40 protestos, >=70 rebeldes
 var region: String = ""                           # província histórica (data/regions.json)
 var owner_id: int = -1                              # -1 = terra sem dono
 var lon: float = 0.0

@@ -7,9 +7,9 @@ extends Node2D
 ## A malha é uma única ArrayMesh (todas as províncias, triangulação feita uma vez em
 ## Province.from_dict), então zoom e pan não custam CPU.
 
-enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE }
+enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE, UNREST }
 
-const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos"]
+const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos", "Revolta"]
 const GRID_SIZE := 100.0
 const OCEAN_COLOR := Color(0.045, 0.125, 0.185)  # azul petróleo escuro (borda do mapa)
 const OCEAN_CENTER := Color(0.10, 0.27, 0.36)    # azul mais claro no centro (vinheta)
@@ -50,6 +50,8 @@ var _font: Font
 var _max_pop: int = 1
 var _bucket: int = 0
 var _debug_draw := true
+var _fx: UnrestFx
+var _unrest_sig := 0
 
 
 func _ready() -> void:
@@ -88,6 +90,8 @@ func _ready() -> void:
 	_mesh_node.show_behind_parent = true
 	add_child(_mesh_node)
 
+	_fx = UnrestFx.new()
+	add_child(_fx)
 	_build_grid()
 	_build_coast_and_sea()
 	_refresh_all()
@@ -184,6 +188,23 @@ func _on_gfx_changed() -> void:
 func _on_month_changed(_date: Dictionary) -> void:
 	if mode == Mode.POPULATION:
 		_recolor()
+	elif mode == Mode.POLITICAL or mode == Mode.UNREST:
+		var sg := _calc_unrest_sig()
+		if sg != _unrest_sig:
+			_unrest_sig = sg
+			_recolor()
+
+
+## Assinatura das faixas de agitação (para só recolorir o mapa quando algo muda).
+func _calc_unrest_sig() -> int:
+	var h := 7
+	for p in Game.provinces:
+		var u := p.unrest
+		if mode == Mode.UNREST:
+			h = (h * 31 + u / 8 + p.id) & 0x7fffffff
+		elif u >= Game.UNREST_PROTEST:
+			h = (h * 31 + (2 if u >= Game.UNREST_REBEL else 1) + p.id) & 0x7fffffff
+	return h
 
 
 func _build_grid() -> void:
@@ -288,6 +309,14 @@ func _province_color(p: Province) -> Color:
 	if mode == Mode.POPULATION:
 		var t := pow(float(p.population) / float(_max_pop), 0.3)   # curva suave: realça diferenças
 		return Color(0.95, 0.92, 0.80).lerp(Color(0.62, 0.12, 0.08), t)
+	if mode == Mode.UNREST:
+		if p.owner_id < 0:
+			return Color(0.20, 0.22, 0.25)
+		var t2 := clampf(float(p.unrest) / 80.0, 0.0, 1.0)
+		var calm := Color(0.30, 0.52, 0.38)
+		var hot := Color(0.86, 0.14, 0.10)
+		var mid := Color(0.95, 0.72, 0.20)
+		return (calm.lerp(mid, t2 * 2.0) if t2 < 0.5 else mid.lerp(hot, (t2 - 0.5) * 2.0)).darkened(shade * 0.5)
 	# Político
 	if p.owner_id < 0 or p.owner_id >= Game.countries.size():
 		return UNOWNED_COLOR.darkened(shade)
@@ -295,7 +324,12 @@ func _province_color(p: Province) -> Color:
 	base.s = minf(base.s * 1.12, 1.0)   # cores um pouco mais vivas
 	base.v = minf(base.v * 1.04 + 0.02, 1.0)
 	var tc2: Color = _terrain_colors.get(p.terrain, base)
-	return base.lerp(tc2, 0.16).darkened(shade * 0.8)
+	var out: Color = base.lerp(tc2, 0.16).darkened(shade * 0.8)
+	if p.unrest >= Game.UNREST_REBEL:
+		out = out.lerp(Color(0.80, 0.08, 0.06), 0.55)        # rebeldes
+	elif p.unrest >= Game.UNREST_PROTEST:
+		out = out.lerp(Color(0.95, 0.55, 0.12), 0.28)        # protestos e greves
+	return out
 
 
 ## Uma única malha com todas as províncias (cor por vértice).

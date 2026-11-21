@@ -46,6 +46,9 @@ var bill_o: int = -1              # opção proposta
 var bill_p: int = 0               # fases vencidas (0..3)
 var bill_s: int = 0               # reveses (0..3)
 var bill_a: int = 0               # meses em tramitação
+var radical: Array = [0, 0, 0, 0, 0]   # radicalização por corrente 0..1000 (B18)
+var rev_clock: int = 0            # relógio da revolução 0..12 (B18)
+var strikes: int = 0              # % de províncias em protesto/greve (B18)
 var elect_cd: int = 24            # meses até a próxima eleição (B15)
 var seats: Array = [0, 0, 0, 0, 0]   # cadeiras do parlamento por corrente (100 no total; vazio = sem eleição)
 var panic_left: int = 0           # meses restantes de pânico financeiro (B12)

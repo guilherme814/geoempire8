@@ -679,6 +679,7 @@ func run_all() -> void:
 	_parliament()
 	_interest_groups()
 	_bills()
+	_unrest()
 	_money()
 
 
@@ -1602,4 +1603,67 @@ func _bills() -> void:
 	g.load_state(bl)
 	var lc: Country = g.countries[me]
 	check("projeto de lei persiste no save", lc.bill_g == gi and lc.bill_o == oi and lc.bill_p == 2 and lc.bill_s == 1 and lc.bill_a == 4 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _unrest() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var pol: Dictionary = g.politics_of(c)
+	# Estavel: nada de rebeldes e relogio parado.
+	for pid in c.province_ids:
+		g.provinces[pid].unrest = 0
+	c.stability = 80
+	c.rev_clock = 0
+	for k in 5:
+		c.radical[k] = 0
+	for k in 6:
+		c.sat[k] = 80
+	g._unrest_step(c, pol)
+	var cnt: Dictionary = g.unrest_counts(c)
+	check("pais estavel sem rebeldes", int(cnt["rebel"]) == 0 and c.rev_clock == 0 and c.strikes == 0)
+	# Insatisfacao radicaliza a corrente da classe.
+	for k in 6:
+		c.sat[k] = 10
+	var before: int = int(c.radical[int(g.CLASS_RADICAL[0])])
+	g._unrest_step(c, pol)
+	check("insatisfacao radicaliza correntes", int(c.radical[int(g.CLASS_RADICAL[0])]) > before)
+	# Caos: agitacao sobe, rebeldes surgem, relogio corre.
+	c.stability = 5
+	for i in 40:
+		g._unrest_step(c, pol)
+	cnt = g.unrest_counts(c)
+	check("caos gera rebeldes", int(cnt["rebel"]) > 0)
+	check("greves cortam arrecadacao", c.strikes > 0)
+	check("relogio da revolucao corre", c.rev_clock > 0 and c.rev_clock <= g.REV_CLOCK_MAX)
+	var pp: Province = null
+	for pid in c.province_ids:
+		if g.provinces[pid].unrest >= g.UNREST_REBEL:
+			pp = g.provinces[pid]
+			break
+	var mp0: int = pp.manpower if pp != null else 0
+	if pp != null:
+		g._unrest_step(c, pol)
+		check("rebeldes drenam mao de obra", pp.manpower <= mp0)
+	# Recuperacao.
+	c.stability = 90
+	for k in 6:
+		c.sat[k] = 90
+	for i in 60:
+		g._unrest_step(c, pol)
+	check("com estabilidade a agitacao e o relogio recuam", c.rev_clock == 0 and int(g.unrest_counts(c)["rebel"]) == 0)
+	# Persistencia.
+	c.stability = 5
+	for i in 20:
+		g._unrest_step(c, pol)
+	var hh: int = g.state_hash()
+	var rc: int = c.rev_clock
+	var u0: int = g.provinces[c.province_ids[0]].unrest
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.provinces[c.province_ids[0]].unrest = 0
+	c.rev_clock = 0
+	g.load_state(bl)
+	var lc: Country = g.countries[me]
+	check("agitacao e relogio persistem no save", lc.rev_clock == rc and g.provinces[lc.province_ids[0]].unrest == u0 and g.state_hash() == hh)
 	g.load_state(blob)

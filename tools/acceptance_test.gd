@@ -1344,7 +1344,7 @@ func _excise() -> void:
 	c.tax_pct = 90
 	var ev_hi: int = g.tax_evasion(c)
 	c.tax_pct = 10
-	check("evasao maior com imposto alto, sempre limitada", ev_hi > g.tax_evasion(c) and ev_hi <= g.EVASION_MAX and g.tax_evasion(c) >= g.EVASION_MIN)
+	check("evasao maior com imposto alto, sempre limitada", ev_hi > g.tax_evasion(c) and ev_hi <= g.EVASION_MAX and g.tax_evasion(c) >= g.EVASION_MIN, "alto %d baixo %d alf %d tarifa %d" % [ev_hi, g.tax_evasion(c), c.literacy, c.tariff])
 	c.tax_pct = 30
 	c.excise = 10
 	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))

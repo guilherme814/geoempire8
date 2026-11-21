@@ -441,7 +441,7 @@ func _build_footer() -> void:
 	var cr := UiIcon.make("crown", 26.0, UIKit.GOLD)
 	cr.position = Vector2(34, 13)
 	bar.add_child(cr)
-	var q := UIKit.serif_label("Um simulador de estratégia global sem limites", 17, Color(UIKit.TEXT, 0.85))
+	var q := UIKit.serif_label("Grande estratégia: economia, política, diplomacia e guerra (1836–2012)", 17, Color(UIKit.TEXT, 0.85))
 	q.position = Vector2(72, 12)
 	bar.add_child(q)
 	_ver_btn = UIKit.button("v%s%s" % [str(ProjectSettings.get_setting("application/config/version", "0.0.0")), VERSION_SUFFIX], Vector2(150, 38))

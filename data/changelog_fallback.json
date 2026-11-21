@@ -1,8 +1,13 @@
 {
- "version": "0.31.0",
- "title": "GeoEmpire 8 — v0.31.0 (Economia B10)",
- "body": "## Etapa B10 — Impostos, consumo e evasão\n- **Imposto de consumo (0–20%):** novo tributo sobre o consumo da população. Rende mais ao Estado, mas pesa na satisfação de camponeses e operários.\n- **Evasão fiscal (3–45%):** cresce com imposto direto acima de 25%, tarifa acima de 10% e imposto de consumo; cai com alfabetização e bancos. Reduz a arrecadação real.\n- Novo card \"Arrecadação e evasão\" na tela de Política, junto ao comércio exterior.\n- Saves antigos carregam normalmente (imposto de consumo começa em 0).",
+ "version": "0.32.0",
+ "title": "GeoEmpire 8 — v0.32.0 (Economia B11)",
+ "body": "## Etapa B11 — Transporte e comércio marítimo\n- **Rede de transporte:** estradas levam 25% da sobra de alimento do país a regiões em falta; cada nível de ferrovia por província soma 50 pontos (máx. 90%). Menos fome onde há ferrovia.\n- **Comboios (estilo Victoria 3):** cada estreito atravessado encarece o frete marítimo; o card de Comércio exterior mostra comboios usados × capacidade, portos, cais, navios e bloqueio inimigo.\n- **Portos como centros comerciais:** +4% de comércio por nível de cais (máx. +30%).\n- Sem estado novo: saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.31.0",
+   "title": "GeoEmpire 8 — v0.31.0 (Economia B10)",
+   "body": "## Etapa B10 — Impostos, consumo e evasão\n- **Imposto de consumo (0–20%):** novo tributo sobre o consumo da população. Rende mais ao Estado, mas pesa na satisfação de camponeses e operários.\n- **Evasão fiscal (3–45%):** cresce com imposto direto acima de 25%, tarifa acima de 10% e imposto de consumo; cai com alfabetização e bancos. Reduz a arrecadação real.\n- Novo card \"Arrecadação e evasão\" na tela de Política, junto ao comércio exterior.\n- Saves antigos carregam normalmente (imposto de consumo começa em 0)."
+  },
   {
    "version": "0.30.1",
    "title": "GeoEmpire 8 — v0.30.1 (Diagnóstico)",

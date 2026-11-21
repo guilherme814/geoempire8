@@ -99,6 +99,8 @@ const SHIP_UPKEEP := 3
 const SEA_SPEED := 3             # células da grade por dia
 const SHIP_CAP := 120            # unidades de comércio marítimo por navio por mês
 const DOCK_CAP := 60             # comércio marítimo extra por nível de cais comercial
+const PORT_TRADE_PCT := 4
+const PORT_TRADE_MAX := 30
 const PORT_CAP := 40             # capacidade básica por porto (província costeira)
 const PRICE_MIN := 70
 const PRICE_MAX := 140
@@ -185,6 +187,7 @@ var sieges: Dictionary = {}      # província -> {by, days}
 # Mercado mundial: preço (% do base) por recurso, demanda-base e população de referência.
 var local_price: Array = []        # por país: {bem -> % do preço-base}
 var gates: Array = []              # passagens estratégicas (data/sea_gates.json)
+var trade_sea_use: Array = []     # comboios usados por país no último mês (derivado)
 var gate_flow: Array = []          # carga que passou por cada passagem no último mês (derivado)
 var prov_zone: PackedInt32Array = PackedInt32Array()
 var _zone_paths: Array = []        # [zona][zona] -> lista de índices de passagens
@@ -1595,6 +1598,16 @@ func can_build_ship(pid: int, issuer: int) -> bool:
 
 
 ## Capacidade de comércio marítimo: portos + navios; inimigos com mais navios bloqueiam.
+## Custo em comboios por unidade transportada numa rota marítima: 1 + passagens atravessadas.
+func lane_cost(gate_count: int) -> int:
+	return 1 + maxi(0, gate_count)
+
+
+## Efeito de portos como centros comerciais: +4% do comércio por nível de cais (máx. +30%).
+func port_trade_pct(c: Country) -> int:
+	return mini(PORT_TRADE_MAX, PORT_TRADE_PCT * dock_levels(c.id))
+
+
 func sea_capacity(cid: int) -> int:
 	var enemy_ships := 0
 	for o in wars_of(cid):
@@ -2759,13 +2772,14 @@ func _month_run_stage(i: int) -> bool:
 	match i:
 		0:
 			var food := region_food()
+			var pool := food_pool(food)
 			famine_regions = 0
 			for p in provinces:
 				# Crescimento demográfico: +0,1% ao mês (metade, em região com fome).
 				var own: int = p.owner_id
 				var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
 				var grow: int = p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
-				if own >= 0 and region_famine(food, p):
+				if own >= 0 and region_famine(food, p, pool):
 					grow /= FAMINE_GROWTH_DIV
 					famine_regions += 1
 				p.population += grow
@@ -3191,9 +3205,43 @@ func region_food() -> Dictionary:
 	return out
 
 
-func region_famine(food: Dictionary, p: Province) -> bool:
-	var row: Array = food.get("%d|%s" % [p.owner_id, p.region], [0, 0])
-	return int(row[1]) > 0 and int(row[0]) * 100 < int(row[1]) * FAMINE_PCT
+## Rede de transporte (B11): % da sobra de alimento do país que chega a uma região em falta.
+## Estradas dão 25%; cada nível de ferrovia por província soma 50 pontos (máx. 90%).
+@warning_ignore("integer_division")
+func transport_pct(c: Country) -> int:
+	var n := maxi(1, c.province_ids.size())
+	var rails := 0
+	for pid in c.province_ids:
+		rails += int(provinces[pid].bld.get("railway", 0))
+	return clampi(25 + rails * 50 / n, 25, 90)
+
+
+## Sobra de alimento por dono ({dono: unidades}), somando as regiões com excedente.
+func food_pool(food: Dictionary) -> Dictionary:
+	var pool: Dictionary = {}
+	for k in food.keys():
+		var parts: PackedStringArray = str(k).split("|")
+		var r: Array = food[k]
+		var o := int(parts[0])
+		pool[o] = int(pool.get(o, 0)) + maxi(0, int(r[0]) - int(r[1]))
+	return pool
+
+
+## Oferta efetiva de alimento (% da demanda) de uma região: produção local + parte da sobra do
+## país, limitada pela rede de transporte. Sem `pool`, só a produção local.
+@warning_ignore("integer_division")
+func region_ratio(food: Dictionary, owner: int, region: String, pool: Dictionary = {}) -> int:
+	var row: Array = food.get("%d|%s" % [owner, region], [0, 0])
+	if int(row[1]) <= 0:
+		return 100
+	var supply: int = int(row[0])
+	if not pool.is_empty() and owner >= 0 and owner < countries.size():
+		supply += maxi(0, int(pool.get(owner, 0)) - maxi(0, int(row[0]) - int(row[1]))) * transport_pct(countries[owner]) / 100
+	return supply * 100 / int(row[1])
+
+
+func region_famine(food: Dictionary, p: Province, pool: Dictionary = {}) -> bool:
+	return region_ratio(food, p.owner_id, p.region, pool) < FAMINE_PCT
 
 
 ## Pops (B1): população de cada província por profissão/classe [camponeses, operários, aristocratas,
@@ -3596,7 +3644,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph"))) / 100
+	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph")) + port_trade_pct(c)) / 100
 	var bc: int = c.budget_code
 	var dexp: int = 100 + Government.decree_field(c.decree, "exp")
 	up_prov = up_prov * Government.pct(bc, 2) / 100 * dexp / 100
@@ -4173,6 +4221,9 @@ func _trade_init() -> void:
 	trade_imp.clear()
 	trade_exp.clear()
 	trade_bonus.clear()
+	trade_sea_use = []
+	for i in n:
+		trade_sea_use.append(0)
 	for i in n:
 		trade_imp.append({})
 		trade_exp.append({})
@@ -4244,11 +4295,15 @@ func _trade_goods_step() -> bool:
 								break
 						if closed:
 							continue
-						q = mini(q, mini(int(cap[i]), int(cap[e])))
+						# Custo da rota (Victoria 3): cada passagem/estreito atravessado encarece o frete.
+						var lane: int = lane_cost(rgates.size())
+						q = mini(q, mini(int(cap[i]), int(cap[e])) / lane)
 						if q <= 0:
 							continue
-						cap[i] = int(cap[i]) - q
-						cap[e] = int(cap[e]) - q
+						cap[i] = int(cap[i]) - q * lane
+						cap[e] = int(cap[e]) - q * lane
+						trade_sea_use[i] = int(trade_sea_use[i]) + q * lane
+						trade_sea_use[e] = int(trade_sea_use[e]) + q * lane
 					need -= q
 					avail[e] = int(avail[e]) - q
 					trade_imp[i][g] = int(trade_imp[i].get(g, 0)) + q

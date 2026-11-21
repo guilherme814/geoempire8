@@ -1,6 +1,6 @@
 # GeoEmpire
 
-Grand strategy para celular (Android), inspirado em **Age of History** e **Victoria 3**.
+**GeoEmpire 8** é um jogo de grande estratégia para celular (Android). Governe uma nação a partir de 1836: mercado mundial com cadeias produtivas, política interna e classes sociais, diplomacia, comércio marítimo e guerra, em um mapa-múndi com divisões administrativas reais.
 Feito em **Godot 4.3** (GDScript, renderer GL Compatibility), com build por GitHub Actions.
 As províncias seguem as **divisões administrativas reais** (estados, regiões, departamentos...) com nome e cidade-sede (★ = capital nacional); divisões minúsculas são fundidas e as gigantes subdivididas.
 O mapa é **original**: a Terra em 1836, gerada a partir de dados abertos do Natural Earth (domínio público).

@@ -674,6 +674,7 @@ func run_all() -> void:
 	_private_capital()
 	_tariffs()
 	_excise()
+	_transport()
 	_money()
 
 
@@ -1352,4 +1353,36 @@ func _excise() -> void:
 	c.excise = 0
 	g.load_state(bl)
 	check("imposto de consumo persiste", g.countries[me].excise == 10 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _transport() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	for pid in c.province_ids:
+		g.provinces[pid].bld["railway"] = 0
+	check("sem ferrovia: transporte 25%", g.transport_pct(c) == 25)
+	for pid in c.province_ids:
+		g.provinces[pid].bld["railway"] = 2
+	check("ferrovias elevam o transporte, limitado a 90%", g.transport_pct(c) > 25 and g.transport_pct(c) <= 90)
+	for pid in c.province_ids:
+		g.provinces[pid].bld["railway"] = 0
+	# Região em falta recebe parte da sobra do país conforme o transporte.
+	var food := {"%d|A" % me: [0, 100], "%d|B" % me: [400, 100]}
+	var pool: Dictionary = g.food_pool(food)
+	check("sobra do pais = 300", int(pool.get(me, 0)) == 300)
+	var r_local: int = g.region_ratio(food, me, "A")
+	var r_net: int = g.region_ratio(food, me, "A", pool)
+	check("sem rede a regiao em falta passa fome", r_local == 0)
+	check("rede de transporte leva a sobra: 25% de 300 = 75", r_net == 75)
+	for pid in c.province_ids:
+		g.provinces[pid].bld["railway"] = 3
+	check("mais ferrovia, mais alimento chega", g.region_ratio(food, me, "A", pool) > r_net)
+	check("custo da rota maritima cresce com passagens", g.lane_cost(0) == 1 and g.lane_cost(3) == 4 and g.lane_cost(-2) == 1)
+	for pid in c.province_ids:
+		g.provinces[pid].bld["dock"] = 0
+	check("sem cais, sem bonus portuario", g.port_trade_pct(c) == 0)
+	g.provinces[c.province_ids[0]].bld["dock"] = 50
+	check("bonus portuario limitado a 30%", g.port_trade_pct(c) == g.PORT_TRADE_MAX)
 	g.load_state(blob)

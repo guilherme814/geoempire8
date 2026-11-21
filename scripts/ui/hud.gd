@@ -1509,6 +1509,12 @@ func _add_trade_card(body: Control, c: Country) -> void:
 	var bal: Array = Game.trade_balance(c.id)
 	var saldo: int = int(bal[0]) - int(bal[1])
 	card.add_child(UIKit.label("Exportações %s · Importações %s · Saldo %s" % [Money.fmt(int(bal[0])), Money.fmt(int(bal[1])), Money.fmt(saldo)], 15, UIKit.POS if saldo >= 0 else UIKit.NEG))
+	var cap: int = Game.sea_capacity(c.id)
+	var used: int = int(Game.trade_sea_use[c.id]) if c.id < Game.trade_sea_use.size() else 0
+	var blk: String = " · BLOQUEADO por frota inimiga" if Game.is_blockaded(c.id) else ""
+	var sl := UIKit.label("Comboios: %d usados de %d (%d portos, %d cais, %d navios)%s · portos rendem +%d%% de comércio" % [used, cap, Game.ports_of(c.id), Game.dock_levels(c.id), c.ships, blk, Game.port_trade_pct(c)], 15, UIKit.NEG if blk != "" else UIKit.TEXT)
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(sl)
 	var tl := UIKit.label("Tarifa de importação: %d%%. Mais tarifa rende mais ao Estado, mas importa menos e encarece a vida." % c.tariff, 15, UIKit.TEXT)
 	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(tl)
@@ -1555,6 +1561,7 @@ func _add_tax_card(body: Control, c: Country) -> void:
 ## Card "Mercados regionais": regiões do país com pior abastecimento de alimento.
 func _add_region_card(body: Control, c: Country) -> void:
 	var food: Dictionary = Game.region_food()
+	var pool: Dictionary = Game.food_pool(food)
 	var rows: Array = []
 	for k in food.keys():
 		var parts: PackedStringArray = str(k).split("|")
@@ -1562,9 +1569,12 @@ func _add_region_card(body: Control, c: Country) -> void:
 			continue
 		var r: Array = food[k]
 		if int(r[1]) > 0:
-			rows.append([parts[1], int(r[0]) * 100 / int(r[1])])
+			rows.append([parts[1], Game.region_ratio(food, c.id, parts[1], pool)])
 	rows.sort_custom(func(x, y): return int(x[1]) < int(y[1]))
 	var card := _card(body, "Mercados regionais (alimento)", "scroll")
+	var tl := UIKit.label("Rede de transporte: %d%% da sobra de alimento chega às regiões em falta (ferrovias aumentam)." % Game.transport_pct(c), 15, UIKit.TEXT_DIM)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(tl)
 	if rows.is_empty():
 		card.add_child(UIKit.label("Sem regiões.", 15, UIKit.TEXT))
 		return

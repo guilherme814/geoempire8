@@ -31,7 +31,7 @@ Economia
 | B8 | Comércio exterior: rotas, tarifas, balança comercial | feita no código (v0.26.0) |
 | B9 | Moeda, inflação, juros e dívida pública | feita no código (v0.27.0) |
 | B10 | Impostos detalhados por classe, consumo e tarifa; evasão | feita no código (v0.31.0) |
-| B11 | Infraestrutura e transporte entre mercados | pendente |
+| B11 | Infraestrutura e transporte entre mercados; comboios marítimos | feita no código (v0.32.0) |
 | B12 | Ciclos econômicos: expansão, recessão, crises | pendente |
 | B13 | Desigualdade e bem-estar: pobreza, natalidade e mortalidade | pendente |
 

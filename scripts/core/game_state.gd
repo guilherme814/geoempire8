@@ -106,6 +106,10 @@ const PRICE_MIN := 70
 const PRICE_MAX := 140
 const TARIFF_MAX := 30
 const TARIFF_STEP := 5
+const ELECTION_MONTHS := 48          # eleições a cada 4 anos
+const ELECTION_STAB_MAX := 4         # efeito máximo da eleição na estabilidade
+const SEAT_TOTAL := 100
+const PARTY_NAMES := ["Partido Conservador", "Partido Liberal", "Partido Socialista", "Partido Nacionalista", "Partido Reacionário"]
 const PANIC_RISK := 50               # risco financeiro a partir do qual pode haver pânico
 const PANIC_MONTHS := 12
 const PANIC_CAPITAL_LOSS_PCT := 40   # corrida aos bancos: capital privado perdido
@@ -623,6 +627,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 			_set_tech_level(c, ind_lvl)
 		if not hh.is_empty():
 			c.tax_pct = 20 + 4 * int(hh.get("tax", 2))   # capacidade fiscal histórica
+			c.elect_cd = 6 + c.id % 42                      # eleições escalonadas entre os países
 		var prof: Dictionary = hh.get("profile", {})
 		if not prof.is_empty():
 			# Perfil de referência (países principais): sobrepõe os valores genéricos.
@@ -1851,6 +1856,84 @@ func _panic_roll(c: Country) -> int:
 	return (h >> 8) % 100
 
 
+## Sufrágio (B15): 0 = sem eleições (autocracia), 1 = censitário (monarquia constitucional),
+## 2 = amplo (república). Vem da lei "Sistema de governo".
+func suffrage_of(c: Country) -> int:
+	var gi: int = Laws.group_index("gov")
+	return clampi(int(c.laws[gi]), 0, 2) if gi >= 0 and gi < c.laws.size() else 0
+
+
+## Cadeiras (soma = SEAT_TOTAL) segundo o eleitorado: censitário só vota aristocratas, burguesia e
+## funcionários; amplo vota todas as classes. Mesma fórmula de afinidade da ideologia nacional.
+@warning_ignore("integer_division")
+func election_seats(c: Country) -> Array:
+	var suf: int = suffrage_of(c)
+	var out := [0, 0, 0, 0, 0]
+	if suf <= 0:
+		return out
+	var pol := politics_of(c)
+	var sh: Array = pol["share"]
+	var votes := [0, 0, 0, 0, 0]
+	for i in 6:
+		if suf == 1 and i != 2 and i != 3 and i != 4:
+			continue
+		var w: int = int(sh[i]) * CLASS_PART[i] * (1000 + (c.literacy if i < 2 else 0)) / 1000
+		var sat: int = int(c.sat[i])
+		var shift := clampi(50 - sat, 0, 50)
+		for j in 5:
+			var v: int = int(CLASS_AFF[i][j]) * (100 - shift)
+			if j == int(CLASS_RADICAL[i]):
+				v += shift * 100
+			votes[j] += v * w / 100
+	var tot := 0
+	for j in 5:
+		tot += int(votes[j])
+	if tot <= 0:
+		return out
+	var given := 0
+	var best := 0
+	for j in 5:
+		out[j] = int(votes[j]) * SEAT_TOTAL / tot
+		given += int(out[j])
+		if int(votes[j]) > int(votes[best]):
+			best = j
+	out[best] = int(out[best]) + (SEAT_TOTAL - given)       # sobra vai ao partido mais votado
+	return out
+
+
+## Apoio do governo no parlamento (% das cadeiras): partidos cuja corrente combina com as leis atuais.
+func parliament_support(c: Country) -> int:
+	var fit: Array = Laws.fit_all(c.laws)
+	var s := 0
+	for j in 5:
+		if int(fit[j]) > 0:
+			s += int(c.seats[j])
+	return s
+
+
+func _election_step(c: Country) -> void:
+	c.elect_cd -= 1
+	if c.elect_cd > 0:
+		return
+	c.elect_cd = ELECTION_MONTHS
+	var seats := election_seats(c)
+	var tot := 0
+	for j in 5:
+		tot += int(seats[j])
+	if tot <= 0:
+		c.seats = [0, 0, 0, 0, 0]
+		return
+	c.seats = seats
+	var support := parliament_support(c)
+	c.stability = clampi(c.stability + clampi((support - 45) / 6, -ELECTION_STAB_MAX, ELECTION_STAB_MAX), 0, 100)
+	if is_human(c.id):
+		var win := 0
+		for j in 5:
+			if int(seats[j]) > int(seats[win]):
+				win = j
+		Events.notice.emit("Eleições: %s venceu com %d cadeiras. Apoio ao governo: %d%%." % [PARTY_NAMES[win], int(seats[win]), support])
+
+
 func _panic_step(c: Country) -> void:
 	if c.panic_left > 0:
 		c.panic_left -= 1
@@ -2980,6 +3063,7 @@ func _private_invest(c: Country) -> void:
 
 
 func _country_month(c: Country) -> void:
+	_election_step(c)
 	_panic_step(c)
 	_private_invest(c)
 	c.inflation = maxi(0, c.inflation - (2 if c.interest >= 3 else 1))
@@ -4580,6 +4664,9 @@ func state_hash() -> int:
 		h = _mix(h, c.private_capital)
 		h = _mix(h, c.tariff)
 		h = _mix(h, c.excise * 100 + c.panic_left)
+		h = _mix(h, c.elect_cd)
+		for sj in 5:
+			h = _mix(h, int(c.seats[sj]))
 		h = _mix(h, c.interest * 1000 + c.inflation)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
@@ -4640,6 +4727,13 @@ func _bld_str(p: Province) -> String:
 		if lv > 0:
 			parts.append("%s:%d" % [k, lv])
 	return ",".join(parts)
+
+
+func _country_seats() -> Array:
+	var out: Array = []
+	for c in countries:
+		out.append(c.seats.duplicate())
+	return out
 
 
 func _country_ints(field: String) -> Array:
@@ -4769,6 +4863,8 @@ func serialize_state() -> Dictionary:
 		"tariff": _country_ints("tariff"),
 		"excise": _country_ints("excise"),
 		"panic_left": _country_ints("panic_left"),
+		"elect_cd": _country_ints("elect_cd"),
+		"seats": _country_seats(),
 		"interest": _country_ints("interest"),
 		"inflation": _country_ints("inflation"),
 		"infamy": _country_ints("infamy"),
@@ -4966,6 +5062,8 @@ func load_state(d: Dictionary) -> bool:
 	var trs: Array = d.get("tariff", [])
 	var exs: Array = d.get("excise", [])
 	var pls: Array = d.get("panic_left", [])
+	var ecs: Array = d.get("elect_cd", [])
+	var sts: Array = d.get("seats", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -4984,6 +5082,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
 		countries[i].excise = int(exs[i]) if i < exs.size() else 0
 		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
+		countries[i].elect_cd = int(ecs[i]) if i < ecs.size() else 6 + i % 42
+		countries[i].seats = (sts[i] as Array).duplicate() if i < sts.size() and sts[i] is Array and (sts[i] as Array).size() == 5 else [0, 0, 0, 0, 0]
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

@@ -41,6 +41,11 @@ var private_capital: int = 0     # capital privado acumulado (B7), reinvestido n
 var tariff: int = 10               # tarifa de importação (%, B8)
 var grp_tax: int = 0              # efeito dos grupos de interesse na arrecadação (%, B16)
 var grp_trade: int = 0            # efeito dos grupos de interesse no comércio (%, B16)
+var bill_g: int = -1              # projeto de lei em votação: grupo (-1 = nenhum) (B17)
+var bill_o: int = -1              # opção proposta
+var bill_p: int = 0               # fases vencidas (0..3)
+var bill_s: int = 0               # reveses (0..3)
+var bill_a: int = 0               # meses em tramitação
 var elect_cd: int = 24            # meses até a próxima eleição (B15)
 var seats: Array = [0, 0, 0, 0, 0]   # cadeiras do parlamento por corrente (100 no total; vazio = sem eleição)
 var panic_left: int = 0           # meses restantes de pânico financeiro (B12)

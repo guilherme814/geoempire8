@@ -118,6 +118,10 @@ const CLOUT_INFLUENT := 8            # % do poder político: Influente a partir 
 const CLOUT_POWERFUL := 20           # Poderoso a partir daqui
 const GROUP_HAPPY := 60
 const GROUP_ANGRY := 35
+const BILL_PHASES := 3               # fases a vencer para a lei passar
+const BILL_MAX_SETBACKS := 3         # o terceiro revés derruba o projeto
+const BILL_BLOCK_MONTHS := 24        # carência após derrota ou cancelamento (2 anos)
+const BILL_MAX_AGE := 12             # meses máximos de tramitação
 const ELECTION_MONTHS := 48          # eleições a cada 4 anos
 const ELECTION_STAB_MAX := 4         # efeito máximo da eleição na estabilidade
 const SEAT_TOTAL := 100
@@ -843,6 +847,8 @@ func law_block_reason(c: Country, gi: int, oi: int) -> String:
 		return "Lei inválida"
 	if int(c.laws[gi]) == oi:
 		return "Já está em vigor"
+	if c.bill_g >= 0:
+		return "Há um projeto em votação no parlamento"
 	var o: Dictionary = opts[oi]
 	if int(c.law_cd[gi]) > 0:
 		return "Aguarde %d meses" % int(c.law_cd[gi])
@@ -885,10 +891,11 @@ func _enact_decree(cid: int, di: int) -> void:
 		Events.notice.emit("Decreto: %s (%d meses)." % [Government.DECREES[di]["name"], c.decree_left])
 
 
-func _enact_law(c: Country, gi: int, oi: int) -> void:
+func _enact_law(c: Country, gi: int, oi: int, pay: bool = true) -> void:
 	var old: Dictionary = Laws.option(gi, int(c.laws[gi]))
 	var nw: Dictionary = Laws.option(gi, oi)
-	c.treasury -= int(nw["cost"])
+	if pay:
+		c.treasury -= int(nw["cost"])
 	c.laws[gi] = oi
 	c.law_cd[gi] = Laws.COOLDOWN_MONTHS
 	# Choque imediato: metade da diferença de efeito sobre cada classe.
@@ -1051,7 +1058,18 @@ func apply_command(cmd: Dictionary) -> void:
 		var lo: int = int(cmd.get("option", -1))
 		if law_block_reason(lc, lg, lo) != "":
 			return
-		_enact_law(lc, lg, lo)
+		if needs_vote(lc):
+			_start_bill(lc, lg, lo)       # com parlamento, a lei é votada em 3 fases (B17)
+		else:
+			_enact_law(lc, lg, lo)
+
+	elif t == Cmd.CANCEL_BILL:
+		if issuer >= 0 and issuer < countries.size() and countries[issuer].bill_g >= 0:
+			var cb: Country = countries[issuer]
+			cb.law_cd[cb.bill_g] = BILL_BLOCK_MONTHS
+			_clear_bill(cb)
+			if issuer == player_country:
+				Events.notice.emit("Projeto de lei retirado. O grupo de leis fica bloqueado por 2 anos.")
 
 	elif t == Cmd.RECRUIT:
 		var pid: int = int(cmd.get("province", -1))
@@ -1979,6 +1997,86 @@ func _group_step(c: Country) -> void:
 	var fx := group_effects(interest_groups(c))
 	c.grp_tax = int(fx["tax"])
 	c.grp_trade = int(fx["trade"])
+
+
+## Com parlamento (sufrágio e cadeiras já eleitas) as leis precisam ser votadas (B17).
+func needs_vote(c: Country) -> bool:
+	if suffrage_of(c) <= 0:
+		return false
+	var tot := 0
+	for j in 5:
+		tot += int(c.seats[j])
+	return tot > 0
+
+
+## Apoio do parlamento a uma lei: % de cadeiras a favor (partidos que ganham afinidade com a lei
+## nova em relação à vigente) e contra (que perdem). Neutros se abstêm.
+func bill_support(c: Country, gi: int, oi: int) -> Dictionary:
+	var pro := 0
+	var con := 0
+	var cur: int = int(c.laws[gi])
+	for j in 5:
+		var d: int = Laws.lean(gi, oi, j) - Laws.lean(gi, cur, j)
+		if d > 0:
+			pro += int(c.seats[j])
+		elif d < 0:
+			con += int(c.seats[j])
+	return {"for": pro, "against": con}
+
+
+func _start_bill(c: Country, gi: int, oi: int) -> void:
+	c.treasury -= int(Laws.option(gi, oi)["cost"])
+	c.bill_g = gi
+	c.bill_o = oi
+	c.bill_p = 0
+	c.bill_s = 0
+	c.bill_a = 0
+	Events.treasury_changed.emit(c.id)
+	if c.id == player_country:
+		Events.notice.emit("Projeto enviado ao parlamento: %s." % str(Laws.option(gi, oi)["name"]))
+
+
+func _clear_bill(c: Country) -> void:
+	c.bill_g = -1
+	c.bill_o = -1
+	c.bill_p = 0
+	c.bill_s = 0
+	c.bill_a = 0
+
+
+func _bill_fail(c: Country, why: String) -> void:
+	var gi := c.bill_g
+	c.treasury += int(Laws.option(gi, c.bill_o)["cost"]) / 2        # devolve metade do custo
+	c.law_cd[gi] = BILL_BLOCK_MONTHS
+	_clear_bill(c)
+	Events.treasury_changed.emit(c.id)
+	if c.id == player_country:
+		Events.notice.emit("O parlamento derrubou o projeto (%s). Metade do custo foi devolvida; grupo bloqueado por 2 anos." % why)
+
+
+## Uma fase por mês: >50% a favor avança; mais contra que a favor é um revés; senão há debate.
+func _bill_step(c: Country) -> void:
+	if c.bill_g < 0:
+		return
+	c.bill_a += 1
+	var sup := bill_support(c, c.bill_g, c.bill_o)
+	var pro: int = int(sup["for"])
+	var con: int = int(sup["against"])
+	if pro > 50:
+		c.bill_p += 1
+		if c.bill_p >= BILL_PHASES:
+			var gi := c.bill_g
+			var oi := c.bill_o
+			_clear_bill(c)
+			_enact_law(c, gi, oi, false)
+			return
+	elif con > pro:
+		c.bill_s += 1
+		if c.bill_s >= BILL_MAX_SETBACKS:
+			_bill_fail(c, "3 reveses")
+			return
+	if c.bill_a >= BILL_MAX_AGE:
+		_bill_fail(c, "tempo esgotado")
 
 
 func _election_step(c: Country) -> void:
@@ -3133,6 +3231,7 @@ func _private_invest(c: Country) -> void:
 
 
 func _country_month(c: Country) -> void:
+	_bill_step(c)
 	_group_step(c)
 	_election_step(c)
 	_panic_step(c)
@@ -4737,6 +4836,7 @@ func state_hash() -> int:
 		h = _mix(h, c.tariff)
 		h = _mix(h, c.excise * 100 + c.panic_left)
 		h = _mix(h, c.elect_cd)
+		h = _mix(h, c.bill_g * 1000 + c.bill_o * 100 + c.bill_p * 10 + c.bill_s + c.bill_a * 10000)
 		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
 		for sj in 5:
 			h = _mix(h, int(c.seats[sj]))
@@ -4937,6 +5037,11 @@ func serialize_state() -> Dictionary:
 		"excise": _country_ints("excise"),
 		"panic_left": _country_ints("panic_left"),
 		"elect_cd": _country_ints("elect_cd"),
+		"bill_g": _country_ints("bill_g"),
+		"bill_o": _country_ints("bill_o"),
+		"bill_p": _country_ints("bill_p"),
+		"bill_s": _country_ints("bill_s"),
+		"bill_a": _country_ints("bill_a"),
 		"grp_tax": _country_ints("grp_tax"),
 		"grp_trade": _country_ints("grp_trade"),
 		"seats": _country_seats(),
@@ -5138,6 +5243,11 @@ func load_state(d: Dictionary) -> bool:
 	var exs: Array = d.get("excise", [])
 	var pls: Array = d.get("panic_left", [])
 	var ecs: Array = d.get("elect_cd", [])
+	var bgs: Array = d.get("bill_g", [])
+	var bos: Array = d.get("bill_o", [])
+	var bps: Array = d.get("bill_p", [])
+	var bss: Array = d.get("bill_s", [])
+	var bas: Array = d.get("bill_a", [])
 	var gtx: Array = d.get("grp_tax", [])
 	var gtr: Array = d.get("grp_trade", [])
 	var parl: Array = d.get("seats", [])
@@ -5161,6 +5271,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
 		countries[i].grp_tax = int(gtx[i]) if i < gtx.size() else 0
 		countries[i].grp_trade = int(gtr[i]) if i < gtr.size() else 0
+		countries[i].bill_g = int(bgs[i]) if i < bgs.size() else -1
+		countries[i].bill_o = int(bos[i]) if i < bos.size() else -1
+		countries[i].bill_p = int(bps[i]) if i < bps.size() else 0
+		countries[i].bill_s = int(bss[i]) if i < bss.size() else 0
+		countries[i].bill_a = int(bas[i]) if i < bas.size() else 0
 		countries[i].elect_cd = int(ecs[i]) if i < ecs.size() else 6 + i % 42
 		var sv: Array = [0, 0, 0, 0, 0]
 		if i < parl.size() and parl[i] is Array and (parl[i] as Array).size() == 5:

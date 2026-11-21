@@ -1,8 +1,13 @@
 {
- "version": "0.35.0",
- "title": "GeoEmpire 8 — v0.35.0 (Política B16)",
- "body": "## Grupos de interesse\n- Cinco grupos: **Latifundiários, Industriais, Sindicatos, Militares e Clero/letrados**, derivados das classes.\n- Cada um tem **clout** (% do poder político), nível (Marginalizado, Influente, Poderoso) e **aprovação** (satisfação das classes + encaixe das leis com a corrente).\n- **Efeitos:** Latifundiários mexem na arrecadação, Industriais no comércio e Sindicatos irritados fazem greves (menos arrecadação). Poderosos contam em dobro; marginalizados não ativam traços.\n- Card \"Grupos de interesse\" na tela de Sociedade.\n\n## Menu\n- Painel de Opções agora rola e mantém o botão Fechar visível em telas baixas.\n- Resolução volta para Nativa para todos (a opção econômica continua disponível).",
+ "version": "0.36.0",
+ "title": "GeoEmpire 8 — v0.36.0 (Política B17)",
+ "body": "## Votação das leis no parlamento\n- Em países com parlamento (monarquia constitucional ou república, após a primeira eleição), cada lei vira **projeto** e é votada em **3 fases**, uma por mês.\n- **>50% das cadeiras a favor** avança a fase; **mais contra do que a favor** é um revés; senão há debate. **3 reveses** derrubam o projeto: metade do custo volta e o grupo de leis fica **bloqueado por 2 anos**.\n- Um projeto por vez; dá para **retirar** (bloqueio de 2 anos, sem reembolso).\n- Os partidos votam conforme a afinidade da corrente deles com a lei nova × a vigente.\n- Card \"Parlamento: votação de leis\" na tela de Leis. Autocracias continuam aprovando por decreto.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.35.0",
+   "title": "GeoEmpire 8 — v0.35.0 (Política B16)",
+   "body": "## Grupos de interesse\n- Cinco grupos: **Latifundiários, Industriais, Sindicatos, Militares e Clero/letrados**, derivados das classes.\n- Cada um tem **clout** (% do poder político), nível (Marginalizado, Influente, Poderoso) e **aprovação** (satisfação das classes + encaixe das leis com a corrente).\n- **Efeitos:** Latifundiários mexem na arrecadação, Industriais no comércio e Sindicatos irritados fazem greves (menos arrecadação). Poderosos contam em dobro; marginalizados não ativam traços.\n- Card \"Grupos de interesse\" na tela de Sociedade.\n\n## Menu\n- Painel de Opções agora rola e mantém o botão Fechar visível em telas baixas.\n- Resolução volta para Nativa para todos (a opção econômica continua disponível)."
+  },
   {
    "version": "0.34.0",
    "title": "GeoEmpire 8 — v0.34.0 (Política B14/B15)",

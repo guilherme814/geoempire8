@@ -678,6 +678,7 @@ func run_all() -> void:
 	_cycles()
 	_parliament()
 	_interest_groups()
+	_bills()
 	_money()
 
 
@@ -1520,4 +1521,85 @@ func _interest_groups() -> void:
 	g.load_state(bl)
 	check("efeitos dos grupos persistem", g.countries[me].grp_tax == -7 and g.countries[me].grp_trade == 4 and g.state_hash() == hh)
 	check("estimate valido", e0.has("income"))
+	g.load_state(blob)
+
+
+func _bills() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var gi: int = Laws.group_index("press")
+	c.laws[Laws.group_index("gov")] = 2
+	for k in 5:
+		c.seats[k] = 0
+	check("sem parlamento eleito, a lei e direta", not g.needs_vote(c))
+	c.seats = [20, 20, 20, 20, 20]
+	check("com parlamento, a lei precisa de voto", g.needs_vote(c))
+	# Escolhe uma opção diferente da vigente com apoiadores e opositores.
+	var cur: int = int(c.laws[gi])
+	var oi := -1
+	for k in Laws.group(gi)["opts"].size():
+		if k != cur:
+			oi = k
+			break
+	c.law_cd[gi] = 0
+	c.treasury = 10000000
+	var sup: Dictionary = g.bill_support(c, gi, oi)
+	check("apoio nunca passa de 100%", int(sup["for"]) + int(sup["against"]) <= 100 and int(sup["for"]) >= 0)
+	# Parlamento totalmente a favor: passa em 3 fases.
+	for k in 5:
+		c.seats[k] = 0
+	var fav := -1
+	for k in 5:
+		if Laws.lean(gi, oi, k) - Laws.lean(gi, cur, k) > 0:
+			fav = k
+	var opp := -1
+	for k in 5:
+		if Laws.lean(gi, oi, k) - Laws.lean(gi, cur, k) < 0:
+			opp = k
+	if fav >= 0:
+		c.seats[fav] = 100
+		g._start_bill(c, gi, oi)
+		check("projeto entra em tramitacao", c.bill_g == gi and c.bill_o == oi)
+		check("so um projeto por vez", g.law_block_reason(c, gi, oi) != "")
+		g._bill_step(c)
+		g._bill_step(c)
+		check("duas fases vencidas, lei ainda nao vale", c.bill_p == 2 and int(c.laws[gi]) == cur)
+		g._bill_step(c)
+		check("terceira fase aprova a lei", int(c.laws[gi]) == oi and c.bill_g == -1)
+	# Parlamento contra: 3 reveses derrubam, devolvem metade e bloqueiam por 2 anos.
+	if opp >= 0:
+		c.laws[gi] = cur
+		c.law_cd[gi] = 0
+		for k in 5:
+			c.seats[k] = 0
+		c.seats[opp] = 100
+		var t0: int = c.treasury
+		g._start_bill(c, gi, oi)
+		var cost: int = int(Laws.option(gi, oi)["cost"])
+		check("custo e cobrado ao propor", c.treasury == t0 - cost)
+		g._bill_step(c)
+		g._bill_step(c)
+		g._bill_step(c)
+		check("tres reveses derrubam o projeto", c.bill_g == -1 and int(c.laws[gi]) == cur)
+		check("metade do custo devolvida", c.treasury == t0 - cost + cost / 2)
+		check("bloqueio de 2 anos", int(c.law_cd[gi]) == g.BILL_BLOCK_MONTHS)
+		# Cancelar um projeto.
+		c.law_cd[gi] = 0
+		g._start_bill(c, gi, oi)
+		g.apply_command({"type": "cancel_bill", "issuer": me})
+		check("cancelar limpa o projeto e bloqueia o grupo", c.bill_g == -1 and int(c.law_cd[gi]) == g.BILL_BLOCK_MONTHS)
+	# Persistência.
+	c.law_cd[gi] = 0
+	c.seats = [20, 20, 20, 20, 20]
+	g._start_bill(c, gi, oi)
+	c.bill_p = 2
+	c.bill_s = 1
+	c.bill_a = 4
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	g._clear_bill(c)
+	g.load_state(bl)
+	var lc: Country = g.countries[me]
+	check("projeto de lei persiste no save", lc.bill_g == gi and lc.bill_o == oi and lc.bill_p == 2 and lc.bill_s == 1 and lc.bill_a == 4 and g.state_hash() == hh)
 	g.load_state(blob)

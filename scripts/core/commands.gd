@@ -36,6 +36,7 @@ const ANNEX_VASSAL := "annex_vassal"
 const ACCEPT_PEACE := "accept_peace"
 const REJECT_PEACE := "reject_peace"
 const ENACT_LAW := "enact_law"
+const CANCEL_BILL := "cancel_bill"
 const SET_RESEARCH := "set_research"
 const SET_RESEARCH_TARGET := "set_research_target"
 const SET_IMMIGRATION := "set_immigration"
@@ -144,6 +145,11 @@ static func set_speed(speed: int) -> Dictionary:
 ## Aprova uma lei: `group` = índice em Laws.GROUPS, `option` = opção escolhida.
 static func enact_law(group: int, option: int) -> Dictionary:
 	return {"type": ENACT_LAW, "group": group, "option": option}
+
+
+## Retira o projeto de lei em votação (carência de 2 anos naquele grupo de leis).
+static func cancel_bill() -> Dictionary:
+	return {"type": CANCEL_BILL}
 
 
 ## Liga/desliga o avanço automático dos exércitos à linha de frente.

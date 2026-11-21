@@ -1519,6 +1519,9 @@ func _refresh_laws() -> void:
 	head.add_child(info)
 	head.add_child(UIKit.label("Estabilidade %d%%" % c.stability, 18, _sat_color(c.stability)))
 
+	if Game.needs_vote(c):
+		_add_bill_card(body, c)
+
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 10)
 	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1544,6 +1547,28 @@ func _refresh_laws() -> void:
 			card.add_child(UIKit.label("Mudança bloqueada por %d meses" % int(c.law_cd[gi]), 15, UIKit.WARN))
 	if int(lm["tax"]) != 0 or int(lm["trade"]) != 0 or int(lm["army"]) != 0:
 		body.add_child(UIKit.label("Efeito acumulado das leis: arrecadação %+d%%, comércio %+d%%, custo do exército %+d%%." % [int(lm["tax"]), int(lm["trade"]), int(lm["army"])], 16, UIKit.TEXT_DIM))
+
+
+## Card do projeto em votação (B17): fases, reveses e apoio no parlamento.
+func _add_bill_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Parlamento: votação de leis", "scales")
+	if c.bill_g < 0:
+		var il := UIKit.label("Com parlamento, cada lei é votada em 3 fases (uma por mês): mais de 50%% das cadeiras a favor avança; mais contra do que a favor é um revés (3 reveses derrubam o projeto, devolvem metade do custo e bloqueiam o grupo por 2 anos).", 15, UIKit.TEXT_DIM)
+		il.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(il)
+		return
+	var o: Dictionary = Laws.option(c.bill_g, c.bill_o)
+	var sup: Dictionary = Game.bill_support(c, c.bill_g, c.bill_o)
+	card.add_child(UIKit.label("%s — %s" % [str(Laws.group(c.bill_g)["name"]), str(o["name"])], 18, UIKit.GOLD_BRIGHT))
+	card.add_child(UIKit.label("Fases vencidas: %d/%d · Reveses: %d/%d · Mês %d de %d" % [c.bill_p, Game.BILL_PHASES, c.bill_s, Game.BILL_MAX_SETBACKS, c.bill_a, Game.BILL_MAX_AGE], 15, UIKit.TEXT))
+	var pro: int = int(sup["for"])
+	var con: int = int(sup["against"])
+	var sl := UIKit.label("Cadeiras: %d%% a favor · %d%% contra · %d%% abstenção. %s" % [pro, con, 100 - pro - con, "Avança todo mês." if pro > 50 else ("Revés a cada mês." if con > pro else "Debate: sem avanço.")], 15, UIKit.POS if pro > 50 else (UIKit.NEG if con > pro else UIKit.WARN))
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(sl)
+	var cb := _make_button("Retirar projeto (bloqueia por 2 anos, sem reembolso)", Vector2(0, 42))
+	cb.pressed.connect(func(): Game.submit_command(Cmd.cancel_bill()))
+	card.add_child(cb)
 
 
 func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) -> Control:
@@ -1573,7 +1598,8 @@ func _law_option_row(c: Country, gi: int, oi: int, o: Dictionary, active: bool) 
 		row.add_child(UIKit.label("EM VIGOR", 14, UIKit.GOLD))
 		return pc
 	var why := Game.law_block_reason(c, gi, oi)
-	var b := UIKit.button("Aprovar (%s)" % Money.fmt(int(o["cost"])), Vector2(0, 38))
+	var vote: bool = Game.needs_vote(c)
+	var b := UIKit.button(("Propor (%s)" if vote else "Aprovar (%s)") % Money.fmt(int(o["cost"])), Vector2(0, 38))
 	b.disabled = why != ""
 	b.pressed.connect(_on_law_pressed.bind(gi, oi))
 	row.add_child(b)

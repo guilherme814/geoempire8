@@ -673,6 +673,7 @@ func run_all() -> void:
 	_resource_methods()
 	_private_capital()
 	_tariffs()
+	_excise()
 	_money()
 
 
@@ -1322,4 +1323,33 @@ func _money() -> void:
 	check("juros e inflacao persistem", g.countries[me].interest == 4 and g.countries[me].inflation == 20 and g.state_hash() == hh)
 	g._country_month(g.countries[me])
 	check("inflacao cai com juros altos", g.countries[me].inflation == 18)
+	g.load_state(blob)
+
+
+func _excise() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.excise = 0
+	c.tax_pct = 30
+	check("imposto de consumo invalido e recusado", not g.can_set_excise(me, 7) and not g.can_set_excise(me, 25) and not g.can_set_excise(me, 0))
+	var e0: Dictionary = g.estimate_monthly(c)
+	check("sem consumo, nada arrecadado dele", int(e0["excise"]) == 0)
+	g.apply_command({"type": "set_excise", "pct": 15, "issuer": me})
+	check("imposto de consumo definido", c.excise == 15)
+	var e1: Dictionary = g.estimate_monthly(c)
+	check("consumo rende e evasao sobe", int(e1["excise"]) > 0 and int(e1["evasion"]) >= int(e0["evasion"]))
+	check("renda inclui o consumo", int(e1["income"]) == int(e1["tax"]) + int(e1["excise"]) + int(e1["industry_state"]) + int(e1["trade"]))
+	c.excise = 0
+	c.tax_pct = 90
+	var ev_hi: int = g.tax_evasion(c)
+	c.tax_pct = 10
+	check("evasao maior com imposto alto, sempre limitada", ev_hi > g.tax_evasion(c) and ev_hi <= g.EVASION_MAX and g.tax_evasion(c) >= g.EVASION_MIN)
+	c.tax_pct = 30
+	c.excise = 10
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	c.excise = 0
+	g.load_state(bl)
+	check("imposto de consumo persiste", g.countries[me].excise == 10 and g.state_hash() == hh)
 	g.load_state(blob)

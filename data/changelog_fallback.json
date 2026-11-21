@@ -1,8 +1,13 @@
 {
- "version": "0.30.1",
- "title": "GeoEmpire 8 — v0.30.1 (Diagnóstico)",
- "body": "## Diagnóstico de desempenho\n- **Teste de desempenho do mapa** em Opções: mede o tempo de quadro com cada camada do mapa ligada/desligada (≈15 s) e grava no log.\n- A resolução econômica (720p) não melhorou o FPS no seu aparelho; o padrão voltou para Nativa (a opção continua disponível).",
+ "version": "0.31.0",
+ "title": "GeoEmpire 8 — v0.31.0 (Economia B10)",
+ "body": "## Etapa B10 — Impostos, consumo e evasão\n- **Imposto de consumo (0–20%):** novo tributo sobre o consumo da população. Rende mais ao Estado, mas pesa na satisfação de camponeses e operários.\n- **Evasão fiscal (3–45%):** cresce com imposto direto acima de 25%, tarifa acima de 10% e imposto de consumo; cai com alfabetização e bancos. Reduz a arrecadação real.\n- Novo card \"Arrecadação e evasão\" na tela de Política, junto ao comércio exterior.\n- Saves antigos carregam normalmente (imposto de consumo começa em 0).",
  "history": [
+  {
+   "version": "0.30.1",
+   "title": "GeoEmpire 8 — v0.30.1 (Diagnóstico)",
+   "body": "## Diagnóstico de desempenho\n- **Teste de desempenho do mapa** em Opções: mede o tempo de quadro com cada camada do mapa ligada/desligada (≈15 s) e grava no log.\n- A resolução econômica (720p) não melhorou o FPS no seu aparelho; o padrão voltou para Nativa (a opção continua disponível)."
+  },
   {
    "version": "0.30.0",
    "title": "GeoEmpire 8 — v0.30.0 (Desempenho)",

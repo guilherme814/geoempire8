@@ -49,6 +49,7 @@ const SET_METHOD := "set_method"
 const SET_RMETHOD := "set_rmethod"
 const SET_BUDGET := "set_budget"
 const SET_TARIFF := "set_tariff"
+const SET_EXCISE := "set_excise"
 const SET_RATE := "set_rate"
 const PRINT_MONEY := "print_money"
 const JUSTIFY := "justify"
@@ -85,6 +86,11 @@ static func set_rmethod(province: int, method: int) -> Dictionary:
 ## Define a tarifa de importação (0 a 30%, em passos de 5).
 static func set_tariff(pct: int) -> Dictionary:
 	return {"type": SET_TARIFF, "pct": pct}
+
+
+## Define o imposto de consumo (0 a 20%, em passos de 5).
+static func set_excise(pct: int) -> Dictionary:
+	return {"type": SET_EXCISE, "pct": pct}
 
 
 ## Define os juros mensais do banco central (1 a 4%).

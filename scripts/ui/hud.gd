@@ -1526,6 +1526,32 @@ func _on_tariff_pressed(pct: int) -> void:
 	Game.submit_command(Cmd.set_tariff(pct))
 
 
+func _on_excise_pressed(pct: int) -> void:
+	Game.submit_command(Cmd.set_excise(pct))
+
+
+## Card "Arrecadação": evasão fiscal e imposto de consumo (B10).
+func _add_tax_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Arrecadação e evasão", "coin")
+	var e: Dictionary = Game.estimate_monthly(c)
+	var ev: int = int(e["evasion"])
+	card.add_child(UIKit.label("Imposto direto %s · Consumo %s por mês" % [Money.fmt(int(e["tax"])), Money.fmt(int(e["excise"]))], 15, UIKit.TEXT))
+	var evl := UIKit.label("Evasão fiscal: %d%% (sobe com impostos e tarifas altos; cai com alfabetização e bancos)." % ev, 15, UIKit.NEG if ev >= 25 else UIKit.TEXT_DIM)
+	evl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(evl)
+	var tl := UIKit.label("Imposto de consumo: %d%%. Rende mais, mas pesa sobre camponeses e operários." % c.excise, 15, UIKit.TEXT)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(tl)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	card.add_child(row)
+	for pct in range(0, Game.EXCISE_MAX + 1, Game.EXCISE_STEP):
+		var b := _make_button("%d%%" % pct, Vector2(70, 40))
+		b.disabled = pct == c.excise
+		b.pressed.connect(_on_excise_pressed.bind(pct))
+		row.add_child(b)
+
+
 ## Card "Mercados regionais": regiões do país com pior abastecimento de alimento.
 func _add_region_card(body: Control, c: Country) -> void:
 	var food: Dictionary = Game.region_food()
@@ -1735,6 +1761,7 @@ func _refresh_politics() -> void:
 	_add_income_card(body, c)
 	_add_region_card(body, c)
 	_add_trade_card(body, c)
+	_add_tax_card(body, c)
 	_add_money_card(body, c)
 	_add_government_cards(body, c)
 

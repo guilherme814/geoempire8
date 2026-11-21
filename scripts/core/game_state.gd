@@ -104,6 +104,11 @@ const PRICE_MIN := 70
 const PRICE_MAX := 140
 const TARIFF_MAX := 30
 const TARIFF_STEP := 5
+const EXCISE_MAX := 20
+const EXCISE_STEP := 5
+const EXCISE_BASE_PCT := 60          # parte da produção que vira consumo tributável
+const EVASION_MIN := 3
+const EVASION_MAX := 45
 const TARIFF_VOLUME_LOSS := 3     # cada 2 pontos acima de TRADE_TARIFF_PCT cortam 3% das importações
 const TRADE_TARIFF_PCT := 10     # ganho do importador (tarifas) sobre o valor importado
 
@@ -950,6 +955,13 @@ func apply_command(cmd: Dictionary) -> void:
 		countries[issuer].tariff = tp
 		Events.treasury_changed.emit(issuer)
 
+	elif t == Cmd.SET_EXCISE:
+		var xp: int = int(cmd.get("pct", -1))
+		if not can_set_excise(issuer, xp):
+			return
+		countries[issuer].excise = xp
+		Events.treasury_changed.emit(issuer)
+
 	elif t == Cmd.SET_BUDGET:
 		var bm: int = int(cmd.get("ministry", -1))
 		var bl: int = int(cmd.get("level", -1))
@@ -1788,6 +1800,21 @@ func trade_balance(cid: int) -> Array:
 	for g in trade_imp[cid].keys():
 		im += int(trade_imp[cid][g]) * Province.base_price(str(g)) * int(local_price[cid].get(str(g), 100)) / 10000
 	return [ex, im]
+
+
+func can_set_excise(issuer: int, pct: int) -> bool:
+	if issuer < 0 or issuer >= countries.size() or pct < 0 or pct > EXCISE_MAX or pct % EXCISE_STEP != 0:
+		return false
+	return countries[issuer].excise != pct
+
+
+## Evasão fiscal (%, 3..45): cresce com a carga (imposto direto acima de 25%, tarifa acima de 10%,
+## imposto de consumo) e cai com alfabetização (administração) e bancos. Derivada, sem estado.
+@warning_ignore("integer_division")
+func tax_evasion(c: Country) -> int:
+	var ev: int = 6 + maxi(0, c.tax_pct - 25) * 6 / 10 + maxi(0, c.tariff - 10) * 8 / 10 + c.excise / 2
+	ev -= c.literacy / 12 + mini(6, 2 * bld_total(c, "bank"))
+	return clampi(ev, EVASION_MIN, EVASION_MAX)
 
 
 func can_set_tariff(issuer: int, pct: int) -> bool:
@@ -3331,6 +3358,7 @@ func politics_of(c: Country) -> Dictionary:
 		cterm.append(Consumption.comfort_term(lp, ci))
 	for ci in [0, 1, 4]:
 		cterm[ci] = int(cterm[ci]) - c.inflation / 2          # renda fixa perde com a inflação
+		cterm[ci] = int(cterm[ci]) - c.excise / 2             # imposto de consumo pesa nos pobres
 	var fit: Array = Laws.fit_all(c.laws)
 	var legit := 0
 	for j in 5:
@@ -3556,6 +3584,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
 	tax = tax * (100 - c.inflation / 2) / 100                  # inflação corrói a arrecadação real
+	var evasion: int = tax_evasion(c)
+	tax = tax * (100 - evasion) / 100                          # evasão fiscal
 	industry_state = industry_state * (100 + Government.decree_field(c.decree, "ind")) / 100
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
@@ -3573,11 +3603,13 @@ func estimate_monthly(c: Country) -> Dictionary:
 	up_army = up_army * Government.pct(bc, 1) / 100 * dexp / 100
 	up_edu = up_edu * Government.pct(bc, 0) / 100 * dexp / 100
 	var up_welfare: int = c.province_ids.size() * Government.WELFARE_PER_PROVINCE * Government.pct(bc, 3) / 100
-	var up_research: int = maxi(0, tax + industry_state + trade) * c.research_pct / 100
+	var excise_rev: int = prod * EXCISE_BASE_PCT / 100 * c.excise / 100 * (100 - evasion) / 100
+	excise_rev = excise_rev * (100 - c.inflation / 2) / 100
+	var up_research: int = maxi(0, tax + excise_rev + industry_state + trade) * c.research_pct / 100
 	var up_debt: int = c.debt * c.interest / 100
 	return {
 		"upkeep_research": up_research,
-		"income": tax + industry_state + trade, "industry": industry, "trade": trade,
+		"income": tax + excise_rev + industry_state + trade, "tax": tax, "excise": excise_rev, "evasion": evasion, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
 		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt + up_welfare, "upkeep_welfare": up_welfare, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
@@ -4438,6 +4470,7 @@ func state_hash() -> int:
 		h = _mix(h, c.decree_cd)
 		h = _mix(h, c.private_capital)
 		h = _mix(h, c.tariff)
+		h = _mix(h, c.excise)
 		h = _mix(h, c.interest * 1000 + c.inflation)
 		h = _mix(h, c.researching)
 		h = _mix(h, c.immigration * 7 + c.migr_in * 3 + c.migr_out)
@@ -4625,6 +4658,7 @@ func serialize_state() -> Dictionary:
 		"decree_cd": _country_ints("decree_cd"),
 		"private_capital": _country_ints("private_capital"),
 		"tariff": _country_ints("tariff"),
+		"excise": _country_ints("excise"),
 		"interest": _country_ints("interest"),
 		"inflation": _country_ints("inflation"),
 		"infamy": _country_ints("infamy"),
@@ -4820,6 +4854,7 @@ func load_state(d: Dictionary) -> bool:
 	var dcd: Array = d.get("decree_cd", [])
 	var pcs: Array = d.get("private_capital", [])
 	var trs: Array = d.get("tariff", [])
+	var exs: Array = d.get("excise", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -4836,6 +4871,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].decree_cd = int(dcd[i]) if i < dcd.size() else 0
 		countries[i].private_capital = int(pcs[i]) if i < pcs.size() else 0
 		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
+		countries[i].excise = int(exs[i]) if i < exs.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

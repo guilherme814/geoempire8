@@ -39,6 +39,7 @@ var decree_left: int = 0        # meses restantes do decreto
 var decree_cd: int = 0          # meses até poder decretar de novo
 var private_capital: int = 0     # capital privado acumulado (B7), reinvestido nas fábricas
 var tariff: int = 10               # tarifa de importação (%, B8)
+var excise: int = 0               # imposto de consumo (%, B10)
 var interest: int = 2              # juros mensais sobre a dívida (%, B9)
 var inflation: int = 0             # inflação acumulada (pontos, B9)
 var spy_cd: int = 0             # meses até a próxima operação de espionagem

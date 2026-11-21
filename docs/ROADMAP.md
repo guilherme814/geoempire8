@@ -103,3 +103,6 @@ Regra de ritmo: uma etapa por vez, com CI verde, changelog e versão; entre etap
 ## Referências estudadas (só documentação pública)
 
 Victoria 3 (métodos de produção, infâmia), Age of History 3, Geopolitical Simulator. Código proprietário desses jogos não é usado.
+
+
+Pesquisa de referência (Victoria 3 e história econômica): `docs/ECONOMIA_PESQUISA.md`.

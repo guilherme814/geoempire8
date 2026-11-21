@@ -48,3 +48,27 @@ static func set_flag(section: String, key: String, value: bool) -> void:
 	cfg.load(PATH)   # se não existir, começa vazio
 	cfg.set_value(section, key, value)
 	cfg.save(PATH)
+
+
+## Resolução de renderização: 0 = nativa (nítida), 1 = econômica (720p esticado; bem menos
+## custo de GPU em telas 1080p+). Muda só o modo de escala do conteúdo da janela.
+const RENDER_NAMES := ["Nativa", "Econômica (720p)"]
+
+
+static func render_mode() -> int:
+	return clampi(get_int("graficos", "resolucao", 1), 0, 1)
+
+
+static func set_render_mode(m: int) -> void:
+	set_int("graficos", "resolucao", clampi(m, 0, 1))
+
+
+static func apply_render_mode(root: Window) -> void:
+	if root == null:
+		return
+	if render_mode() == 1:
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	else:
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.content_scale_size = Vector2i(1280, 720)

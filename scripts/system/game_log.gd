@@ -50,6 +50,7 @@ const PERIOD_EXPORT_SECS := 180.0
 
 
 func _ready() -> void:
+	AppSettings.apply_render_mode(get_tree().root)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var d := Time.get_datetime_dict_from_system()
 	session_stamp = "%04d%02d%02d_%02d%02d%02d" % [d["year"], d["month"], d["day"], d["hour"], d["minute"], d["second"]]

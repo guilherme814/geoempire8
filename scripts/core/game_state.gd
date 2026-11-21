@@ -2320,23 +2320,23 @@ func is_human(cid: int) -> bool:
 @warning_ignore("integer_division")
 @warning_ignore("integer_division")
 func _advance_ai() -> void:
-	if tick % 5 != 0:
-		return
+	var war_day: bool = tick % 5 == 0
 	if tick % 30 == 0:
 		ai_heg = AiBrain.hegemon(self)
-	# Planejamento da IA em 6 fatias: cada país planeja uma vez a cada 30 dias, mas em dias
-	# diferentes (id % 6), em vez de todos no mesmo quadro (antes: pico de ~440 ms por mês).
-	var slot: int = (tick / 5) % 6
+	# Planejamento da IA espalhado em 30 fatias DIÁRIAS: cada país planeja uma vez a cada 30
+	# dias (id % 30), mas poucos por dia, em vez de ~13 países de uma vez a cada 5 dias
+	# (isso gerava travadas de ~130 ms no celular). A guerra continua a cada 5 dias.
+	var slot: int = tick % 30
 	for c in countries:
 		if not c.is_alive():
 			continue
 		if is_human(c.id):
 			# Frente automática: exércitos parados do jogador marcham sozinhos em guerra.
-			if c.auto_front and not wars_of(c.id).is_empty():
+			if war_day and c.auto_front and not wars_of(c.id).is_empty():
 				_ai_war(c)
 				_auto_fleets(c)
 			continue
-		if c.id % 6 == slot:
+		if c.id % 30 == slot:
 			AiBrain.balance_drift(self, c, ai_heg)
 			var plan := AiBrain.plan(self, c, ai_heg)
 			AiEconomy.review_taxes(self, c)
@@ -2346,7 +2346,7 @@ func _advance_ai() -> void:
 			_ai_treaties(c)
 			_ai_invest(c)
 			_ai_declare_war(c, plan)
-		if not wars_of(c.id).is_empty():
+		if war_day and not wars_of(c.id).is_empty():
 			_ai_war(c)
 			_auto_fleets(c)
 
@@ -3654,11 +3654,14 @@ func _supply_range_at(pid: int, owner: int) -> int:
 	return best
 
 
+@warning_ignore("integer_division")
 func _supply_cap_at(pid: int) -> int:
 	var p := provinces[pid]
 	var cap: int = SUPPLY_DEPOT_CAP * int(p.bld.get("depot", 0))
 	if countries[p.owner_id].capital == pid:
-		cap += SUPPLY_BASE_CAP
+		# Cresce com o tamanho do país: o Japão (15 províncias) começa com 16 regimentos e a capital
+		# fixa em 12 fazia o próprio exército inicial passar fome em casa.
+		cap += SUPPLY_BASE_CAP + countries[p.owner_id].province_ids.size() / 2
 	return cap
 
 

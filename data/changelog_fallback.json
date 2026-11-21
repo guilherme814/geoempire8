@@ -1,8 +1,13 @@
 {
- "version": "0.29.0",
- "title": "GeoEmpire 8 — v0.29.0 (Mapa)",
- "body": "## Gráfico do mapa-múndi\n- **Oceano:** gradiente de três tons com brilho suave no centro e grade de meridianos/paralelos um pouco mais visível.\n- **Terra:** cores dos países mais vivas (saturação e brilho levemente maiores).\n- **Costas:** aro claro junto à terra e filete extra nas águas rasas (qualidade Alta).\n- **Fronteiras:** sombra, linha escura e filete dourado fino; brilho quente na qualidade Alta.\n- Tudo respeita a qualidade gráfica e continua na camada estática (sem custo extra ao mover o mapa).",
+ "version": "0.30.0",
+ "title": "GeoEmpire 8 — v0.30.0 (Desempenho)",
+ "body": "## Desempenho\n- **Resolução econômica (720p):** nova opção em Opções > Resolução (padrão: econômica). Reduz muito o trabalho da GPU em telas 1080p. Se achar o texto borrado, volte para Nativa.\n- **IA sem travadas:** o planejamento da IA agora é espalhado por dia (2–3 países por dia) em vez de ~13 de uma vez a cada 5 dias.\n- **Suprimentos:** a capacidade da capital cresce com o tamanho do país; o exército inicial do Japão não perde mais regimentos de fome em casa.\n- Mapa: melhorias gráficas da v0.29.0 incluídas.",
  "history": [
+  {
+   "version": "0.29.0",
+   "title": "GeoEmpire 8 — v0.29.0 (Mapa)",
+   "body": "## Gráfico do mapa-múndi\n- **Oceano:** gradiente de três tons com brilho suave no centro e grade de meridianos/paralelos um pouco mais visível.\n- **Terra:** cores dos países mais vivas (saturação e brilho levemente maiores).\n- **Costas:** aro claro junto à terra e filete extra nas águas rasas (qualidade Alta).\n- **Fronteiras:** sombra, linha escura e filete dourado fino; brilho quente na qualidade Alta.\n- Tudo respeita a qualidade gráfica e continua na camada estática (sem custo extra ao mover o mapa)."
+  },
   {
    "version": "0.28.0",
    "title": "GeoEmpire 8 — v0.28.0 (HUD C1)",

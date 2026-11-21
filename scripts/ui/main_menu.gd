@@ -585,6 +585,14 @@ func _show_options() -> void:
 		Events.gfx_changed.emit()
 		Events.trace.emit("graficos", "Qualidade do mapa: " + str(AppSettings.GFX_NAMES[AppSettings.gfx_quality()])))
 	body.add_child(b_gfx)
+	var b_res := UIKit.button("", Vector2(0, 56))
+	b_res.text = "Resolução: " + str(AppSettings.RENDER_NAMES[AppSettings.render_mode()])
+	b_res.pressed.connect(func():
+		AppSettings.set_render_mode((AppSettings.render_mode() + 1) % 2)
+		AppSettings.apply_render_mode(get_tree().root)
+		b_res.text = "Resolução: " + str(AppSettings.RENDER_NAMES[AppSettings.render_mode()])
+		Events.trace.emit("graficos", "Resolução: " + str(AppSettings.RENDER_NAMES[AppSettings.render_mode()])))
+	body.add_child(b_res)
 	_add_log_options(body)
 	_add_close()
 

@@ -677,6 +677,7 @@ func run_all() -> void:
 	_transport()
 	_cycles()
 	_parliament()
+	_interest_groups()
 	_money()
 
 
@@ -1480,4 +1481,43 @@ func _parliament() -> void:
 	c.elect_cd = 1
 	g.load_state(bl)
 	check("parlamento persiste no save", g.countries[me].seats == keep and g.countries[me].elect_cd == g.ELECTION_MONTHS and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _interest_groups() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var gr: Array = g.interest_groups(c)
+	var clout := 0
+	var ok := true
+	for e in gr:
+		clout += int(e["clout"])
+		if int(e["approval"]) < 0 or int(e["approval"]) > 100 or int(e["tier"]) < 0 or int(e["tier"]) > 2:
+			ok = false
+	check("5 grupos de interesse", gr.size() == 5)
+	check("aprovacao e nivel validos", ok)
+	check("clout soma ~100 (arredondamento)", clout >= 95 and clout <= 100)
+	for i in 6:
+		c.sat[i] = 95
+	var happy: Dictionary = g.group_effects(g.interest_groups(c))
+	for i in 6:
+		c.sat[i] = 3
+	var angry: Dictionary = g.group_effects(g.interest_groups(c))
+	check("grupos felizes ajudam, irritados atrapalham", int(happy["tax"]) >= int(angry["tax"]) and int(happy["trade"]) >= int(angry["trade"]) and int(angry["tax"]) <= 0)
+	check("efeitos limitados", int(happy["tax"]) <= 8 and int(angry["tax"]) >= -12 and absi(int(angry["trade"])) <= 8)
+	var e0: Dictionary = g.estimate_monthly(c)
+	c.grp_tax = 0
+	var base_tax: int = int(g.estimate_monthly(c)["tax"])
+	c.grp_tax = -10
+	check("efeito dos grupos reduz a arrecadacao", int(g.estimate_monthly(c)["tax"]) < base_tax)
+	c.grp_tax = -7
+	c.grp_trade = 4
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var hh: int = g.state_hash()
+	c.grp_tax = 0
+	c.grp_trade = 0
+	g.load_state(bl)
+	check("efeitos dos grupos persistem", g.countries[me].grp_tax == -7 and g.countries[me].grp_trade == 4 and g.state_hash() == hh)
+	check("estimate valido", e0.has("income"))
 	g.load_state(blob)

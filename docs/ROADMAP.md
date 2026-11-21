@@ -40,7 +40,7 @@ Política
 |---|-------|--------|
 | B14 | Partidos por corrente, programas e filiação por classe | feita no código (v0.34.0): partidos por corrente |
 | B15 | Eleições e parlamento: cadeiras, coalizão, aprovação | feita no código (v0.34.0): eleições a cada 4 anos, 100 cadeiras |
-| B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | pendente |
+| B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | feita no código (v0.35.0) |
 | B17 | Leis ampliadas e votação das leis no parlamento | pendente |
 | B18 | Movimentos: sindicatos, greves, protestos | pendente |
 | B19 | Golpes, revoluções e guerras civis; mudança de regime | pendente |

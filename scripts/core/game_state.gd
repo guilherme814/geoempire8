@@ -106,6 +106,18 @@ const PRICE_MIN := 70
 const PRICE_MAX := 140
 const TARIFF_MAX := 30
 const TARIFF_STEP := 5
+## Grupos de interesse (B16): `w` = peso de cada classe no grupo; `ideo` = corrente que defendem.
+const INTEREST_GROUPS := [
+	{"id": "land", "name": "Latifundiários", "w": {2: 100, 0: 25}, "ideo": 4},
+	{"id": "ind", "name": "Industriais", "w": {3: 100}, "ideo": 1},
+	{"id": "union", "name": "Sindicatos", "w": {1: 100, 0: 35}, "ideo": 2},
+	{"id": "mil", "name": "Militares", "w": {5: 100}, "ideo": 3},
+	{"id": "clergy", "name": "Clero e letrados", "w": {4: 60, 2: 20, 0: 40}, "ideo": 0},
+]
+const CLOUT_INFLUENT := 8            # % do poder político: Influente a partir daqui
+const CLOUT_POWERFUL := 20           # Poderoso a partir daqui
+const GROUP_HAPPY := 60
+const GROUP_ANGRY := 35
 const ELECTION_MONTHS := 48          # eleições a cada 4 anos
 const ELECTION_STAB_MAX := 4         # efeito máximo da eleição na estabilidade
 const SEAT_TOTAL := 100
@@ -1911,6 +1923,64 @@ func parliament_support(c: Country) -> int:
 	return s
 
 
+## Grupos de interesse (B16), derivados das classes: clout (% do poder), nível, aprovação e efeito.
+## Aprovação = satisfação média das classes do grupo + encaixe das leis com a corrente dele.
+@warning_ignore("integer_division")
+func interest_groups(c: Country, pol: Dictionary = {}) -> Array:
+	if pol.is_empty():
+		pol = politics_of(c)
+	var pw: Array = pol["power"]
+	var fit: Array = Laws.fit_all(c.laws)
+	var out: Array = []
+	var total := 0
+	for g in INTEREST_GROUPS:
+		var gp := 0
+		var sat_w := 0
+		var w_sum := 0
+		for k in g["w"].keys():
+			var w: int = int(g["w"][k])
+			var part: int = int(pw[int(k)]) * w
+			gp += part / 100
+			sat_w += int(c.sat[int(k)]) * part
+			w_sum += part
+		var base: int = sat_w / maxi(1, w_sum)
+		var lawt: int = clampi(int(fit[int(g["ideo"])]) * 2, -15, 15)
+		out.append({"id": g["id"], "name": g["name"], "power": gp, "approval": clampi(base + lawt, 0, 100), "ideo": g["ideo"]})
+		total += gp
+	for e in out:
+		var clout: int = int(e["power"]) * 100 / maxi(1, total)
+		e["clout"] = clout
+		e["tier"] = 2 if clout >= CLOUT_POWERFUL else (1 if clout >= CLOUT_INFLUENT else 0)
+		var ap: int = int(e["approval"])
+		e["mood"] = 1 if ap >= GROUP_HAPPY else (-1 if ap <= GROUP_ANGRY else 0)
+	return out
+
+
+## Efeito econômico dos grupos: {"tax": %, "trade": %}. Marginalizados não ativam traços;
+## Poderosos contam em dobro; felizes ajudam e irritados atrapalham.
+func group_effects(groups: Array) -> Dictionary:
+	var tax := 0
+	var trade := 0
+	for e in groups:
+		var m: int = int(e["mood"]) * int(e["tier"])
+		match str(e["id"]):
+			"land":
+				tax += 2 * m
+			"ind":
+				trade += 2 * m
+			"union":
+				tax += (3 * m if m < 0 else m)      # greves cortam a arrecadação; sindicato feliz ajuda pouco
+	return {"tax": clampi(tax, -12, 8), "trade": clampi(trade, -8, 8)}
+
+
+func _group_step(c: Country) -> void:
+	if (clock.month + c.id) % 3 != 0:
+		return
+	var fx := group_effects(interest_groups(c))
+	c.grp_tax = int(fx["tax"])
+	c.grp_trade = int(fx["trade"])
+
+
 func _election_step(c: Country) -> void:
 	c.elect_cd -= 1
 	if c.elect_cd > 0:
@@ -3063,6 +3133,7 @@ func _private_invest(c: Country) -> void:
 
 
 func _country_month(c: Country) -> void:
+	_group_step(c)
 	_election_step(c)
 	_panic_step(c)
 	_private_invest(c)
@@ -3772,6 +3843,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	tax = tax * (100 - evasion) / 100                          # evasão fiscal
 	if c.panic_left > 0:
 		tax = tax * (100 - PANIC_TAX_PCT) / 100                # pânico financeiro
+	tax = tax * (100 + c.grp_tax) / 100                        # grupos de interesse
 	industry_state = industry_state * (100 + Government.decree_field(c.decree, "ind")) / 100
 	var regs := regiments_of(c.id)
 	var up_prov: int = c.province_ids.size() * EXPENSE_PER_PROVINCE
@@ -3782,7 +3854,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph")) + port_trade_pct(c)) / 100
+	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph")) + port_trade_pct(c) + c.grp_trade) / 100
 	var bc: int = c.budget_code
 	var dexp: int = 100 + Government.decree_field(c.decree, "exp")
 	up_prov = up_prov * Government.pct(bc, 2) / 100 * dexp / 100
@@ -4665,6 +4737,7 @@ func state_hash() -> int:
 		h = _mix(h, c.tariff)
 		h = _mix(h, c.excise * 100 + c.panic_left)
 		h = _mix(h, c.elect_cd)
+		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
 		for sj in 5:
 			h = _mix(h, int(c.seats[sj]))
 		h = _mix(h, c.interest * 1000 + c.inflation)
@@ -4864,6 +4937,8 @@ func serialize_state() -> Dictionary:
 		"excise": _country_ints("excise"),
 		"panic_left": _country_ints("panic_left"),
 		"elect_cd": _country_ints("elect_cd"),
+		"grp_tax": _country_ints("grp_tax"),
+		"grp_trade": _country_ints("grp_trade"),
 		"seats": _country_seats(),
 		"interest": _country_ints("interest"),
 		"inflation": _country_ints("inflation"),
@@ -5063,6 +5138,8 @@ func load_state(d: Dictionary) -> bool:
 	var exs: Array = d.get("excise", [])
 	var pls: Array = d.get("panic_left", [])
 	var ecs: Array = d.get("elect_cd", [])
+	var gtx: Array = d.get("grp_tax", [])
+	var gtr: Array = d.get("grp_trade", [])
 	var parl: Array = d.get("seats", [])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
@@ -5082,6 +5159,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].tariff = int(trs[i]) if i < trs.size() else TRADE_TARIFF_PCT
 		countries[i].excise = int(exs[i]) if i < exs.size() else 0
 		countries[i].panic_left = int(pls[i]) if i < pls.size() else 0
+		countries[i].grp_tax = int(gtx[i]) if i < gtx.size() else 0
+		countries[i].grp_trade = int(gtr[i]) if i < gtr.size() else 0
 		countries[i].elect_cd = int(ecs[i]) if i < ecs.size() else 6 + i % 42
 		var sv: Array = [0, 0, 0, 0, 0]
 		if i < parl.size() and parl[i] is Array and (parl[i] as Array).size() == 5:

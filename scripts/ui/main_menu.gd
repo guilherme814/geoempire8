@@ -17,6 +17,7 @@ var _theme: Theme
 var _menu_col: VBoxContainer
 var _btn_continue: Button
 var _panel: PanelContainer
+var _panel_outer: VBoxContainer
 var _panel_body: VBoxContainer
 var _drift: Tween
 var _stops: Array[Rect2] = []
@@ -479,19 +480,29 @@ func _open_panel(title: String) -> VBoxContainer:
 	_panel = PanelContainer.new()
 	_panel.anchor_left = 0.5
 	_panel.anchor_right = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_bottom = 0.5
+	_panel.anchor_top = 0.0
+	_panel.anchor_bottom = 1.0
+	_panel.offset_top = 14
+	_panel.offset_bottom = -14
 	_panel.custom_minimum_size = Vector2(620, 0)
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.offset_left = 280
 	_panel.offset_right = 280
 	_root.add_child(_panel)
+	# Cabeçalho fixo, conteúdo rolável (cabe em qualquer tela) e botão Fechar sempre visível.
+	_panel_outer = VBoxContainer.new()
+	_panel_outer.add_theme_constant_override("separation", 10)
+	_panel.add_child(_panel_outer)
+	_panel_outer.add_child(UIKit.serif_label(title, 32, UIKit.GOLD_BRIGHT))
+	_panel_outer.add_child(HSeparator.new())
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_panel_outer.add_child(scroll)
 	_panel_body = VBoxContainer.new()
 	_panel_body.add_theme_constant_override("separation", 10)
-	_panel.add_child(_panel_body)
-	_panel_body.add_child(UIKit.serif_label(title, 32, UIKit.GOLD_BRIGHT))
-	_panel_body.add_child(HSeparator.new())
+	_panel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_panel_body)
 	return _panel_body
 
 
@@ -504,7 +515,7 @@ func _close_panel() -> void:
 func _add_close() -> void:
 	var b := UIKit.button("Fechar", Vector2(0, 54))
 	b.pressed.connect(_close_panel)
-	_panel_body.add_child(b)
+	_panel_outer.add_child(b)
 
 
 ## Boas-vindas no primeiro acesso, pulso no "Novo Jogo" e notas de versão (offline primeiro).
@@ -596,8 +607,10 @@ func _show_options() -> void:
 	var b_probe := UIKit.button("Teste de desempenho do mapa (≈15 s)", Vector2(0, 56))
 	var probe_out := UIKit.label("", 14, UIKit.TEXT_DIM)
 	probe_out.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	probe_out.visible = false
 	b_probe.pressed.connect(func():
 		b_probe.disabled = true
+		probe_out.visible = true
 		probe_out.text = "Medindo… não toque na tela."
 		var probe := PerfProbe.new()
 		get_tree().root.add_child(probe)

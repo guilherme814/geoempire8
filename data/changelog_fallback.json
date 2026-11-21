@@ -1,8 +1,13 @@
 {
- "version": "0.34.0",
- "title": "GeoEmpire 8 — v0.34.0 (Política B14/B15)",
- "body": "## Política: partidos, eleições e parlamento\n- **Partidos por corrente:** Conservador, Liberal, Socialista, Nacionalista e Reacionário, com cadeiras no parlamento (100).\n- **Eleições a cada 4 anos** em monarquias constitucionais (voto censitário: aristocratas, burguesia e funcionários) e repúblicas (voto amplo). Autocracias não têm eleições.\n- **Apoio ao governo:** cadeiras dos partidos que combinam com suas leis. Maioria a favor dá até +4 de estabilidade; contra, até −4.\n- Novo card \"Parlamento e partidos\" na tela de Sociedade.\n- Pesquisa: `docs/POLITICA_PESQUISA.md` (Victoria 3: grupos de interesse, eleições, partidos, leis em 3 fases, revolução).\n- Saves antigos funcionam (primeira eleição escalonada).",
+ "version": "0.35.0",
+ "title": "GeoEmpire 8 — v0.35.0 (Política B16)",
+ "body": "## Grupos de interesse\n- Cinco grupos: **Latifundiários, Industriais, Sindicatos, Militares e Clero/letrados**, derivados das classes.\n- Cada um tem **clout** (% do poder político), nível (Marginalizado, Influente, Poderoso) e **aprovação** (satisfação das classes + encaixe das leis com a corrente).\n- **Efeitos:** Latifundiários mexem na arrecadação, Industriais no comércio e Sindicatos irritados fazem greves (menos arrecadação). Poderosos contam em dobro; marginalizados não ativam traços.\n- Card \"Grupos de interesse\" na tela de Sociedade.\n\n## Menu\n- Painel de Opções agora rola e mantém o botão Fechar visível em telas baixas.\n- Resolução volta para Nativa para todos (a opção econômica continua disponível).",
  "history": [
+  {
+   "version": "0.34.0",
+   "title": "GeoEmpire 8 — v0.34.0 (Política B14/B15)",
+   "body": "## Política: partidos, eleições e parlamento\n- **Partidos por corrente:** Conservador, Liberal, Socialista, Nacionalista e Reacionário, com cadeiras no parlamento (100).\n- **Eleições a cada 4 anos** em monarquias constitucionais (voto censitário: aristocratas, burguesia e funcionários) e repúblicas (voto amplo). Autocracias não têm eleições.\n- **Apoio ao governo:** cadeiras dos partidos que combinam com suas leis. Maioria a favor dá até +4 de estabilidade; contra, até −4.\n- Novo card \"Parlamento e partidos\" na tela de Sociedade.\n- Pesquisa: `docs/POLITICA_PESQUISA.md` (Victoria 3: grupos de interesse, eleições, partidos, leis em 3 fases, revolução).\n- Saves antigos funcionam (primeira eleição escalonada)."
+  },
   {
    "version": "0.33.0",
    "title": "GeoEmpire 8 — v0.33.0 (Economia B12 + Ranking)",

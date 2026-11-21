@@ -1644,6 +1644,33 @@ func _on_excise_pressed(pct: int) -> void:
 	Game.submit_command(Cmd.set_excise(pct))
 
 
+## Card "Grupos de interesse" (B16): clout, nível, aprovação e efeito de cada grupo.
+func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
+	var card := _card(body, "Grupos de interesse", "people")
+	var groups: Array = Game.interest_groups(c, pol)
+	var tiers := ["Marginalizado", "Influente", "Poderoso"]
+	var fxt := {"land": "arrecadação", "ind": "comércio", "union": "greves (arrecadação)", "mil": "golpes (em breve)", "clergy": "legitimidade (em breve)"}
+	for e in groups:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		card.add_child(row)
+		var nm := UIKit.label(str(e["name"]), 16, UIKit.TEXT)
+		nm.custom_minimum_size = Vector2(170, 0)
+		row.add_child(nm)
+		var tl := UIKit.label("%s %d%%" % [tiers[int(e["tier"])], int(e["clout"])], 14, UIKit.GOLD_BRIGHT if int(e["tier"]) == 2 else UIKit.TEXT_DIM)
+		tl.custom_minimum_size = Vector2(150, 0)
+		row.add_child(tl)
+		var ap: int = int(e["approval"])
+		row.add_child(UIKit.bar(float(ap), 100.0, _sat_color(ap), 14.0))
+		var mood := "feliz" if int(e["mood"]) > 0 else ("irritado" if int(e["mood"]) < 0 else "neutro")
+		var ml := UIKit.label("%d%% · %s" % [ap, mood], 14, _sat_color(ap))
+		ml.custom_minimum_size = Vector2(110, 0)
+		row.add_child(ml)
+	var fx := UIKit.label("Efeito atual: arrecadação %+d%% · comércio %+d%%. Grupos Poderosos contam em dobro; Marginalizados não ativam traços. Latifundiários → arrecadação, Industriais → comércio, Sindicatos → greves." % [c.grp_tax, c.grp_trade], 14, UIKit.TEXT_DIM)
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(fx)
+
+
 ## Card "Parlamento e partidos" (B14/B15): cadeiras por partido, apoio ao governo e próxima eleição.
 func _add_parliament_card(body: Control, c: Country) -> void:
 	var card := _card(body, "Parlamento e partidos", "scales")
@@ -1827,6 +1854,7 @@ func _refresh_politics() -> void:
 	srow.add_child(st)
 
 	_add_parliament_card(body, c)
+	_add_groups_card(body, c, pol)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())

@@ -39,6 +39,8 @@ var decree_left: int = 0        # meses restantes do decreto
 var decree_cd: int = 0          # meses até poder decretar de novo
 var private_capital: int = 0     # capital privado acumulado (B7), reinvestido nas fábricas
 var tariff: int = 10               # tarifa de importação (%, B8)
+var grp_tax: int = 0              # efeito dos grupos de interesse na arrecadação (%, B16)
+var grp_trade: int = 0            # efeito dos grupos de interesse no comércio (%, B16)
 var elect_cd: int = 24            # meses até a próxima eleição (B15)
 var seats: Array = [0, 0, 0, 0, 0]   # cadeiras do parlamento por corrente (100 no total; vazio = sem eleição)
 var panic_left: int = 0           # meses restantes de pânico financeiro (B12)

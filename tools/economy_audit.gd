@@ -15,11 +15,14 @@ func _initialize() -> void:
 	_calibration()
 	var start := _snapshot()
 	print("ANO  0 | ", _fmt(start))
+	_demo_probe(0)
 	for year in range(1, 11):
 		for i in 365:
 			g.step()
 		var s := _snapshot()
 		print("ANO %2d | " % year, _fmt(s))
+		if year == 10:
+			_demo_probe(year)
 		var vas := 0
 		for c in g.countries:
 			if c.is_alive() and c.overlord >= 0:
@@ -154,3 +157,26 @@ func _calibration() -> void:
 		var pr: float = r[4] / pop_real_total * 100.0
 		var pg: float = r[5] / pop_game_total * 100.0
 		print("CAL %-4s %-26s PIB real %5.2f%% jogo %5.2f%% (x%.2f) | pop real %5.2f%% jogo %5.2f%% (x%.2f) | pop jogo/hist %.2f" % [r[0], r[1], rs, gs, gs / maxf(0.001, rs), pr, pg, pg / maxf(0.001, pr), r[5] / maxf(1.0, r[4])])
+
+
+## Sonda (B13): distribuição de padrão de vida e renda per capita para calibrar a linha de pobreza.
+func _demo_probe(year: int) -> void:
+	var sol: Array = []
+	var pc0: Array = []
+	var pc1: Array = []
+	var gini: Array = []
+	var growth: Array = []
+	for c in g.countries:
+		if not c.is_alive():
+			continue
+		var e: Dictionary = g.estimate_monthly(c)
+		sol.append(g.standard_of_living_x10(c, e))
+		var ci: Dictionary = g.class_income(c)
+		pc0.append(int(ci["pc"][0]))
+		pc1.append(int(ci["pc"][1]))
+		gini.append(int(ci["gini"]))
+	sol.sort()
+	pc0.sort()
+	pc1.sort()
+	gini.sort()
+	print("SONDA ano %d | n %d | sol min/med/max %d/%d/%d | pc camponeses %d/%d/%d | pc operarios %d/%d/%d | gini %d/%d/%d" % [year, sol.size(), sol[0], sol[sol.size() / 2], sol[-1], pc0[0], pc0[pc0.size() / 2], pc0[-1], pc1[0], pc1[pc1.size() / 2], pc1[-1], gini[0], gini[gini.size() / 2], gini[-1]])

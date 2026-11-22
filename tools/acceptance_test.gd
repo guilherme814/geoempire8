@@ -1630,8 +1630,9 @@ func _unrest() -> void:
 	var before: int = int(c.radical[int(g.CLASS_RADICAL[0])])
 	g._unrest_step(c, pol)
 	check("insatisfacao radicaliza correntes", int(c.radical[int(g.CLASS_RADICAL[0])]) > before)
-	# Caos: agitacao sobe, rebeldes surgem, relogio corre.
+	# Caos: agitacao sobe, rebeldes surgem, relogio corre (carencia alta: a revolucao fica para outro teste).
 	c.stability = 5
+	c.rev_cd = 999
 	for i in 40:
 		g._unrest_step(c, pol)
 	cnt = g.unrest_counts(c)

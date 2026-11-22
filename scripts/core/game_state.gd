@@ -125,6 +125,9 @@ const RADICAL_DECAY := 6             # radicalização perdida por mês
 const RADICAL_ACTIVE := 200          # movimento ativo: agita as províncias
 const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
 const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
+const REV_COOLDOWN := 60             # meses sem nova revolução após uma (B19)
+const CHRONICLE_MAX := 80
+const REV_IDEO := ["conservadora", "liberal", "socialista", "nacionalista", "reacionária"]
 const BILL_PHASES := 3               # fases a vencer para a lei passar
 const BILL_MAX_SETBACKS := 3         # o terceiro revés derruba o projeto
 const BILL_BLOCK_MONTHS := 24        # carência após derrota ou cancelamento (2 anos)
@@ -267,6 +270,7 @@ var _acc: float = 0.0
 ## Enquanto pendente, os dias não avançam e os comandos esperam na fila; o resultado é idêntico
 ## ao turno síncrono (mesma ordem das etapas), só distribuído em vários quadros.
 var slice_months: bool = false
+var chronicle: Array = []              # crônica política mundial: [ano, mês, país, tipo, texto] (B19)
 var _month_stage: int = -1
 var _month_running: bool = false   # true enquanto uma etapa do mês executa (proteção contra reentrada)
 var month_hook: Callable = Callable()   # só para testes: chamado ao fim da última etapa
@@ -898,7 +902,7 @@ func _enact_decree(cid: int, di: int) -> void:
 		Events.notice.emit("Decreto: %s (%d meses)." % [Government.DECREES[di]["name"], c.decree_left])
 
 
-func _enact_law(c: Country, gi: int, oi: int, pay: bool = true) -> void:
+func _enact_law(c: Country, gi: int, oi: int, pay: bool = true, quiet: bool = false) -> void:
 	var old: Dictionary = Laws.option(gi, int(c.laws[gi]))
 	var nw: Dictionary = Laws.option(gi, oi)
 	if pay:
@@ -913,7 +917,7 @@ func _enact_law(c: Country, gi: int, oi: int, pay: bool = true) -> void:
 		c.sat[i] = clampi(int(c.sat[i]) + dv / Laws.SAT_SHOCK_DIV, 0, 100)
 	c.stability = int(politics_of(c)["stability"])
 	Events.treasury_changed.emit(c.id)
-	if c.id == player_country:
+	if c.id == player_country and not quiet:
 		Events.notice.emit("Lei aprovada: %s." % str(nw["name"]))
 
 
@@ -3797,6 +3801,7 @@ func _update_politics(c: Country) -> void:
 ## >=70 rebeldes (perde mão de obra e população). Muitas províncias rebeldes correm o relógio da revolução.
 @warning_ignore("integer_division")
 func _unrest_step(c: Country, pol: Dictionary) -> void:
+	c.rev_cd = maxi(0, c.rev_cd - 1)
 	var sh: Array = pol["share"]
 	var press := [0, 0, 0, 0, 0]
 	for i in 6:
@@ -3835,10 +3840,105 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 	c.strikes = protest * 100 / n
 	if rebels * 100 / n >= REV_REBEL_SHARE or c.stability < 15:
 		c.rev_clock = mini(REV_CLOCK_MAX, c.rev_clock + 1)
-		if c.id == player_country and (c.rev_clock == 6 or c.rev_clock == REV_CLOCK_MAX):
-			Events.notice.emit("Perigo de revolução! O relógio marca %d/%d." % [c.rev_clock, REV_CLOCK_MAX])
+		if c.id == player_country and (c.rev_clock == 6 or c.rev_clock == 9 or c.rev_clock == 11) and c.rev_cd == 0:
+			var fc := revolution_forecast(c, pol)
+			Events.notice.emit("Perigo de revolução! Relógio %d/%d. Se chegar a %d: %s." % [c.rev_clock, REV_CLOCK_MAX, REV_CLOCK_MAX, revolution_label(fc)])
 	else:
 		c.rev_clock = maxi(0, c.rev_clock - 1)
+	if c.rev_cd > 0:
+		c.rev_clock = mini(c.rev_clock, REV_CLOCK_MAX - 1)      # carência: sem nova revolução
+	elif c.rev_clock >= REV_CLOCK_MAX:
+		_revolution(c, pol)
+
+
+## Previsão do desfecho se o relógio chegar ao fim: movimento dominante e tipo (1 golpe, 2 revolução).
+## Golpe: corrente conservadora/nacionalista/reacionária com Militares ao menos influentes.
+func revolution_forecast(c: Country, pol: Dictionary) -> Dictionary:
+	var dom := 0
+	for j in 5:
+		if int(c.radical[j]) > int(c.radical[dom]):
+			dom = j
+	var mil := 0
+	for e in interest_groups(c, pol):
+		if str(e["id"]) == "mil":
+			mil = int(e["tier"])
+	var coup: bool = (dom == 0 or dom == 3 or dom == 4) and mil >= 1
+	return {"dom": dom, "kind": 1 if coup else 2}
+
+
+func revolution_label(fc: Dictionary) -> String:
+	if int(fc["kind"]) == 1:
+		return "golpe militar %s" % REV_IDEO[int(fc["dom"])]
+	return "revolução %s" % REV_IDEO[int(fc["dom"])]
+
+
+## Melhores mudanças de lei na direção de uma corrente: [[grupo, opção, ganho]].
+func _laws_toward(c: Country, j: int, skip: int, n: int) -> Array:
+	var out: Array = []
+	for gi in Laws.group_count():
+		if gi == skip:
+			continue
+		var cur: int = int(c.laws[gi])
+		var bo := cur
+		var bl: int = Laws.lean(gi, cur, j)
+		for oi in (Laws.group(gi)["opts"] as Array).size():
+			if Laws.lean(gi, oi, j) > bl:
+				bl = Laws.lean(gi, oi, j)
+				bo = oi
+		if bo != cur:
+			out.append([gi, bo, bl - Laws.lean(gi, cur, j)])
+	out.sort_custom(func(x, y): return int(x[2]) > int(y[2]) or (int(x[2]) == int(y[2]) and int(x[0]) < int(y[0])))
+	return out.slice(0, n)
+
+
+## Golpe (1) ou revolução (2), sem dividir o país (B19a). Golpe: autocracia e imprensa censurada,
+## parlamento dissolvido. Revolução: o sistema de governo e 3 leis passam para a direção do movimento,
+## parlamento reiniciado. Nos dois: rebeldes dispersos, relógio zerado, carência de 5 anos.
+@warning_ignore("integer_division")
+func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
+	var fc := revolution_forecast(c, pol)
+	var dom: int = int(fc["dom"])
+	var kind: int = force_kind if force_kind > 0 else int(fc["kind"])
+	var gov := Laws.group_index("gov")
+	var changes: Array = []
+	var gt: int = 0 if kind == 1 else int([1, 2, 2, 0, 0][dom])
+	if int(c.laws[gov]) != gt:
+		changes.append([gov, gt])
+	if kind == 1:
+		var pg := Laws.group_index("press")
+		if pg >= 0 and int(c.laws[pg]) != 0:
+			changes.append([pg, 0])
+	else:
+		for t in _laws_toward(c, dom, gov, 3):
+			changes.append([int(t[0]), int(t[1])])
+	for ch in changes:
+		_enact_law(c, int(ch[0]), int(ch[1]), false, true)
+		c.law_cd[int(ch[0])] = Laws.COOLDOWN_MONTHS
+	_clear_bill(c)
+	c.seats = [0, 0, 0, 0, 0]
+	c.elect_cd = 12 if kind == 2 else ELECTION_MONTHS
+	for pid in c.province_ids:
+		provinces[pid].unrest = mini(provinces[pid].unrest, 25)
+	if c.treasury > 0:
+		c.treasury -= c.treasury * (5 if kind == 1 else 15) / 100
+	for i in 6:
+		c.sat[i] = (int(c.sat[i]) + 45) / 2
+	for j in 5:
+		c.radical[j] = 100 if j == dom else int(c.radical[j]) / 2
+	c.rev_clock = 0
+	c.rev_cd = REV_COOLDOWN
+	c.rev_type = kind
+	c.strikes = 0
+	c.stability = int(politics_of(c)["stability"])
+	var txt := "%s: %s." % [c.name, revolution_label({"kind": kind, "dom": dom}).capitalize()]
+	chronicle.append([clock.year, clock.month, c.id, kind, txt])
+	while chronicle.size() > CHRONICLE_MAX:
+		chronicle.remove_at(0)
+	Events.treasury_changed.emit(c.id)
+	if c.id == player_country:
+		Events.notice.emit("%s O regime mudou; as leis e o parlamento foram refeitos." % txt)
+	elif player_country >= 0:
+		Events.notice.emit("Notícia do mundo — %s" % txt)
 
 
 ## Contagem de províncias por nível de agitação: {protest, prone, rebel}.
@@ -4814,6 +4914,7 @@ func state_hash() -> int:
 	var h: int = 2166136261
 	h = _mix(h, tick)
 	h = _mix(h, frame)
+	h = _mix(h, chronicle.size())
 	h = _mix(h, speed)
 	h = _mix(h, next_army_id)
 	for p in provinces:
@@ -4915,6 +5016,7 @@ func state_hash() -> int:
 		h = _mix(h, c.bill_g * 1000 + c.bill_o * 100 + c.bill_p * 10 + c.bill_s + c.bill_a * 10000)
 		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
+		h = _mix(h, c.rev_cd * 10 + c.rev_type)
 		for rj in 5:
 			h = _mix(h, int(c.radical[rj]))
 		for sj in 5:
@@ -5106,6 +5208,9 @@ func serialize_state() -> Dictionary:
 		"radical": _country_radical(),
 		"rev_clock": _country_ints("rev_clock"),
 		"strikes": _country_ints("strikes"),
+		"rev_cd": _country_ints("rev_cd"),
+		"rev_type": _country_ints("rev_type"),
+		"chronicle": chronicle.duplicate(true),
 		"bld": blds,
 		"tech": _country_ints("tech_pts"),
 		"techs": _tech_lists(),
@@ -5348,6 +5453,12 @@ func load_state(d: Dictionary) -> bool:
 	var rads: Array = d.get("radical", [])
 	var rvc: Array = d.get("rev_clock", [])
 	var stk: Array = d.get("strikes", [])
+	var rcd: Array = d.get("rev_cd", [])
+	var rty: Array = d.get("rev_type", [])
+	chronicle = []
+	for ce in d.get("chronicle", []):
+		if ce is Array and (ce as Array).size() == 5:
+			chronicle.append([int(ce[0]), int(ce[1]), int(ce[2]), int(ce[3]), str(ce[4])])
 	var ints: Array = d.get("interest", [])
 	var infl: Array = d.get("inflation", [])
 	ai_heg = int(d.get("ai_heg", -1))
@@ -5386,6 +5497,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].radical = rv
 		countries[i].rev_clock = int(rvc[i]) if i < rvc.size() else 0
 		countries[i].strikes = int(stk[i]) if i < stk.size() else 0
+		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
+		countries[i].rev_type = int(rty[i]) if i < rty.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
 	var lin: Array = d.get("last_income", [])

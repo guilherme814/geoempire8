@@ -680,6 +680,7 @@ func run_all() -> void:
 	_interest_groups()
 	_bills()
 	_unrest()
+	_revolutions()
 	_money()
 
 
@@ -1666,4 +1667,59 @@ func _unrest() -> void:
 	g.load_state(bl)
 	var lc: Country = g.countries[me]
 	check("agitacao e relogio persistem no save", lc.rev_clock == rc and g.provinces[lc.province_ids[0]].unrest == u0 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _revolutions() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var pol: Dictionary = g.politics_of(c)
+	var gov: int = Laws.group_index("gov")
+	var n0: int = g.chronicle.size()
+	# Previsao: corrente socialista dominante = revolucao.
+	for k in 5:
+		c.radical[k] = 0
+	c.radical[2] = 900
+	var fc: Dictionary = g.revolution_forecast(c, pol)
+	check("previsao: socialista dominante gera revolucao", int(fc["dom"]) == 2 and int(fc["kind"]) == 2)
+	# Revolucao: sistema de governo muda, parlamento reiniciado, relogio zerado, carencia.
+	c.laws[gov] = 0
+	c.seats = [20, 20, 20, 20, 20]
+	c.rev_cd = 0
+	c.rev_clock = 12
+	for pid in c.province_ids:
+		g.provinces[pid].unrest = 90
+	g._revolution(c, pol)
+	check("revolucao troca o governo para republica", int(c.laws[gov]) == 2)
+	check("revolucao reinicia o parlamento", int(c.seats[0]) + int(c.seats[1]) + int(c.seats[2]) + int(c.seats[3]) + int(c.seats[4]) == 0 and c.elect_cd == 12)
+	check("revolucao zera relogio, dispersa rebeldes e cria carencia", c.rev_clock == 0 and c.rev_cd == g.REV_COOLDOWN and c.rev_type == 2 and int(g.unrest_counts(c)["rebel"]) == 0)
+	check("revolucao entra na cronica", g.chronicle.size() == n0 + 1 and int(g.chronicle[n0][2]) == me)
+	# Carencia: com caos, o relogio nao passa de 11 e nao ha nova revolucao.
+	c.stability = 5
+	for i in 20:
+		g._unrest_step(c, pol)
+	check("carencia impede nova revolucao", c.rev_clock <= g.REV_CLOCK_MAX - 1 and g.chronicle.size() == n0 + 1)
+	# Golpe: autocracia, imprensa censurada, parlamento dissolvido.
+	c.rev_cd = 0
+	c.laws[gov] = 2
+	c.seats = [20, 20, 20, 20, 20]
+	g._revolution(c, pol, 1)
+	check("golpe instala autocracia e dissolve o parlamento", int(c.laws[gov]) == 0 and not g.needs_vote(c) and c.rev_type == 1)
+	# Gatilho pelo passo mensal: relogio no limite dispara a revolucao.
+	c.rev_cd = 0
+	c.rev_clock = 11
+	c.stability = 5
+	var n1: int = g.chronicle.size()
+	g._unrest_step(c, pol)
+	check("relogio completo dispara a revolucao", g.chronicle.size() == n1 + 1 and c.rev_clock == 0 and c.rev_cd > 0)
+	# Persistencia.
+	var hh: int = g.state_hash()
+	var cs: int = g.chronicle.size()
+	var cd: int = c.rev_cd
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	c.rev_cd = 0
+	g.chronicle = []
+	g.load_state(bl)
+	check("cronica e carencia persistem no save", g.chronicle.size() == cs and g.countries[me].rev_cd == cd and g.state_hash() == hh)
 	g.load_state(blob)

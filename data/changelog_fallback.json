@@ -1,8 +1,13 @@
 {
- "version": "0.38.0",
- "title": "GeoEmpire 8 — v0.38.0 (logs pela internet)",
- "body": "## Logs enviados automaticamente ao GitHub\n- O relatório da sessão passa a ser enviado a um repositório de logs (a cada 3 minutos, ao ir para segundo plano e ao sair), sem precisar anexar arquivos.\n- Só funciona em builds com o envio configurado (segredos `LOG_REPO` e `LOG_TOKEN` no GitHub); sem isso nada é enviado.\n- Opção \"Enviar log ao GitHub\" nas configurações para ligar/desligar. O log continua indo para Downloads.\n- O envio depende de internet; se o app for encerrado de repente, vale o último envio.",
+ "version": "0.39.0",
+ "title": "GeoEmpire 8 — v0.39.0 (Política B19a)",
+ "body": "## Golpes e revoluções\n- Quando o **relógio da revolução** chega a 12, o regime cai. A causa é a corrente mais radicalizada.\n- **Golpe militar** (corrente conservadora, nacionalista ou reacionária com os Militares ao menos influentes): autocracia, imprensa censurada, parlamento dissolvido.\n- **Revolução** (nos demais casos): o sistema de governo e 3 leis passam para a direção do movimento, o parlamento é refeito (nova eleição em 12 meses) e o tesouro perde 15%.\n- Depois: rebeldes dispersos, estabilidade reposta, **5 anos de carência**.\n- **Avisos** aos 6, 9 e 11 meses do relógio dizendo qual desfecho está a caminho; a tela de Política mostra a previsão.\n- **Crônica política do mundo** (golpes e revoluções de todos os países) e notícias no HUD.\n- No mapa, a capital ganha anéis pulsantes dourados (revolução) ou azuis (golpe).\n- A divisão do país (secessão e guerra civil) vem na B19b e B19c.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.38.0",
+   "title": "GeoEmpire 8 — v0.38.0 (logs pela internet)",
+   "body": "## Logs enviados automaticamente ao GitHub\n- O relatório da sessão passa a ser enviado a um repositório de logs (a cada 3 minutos, ao ir para segundo plano e ao sair), sem precisar anexar arquivos.\n- Só funciona em builds com o envio configurado (segredos `LOG_REPO` e `LOG_TOKEN` no GitHub); sem isso nada é enviado.\n- Opção \"Enviar log ao GitHub\" nas configurações para ligar/desligar. O log continua indo para Downloads.\n- O envio depende de internet; se o app for encerrado de repente, vale o último envio."
+  },
   {
    "version": "0.37.0",
    "title": "GeoEmpire 8 — v0.37.0 (Política B18)",

@@ -43,7 +43,7 @@ Política
 | B16 | Grupos de interesse: industriais, latifundiários, sindicatos, militares, Igreja | feita no código (v0.35.0) |
 | B17 | Leis ampliadas e votação das leis no parlamento | feita no código (v0.36.0): votação em 3 fases; leis novas ficam para depois |
 | B18 | Movimentos: sindicatos, greves, protestos | feita no código (v0.37.0): radicalização, agitação por província, rebeldes e relógio; efeitos no mapa |
-| B19 | Golpes, revoluções e guerras civis; mudança de regime | pendente |
+| B19 | Golpes, revoluções e guerras civis; mudança de regime | B19a feita no código (v0.39.0): golpe e revolução; B19b secessão e B19c guerra civil pendentes |
 | B20 | Reformas, concessões e repressão: crise de legitimidade | pendente |
 | B21 | Burocracia: capacidade do Estado e corrupção | pendente |
 | B22 | Cultura, religião e minorias; propaganda | pendente |

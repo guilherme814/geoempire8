@@ -26,6 +26,7 @@ func _initialize() -> void:
 				vas += 1
 		print("GUERRA ano %2d | guerras ativas %d | vassalos %d | propostas de paz pendentes %d | exercitos %d" % [year, g.wars.size(), vas, g.peace_offers.size(), g.armies.size()])
 		_check(year, s, start)
+	print("REVOLUCOES em 10 anos: %d (golpes %d)" % [g.chronicle.size(), g.chronicle.filter(func(e): return int(e[3]) == 1).size()])
 	print("--- alertas ---")
 	for a in alerts:
 		print("ALERT ", a)

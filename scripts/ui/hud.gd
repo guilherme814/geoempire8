@@ -1703,7 +1703,21 @@ func _add_unrest_card(body: Control, c: Country) -> void:
 	var ct := UIKit.label("%d/%d" % [c.rev_clock, Game.REV_CLOCK_MAX], 14, cc)
 	ct.custom_minimum_size = Vector2(110, 0)
 	crow.add_child(ct)
-	var hint := UIKit.label("Cada classe insatisfeita radicaliza uma corrente. Movimentos ativos e baixa estabilidade agitam as províncias (ocupadas, mais ainda). Com %d%% das províncias rebeldes o relógio corre; ao chegar a %d a revolução derruba o regime. Use o modo de mapa \"Revolta\" para ver as regiões." % [Game.REV_REBEL_SHARE, Game.REV_CLOCK_MAX], 14, UIKit.TEXT_DIM)
+	var fcl := UIKit.label("Se o relógio chegar a %d: %s." % [Game.REV_CLOCK_MAX, Game.revolution_label(Game.revolution_forecast(c, Game.politics_of(c)))] if c.rev_cd == 0 else "Regime recém-mudado: sem nova revolução por mais %d meses." % c.rev_cd, 15, UIKit.NEG if c.rev_clock >= 6 and c.rev_cd == 0 else UIKit.TEXT_DIM)
+	fcl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(fcl)
+	if not Game.chronicle.is_empty():
+		card.add_child(UIKit.label("Crônica política do mundo", 16, UIKit.GOLD_BRIGHT))
+		var shown := 0
+		for k in range(Game.chronicle.size() - 1, -1, -1):
+			var ce: Array = Game.chronicle[k]
+			var cl := UIKit.label("%02d/%d — %s" % [int(ce[1]), int(ce[0]), str(ce[4])], 14, UIKit.NEG if int(ce[3]) == 2 else UIKit.WARN)
+			cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			card.add_child(cl)
+			shown += 1
+			if shown >= 8:
+				break
+	var hint := UIKit.label("Cada classe insatisfeita radicaliza uma corrente. Movimentos ativos e baixa estabilidade agitam as províncias (ocupadas, mais ainda). Com %d%% das províncias rebeldes o relógio corre; ao chegar a %d um golpe militar ou uma revolução derruba o regime (5 anos de carência depois). Use o modo de mapa \"Revolta\" para ver as regiões." % [Game.REV_REBEL_SHARE, Game.REV_CLOCK_MAX], 14, UIKit.TEXT_DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(hint)
 

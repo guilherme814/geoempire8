@@ -6,6 +6,7 @@ extends Node2D
 
 const MAX_ITEMS := 500
 
+var _flash: Array = []     # [centro, tipo, idade em meses] de golpes/revoluções recentes
 var _items: Array = []     # [pid, tier] tier 1 = protesto, 2 = propensa, 3 = rebelde
 var _timer: Timer
 
@@ -24,8 +25,17 @@ func _ready() -> void:
 
 func _rebuild() -> void:
 	_items.clear()
+	_flash.clear()
 	if not Game.loaded:
 		return
+	var now: int = Game.clock.year * 12 + Game.clock.month
+	for ce in Game.chronicle:
+		var age: int = now - (int(ce[0]) * 12 + int(ce[1]))
+		var cc: int = int(ce[2])
+		if age >= 0 and age <= 2 and cc >= 0 and cc < Game.countries.size():
+			var cap: int = Game.countries[cc].capital
+			if cap >= 0 and cap < Game.provinces.size():
+				_flash.append([Game.provinces[cap].center, int(ce[3]), age])
 	for p in Game.provinces:
 		if p.owner_id < 0 or p.unrest < Game.UNREST_PROTEST:
 			continue
@@ -41,16 +51,24 @@ func _rebuild() -> void:
 
 
 func _tick() -> void:
-	if not _items.is_empty() and is_visible_in_tree():
+	if (not _items.is_empty() or not _flash.is_empty()) and is_visible_in_tree():
 		queue_redraw()
 
 
 func _draw() -> void:
-	if _items.is_empty() or not Game.loaded:
+	if (_items.is_empty() and _flash.is_empty()) or not Game.loaded:
 		return
 	var mv := get_parent() as MapView
 	var z := maxf(mv.zoom_level if mv != null else 1.0, 0.05)
 	var t := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006)
+	for fl in _flash:
+		var fc: Vector2 = fl[0]
+		var fcol := Color(0.55, 0.62, 0.95, 0.9) if int(fl[1]) == 1 else Color(1.0, 0.82, 0.25, 0.95)
+		fcol.a *= 1.0 - float(int(fl[2])) * 0.3
+		for k in 3:
+			var rr := (14.0 + 16.0 * float(k) + 10.0 * t) / z
+			draw_arc(fc, rr, 0.0, TAU, 36, Color(fcol, fcol.a * (1.0 - float(k) * 0.28)), 2.6 / z)
+		draw_circle(fc, 5.0 / z, fcol)
 	for it in _items:
 		var p: Province = Game.provinces[int(it[0])]
 		var tier: int = int(it[1])

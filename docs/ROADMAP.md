@@ -56,7 +56,7 @@ Fechamento
 | B25 | Balanceamento, painéis finais de economia e política, auditorias | feita no código (v0.49.0): painel político e alertas na auditoria, demografia e crescimento do PIB calibrados (~2x em 10 anos)
 | B26a | Setor de obras: fila, capacidade, canteiro de obras | feita no código (v0.50.0) |
 | B26b | Estruturas novas: vidraçaria, química, bairro operário, prefeitura, estação | feita no código (v0.50.0) |
-| B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | em andamento |
+| B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | feita no código (v0.51.0): mapa, cena da província, guindaste de obras; não visto em aparelho |
 
 ## Trilha C — Nova HUD (referência visual enviada em 20/11/2026)
 

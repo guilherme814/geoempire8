@@ -1,8 +1,13 @@
 {
- "version": "0.50.0",
- "title": "GeoEmpire 8 — v0.50.0 (Setor de obras B26)",
- "body": "## Setor de obras e estruturas novas\n- **Obras em fila (estilo Victoria 3)**: construir não é mais instantâneo. Cada país tem uma capacidade de obra (pontos/mês): base 15 + 1 por província + 20 por nível de **Canteiro de obras**. As obras entram numa fila, avançam em ordem de prioridade (mínimo de 3 meses cada) e pagam o custo conforme progridem; sem ouro, a obra para. Dá para **priorizar** (↑) e **cancelar** (✕) na tela de Política, no card \"Setor de obras\". A IA também usa a fila.\n- **Estruturas novas**: Canteiro de obras (aumenta a capacidade), **Vidraçaria** (sal + carvão → vidro), **Indústria química** (carvão + sal → químicos), **Bairro operário** (−5 de agitação local por nível), **Prefeitura** (+12 de capacidade administrativa por nível) e **Estação ferroviária** (exige ferrovia; +4% de comércio por nível).\n- Efeito no equilíbrio: o crescimento econômico ficou mais lento (PIB ~1,5x em 10 anos) porque a construção agora tem ritmo.\n- Saves antigos funcionam (a fila começa vazia).",
+ "version": "0.51.0",
+ "title": "GeoEmpire 8 — v0.51.0 (Gráficos de obras B26c)",
+ "body": "## Edifícios à vista\n- **Mapa**: com bastante zoom (e qualidade gráfica Média ou Alta), cada província mostra silhuetas das suas construções: fábricas (chaminés = nível, cor = setor), casas (mercado, bairros, prefeitura, bancos, capital), porto, ferrovia e **guindastes com anel de progresso** nas obras em andamento.\n- **Cartão da província**: ganhou uma cena ilustrada no topo, com céu e solo conforme o terreno e cada edifício desenhado (fábricas, minas, fazendas, madeireiras, escolas, hospitais, portos, estações, ferrovia e canteiro de obras).\n- Detalhe de cada construção mostra os pontos de obra e a capacidade do país.\n- Só desenha o que está na tela (no máximo 160 províncias) para não pesar.",
  "history": [
+  {
+   "version": "0.50.0",
+   "title": "GeoEmpire 8 — v0.50.0 (Setor de obras B26)",
+   "body": "## Setor de obras e estruturas novas\n- **Obras em fila (estilo Victoria 3)**: construir não é mais instantâneo. Cada país tem uma capacidade de obra (pontos/mês): base 15 + 1 por província + 20 por nível de **Canteiro de obras**. As obras entram numa fila, avançam em ordem de prioridade (mínimo de 3 meses cada) e pagam o custo conforme progridem; sem ouro, a obra para. Dá para **priorizar** (↑) e **cancelar** (✕) na tela de Política, no card \"Setor de obras\". A IA também usa a fila.\n- **Estruturas novas**: Canteiro de obras (aumenta a capacidade), **Vidraçaria** (sal + carvão → vidro), **Indústria química** (carvão + sal → químicos), **Bairro operário** (−5 de agitação local por nível), **Prefeitura** (+12 de capacidade administrativa por nível) e **Estação ferroviária** (exige ferrovia; +4% de comércio por nível).\n- Efeito no equilíbrio: o crescimento econômico ficou mais lento (PIB ~1,5x em 10 anos) porque a construção agora tem ritmo.\n- Saves antigos funcionam (a fila começa vazia)."
+  },
   {
    "version": "0.49.0",
    "title": "GeoEmpire 8 — v0.49.0 (Calibração B25)",

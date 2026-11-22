@@ -1,8 +1,13 @@
 {
- "version": "0.47.0",
- "title": "GeoEmpire 8 — v0.47.0 (IA em crise B24)",
- "body": "## A IA reage a crises\n- Países da IA agora **respondem ao relógio da revolução**: concedem ao movimento dominante, decretam estado de sítio em crise grave ou reprimem, conforme o caso e o tesouro.\n- **Prevenção**: instáveis compram aparato de segurança; com miséria alta ligam a assistência social; com corrupção alta fazem campanha anticorrupção.\n- **Economia**: países estáveis e ricos lançam plano quinquenal no maior setor e subsidiam o segundo quando há desemprego.\n- Sem sorteios extras: o comportamento é determinístico (multiplayer seguro).",
+ "version": "0.48.0",
+ "title": "GeoEmpire 8 — v0.48.0 (Balanceamento B25)",
+ "body": "## Balanceamento e auditorias\n- Crescimento populacional base um pouco menor (natalidade ajustada); ainda cresce mais rápido em países prósperos.\n- A auditoria ganhou um painel político por ano (miséria, estabilidade, relógio da revolução, províncias em protesto/rebelião e crônica de revoluções) com alertas de balanceamento.\n- Alerta novo quando o PIB mundial cresce mais de 2x em 10 anos — hoje ele dispara (PIB ~2,2x), indicando que o crescimento econômico está rápido demais; a calibração fica para a próxima etapa.",
  "history": [
+  {
+   "version": "0.47.0",
+   "title": "GeoEmpire 8 — v0.47.0 (IA em crise B24)",
+   "body": "## A IA reage a crises\n- Países da IA agora **respondem ao relógio da revolução**: concedem ao movimento dominante, decretam estado de sítio em crise grave ou reprimem, conforme o caso e o tesouro.\n- **Prevenção**: instáveis compram aparato de segurança; com miséria alta ligam a assistência social; com corrupção alta fazem campanha anticorrupção.\n- **Economia**: países estáveis e ricos lançam plano quinquenal no maior setor e subsidiam o segundo quando há desemprego.\n- Sem sorteios extras: o comportamento é determinístico (multiplayer seguro)."
+  },
   {
    "version": "0.46.0",
    "title": "GeoEmpire 8 — v0.46.0 (Bem-estar B13)",

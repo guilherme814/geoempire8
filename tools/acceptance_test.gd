@@ -682,6 +682,7 @@ func run_all() -> void:
 	_unrest()
 	_revolutions()
 	_secession()
+	_civil_war()
 	_money()
 
 
@@ -1765,4 +1766,45 @@ func _secession() -> void:
 	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
 	g.load_state(bl)
 	check("secessao: persiste no save", g.countries[tgt].is_alive() and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _civil_war() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var other := -1
+	for k in g.countries.size():
+		if k != me and g.countries[k].is_alive() and g.countries[k].overlord < 0:
+			other = k
+			break
+	g._annex_country(me, other)           # garante um pais morto livre e provincias suficientes
+	check("guerra civil: sem rebeldes nao e possivel", g.civil_war_possible(c) < 0)
+	var n_before: int = c.province_ids.size()
+	for i in c.province_ids.size():
+		g.provinces[c.province_ids[i]].unrest = 80 if i % 2 == 0 else 10
+	for k in 5:
+		c.radical[k] = 0
+	c.radical[2] = 900
+	c.rev_cd = 0
+	var tag: int = g.civil_war_possible(c)
+	check("guerra civil: possivel com rebeldes numerosos e pais livre", tag >= 0 and tag != me and not g.countries[tag].is_alive())
+	var pol: Dictionary = g.politics_of(c)
+	check("guerra civil: previsao", int(g.revolution_forecast(c, pol)["kind"]) == 4)
+	var nch: int = g.chronicle.size()
+	g._revolution(c, pol)
+	check("guerra civil: o pais se divide", g.countries[tag].is_alive() and c.is_alive() and c.province_ids.size() < n_before)
+	check("guerra civil: lados em guerra", g.at_war(me, tag) and g.is_civil_war(me, tag))
+	check("guerra civil: rebeldes tem leis do movimento", int(g.countries[tag].laws[Laws.group_index("gov")]) == 2)
+	check("guerra civil: cronica e carencia", g.chronicle.size() == nch + 1 and int(g.chronicle[nch][3]) == 4 and c.rev_cd > 0)
+	check("guerra civil: sem paz branca", not g.can_peace_term(me, tag, "white") and not g.can_peace_term(me, tag, "indemnity") and not g.can_peace_term(me, tag, "vassal"))
+	# Persistencia.
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.load_state(bl)
+	check("guerra civil: persiste no save", g.is_civil_war(me, tag) and g.state_hash() == hh)
+	# Impasse: depois de 36 meses termina e os rebeldes ficam independentes.
+	g.civil_wars[0][2] = g.clock.year * 12 + g.clock.month - g.CIVIL_MAX_MONTHS
+	g._civil_step(g.countries[me])
+	check("guerra civil: impasse encerra a guerra", not g.at_war(me, tag) and g.civil_wars.is_empty() and g.countries[tag].is_alive())
 	g.load_state(blob)

@@ -127,6 +127,9 @@ const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
 const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
 const REV_COOLDOWN := 60             # meses sem nova revolução após uma (B19)
 const CHRONICLE_MAX := 80
+const CIVIL_REBEL_SHARE := 35        # % de províncias rebeldes para a revolução virar guerra civil (B19c)
+const CIVIL_MIN_PROVINCES := 6       # países menores não se dividem
+const CIVIL_MAX_MONTHS := 36         # impasse: depois disto a guerra termina e os rebeldes ficam independentes
 const REV_IDEO := ["conservadora", "liberal", "socialista", "nacionalista", "reacionária"]
 const BILL_PHASES := 3               # fases a vencer para a lei passar
 const BILL_MAX_SETBACKS := 3         # o terceiro revés derruba o projeto
@@ -270,6 +273,7 @@ var _acc: float = 0.0
 ## Enquanto pendente, os dias não avançam e os comandos esperam na fila; o resultado é idêntico
 ## ao turno síncrono (mesma ordem das etapas), só distribuído em vários quadros.
 var slice_months: bool = false
+var civil_wars: Array = []             # guerras civis em curso: [legalista, rebelde, mês de início] (B19c)
 var chronicle: Array = []              # crônica política mundial: [ano, mês, país, tipo, texto] (B19)
 var _month_stage: int = -1
 var _month_running: bool = false   # true enquanto uma etapa do mês executa (proteção contra reentrada)
@@ -1457,6 +1461,8 @@ func peace_options(issuer: int, target: int) -> Array:
 func can_peace_term(issuer: int, target: int, term: String) -> bool:
 	if not can_make_peace(issuer, target):
 		return false
+	if is_civil_war(issuer, target) and term != "annex":
+		return false                      # guerra civil: sem paz branca, indenização ou vassalagem
 	var sc := war_score(issuer, target)
 	match term:
 		"white":
@@ -3802,6 +3808,7 @@ func _update_politics(c: Country) -> void:
 @warning_ignore("integer_division")
 func _unrest_step(c: Country, pol: Dictionary) -> void:
 	c.rev_cd = maxi(0, c.rev_cd - 1)
+	_civil_step(c)
 	var sh: Array = pol["share"]
 	var press := [0, 0, 0, 0, 0]
 	for i in 6:
@@ -3865,12 +3872,16 @@ func revolution_forecast(c: Country, pol: Dictionary) -> Dictionary:
 	var coup: bool = (dom == 0 or dom == 3 or dom == 4) and mil >= 1
 	if dom == 3 and secession_target(c) >= 0:
 		return {"dom": dom, "kind": 3}              # nacionalistas com regiões de nações históricas: secessão
+	if not coup and civil_war_possible(c) >= 0:
+		return {"dom": dom, "kind": 4}              # revolução com rebeldes numerosos e um país livre: guerra civil
 	return {"dom": dom, "kind": 1 if coup else 2}
 
 
 func revolution_label(fc: Dictionary) -> String:
 	if int(fc["kind"]) == 3:
 		return "secessão nacionalista (regiões declaram independência)"
+	if int(fc["kind"]) == 4:
+		return "guerra civil %s" % REV_IDEO[int(fc["dom"])]
 	if int(fc["kind"]) == 1:
 		return "golpe militar %s" % REV_IDEO[int(fc["dom"])]
 	return "revolução %s" % REV_IDEO[int(fc["dom"])]
@@ -3939,8 +3950,12 @@ func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
 		if sec_tag < 0:
 			kind = 2
 	var sec_txt := ""
+	if kind == 4 and civil_war_possible(c) < 0:
+		kind = 2
 	if kind == 3:
 		sec_txt = _secede(c, sec_tag)
+	elif kind == 4:
+		sec_txt = _civil_war(c, dom)
 	else:
 		var gov := Laws.group_index("gov")
 		var changes: Array = []
@@ -3962,7 +3977,7 @@ func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
 		c.elect_cd = 12 if kind == 2 else ELECTION_MONTHS
 	for pid in c.province_ids:
 		provinces[pid].unrest = mini(provinces[pid].unrest, 25)
-	if c.treasury > 0:
+	if c.treasury > 0 and kind <= 2:
 		c.treasury -= c.treasury * (5 if kind == 1 else 15) / 100
 	for i in 6:
 		c.sat[i] = (int(c.sat[i]) + 45) / 2
@@ -3974,14 +3989,14 @@ func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
 	c.strikes = 0
 	c.stability = int(politics_of(c)["stability"])
 	var txt := "%s: %s." % [c.name, revolution_label({"kind": kind, "dom": dom}).capitalize()]
-	if kind == 3:
+	if kind >= 3:
 		txt = sec_txt
 	chronicle.append([clock.year, clock.month, c.id, kind, txt])
 	while chronicle.size() > CHRONICLE_MAX:
 		chronicle.remove_at(0)
 	Events.treasury_changed.emit(c.id)
 	if c.id == player_country:
-		Events.notice.emit(("%s O regime mudou; as leis e o parlamento foram refeitos." if kind != 3 else "%s") % txt)
+		Events.notice.emit(("%s O regime mudou; as leis e o parlamento foram refeitos." if kind < 3 else "%s") % txt)
 	elif player_country >= 0:
 		Events.notice.emit("Notícia do mundo — %s" % txt)
 
@@ -4022,6 +4037,132 @@ func _secede(c: Country, tag: int) -> String:
 	Events.treasury_changed.emit(tag)
 	Events.war_changed.emit()
 	return "%s: %d províncias declararam independência como %s." % [c.name, moved.size(), nc.name]
+
+
+## Guerra civil (B19c) -----------------------------------------------------------------------
+func is_civil_war(x: int, y: int) -> bool:
+	for e in civil_wars:
+		if (int(e[0]) == x and int(e[1]) == y) or (int(e[0]) == y and int(e[1]) == x):
+			return true
+	return false
+
+
+## Províncias que se levantam: rebeldes (agitação ≥ rebelde), fora a capital.
+func _civil_provinces(c: Country) -> Array:
+	var out: Array = []
+	for pid in c.province_ids:
+		if provinces[pid].unrest >= UNREST_REBEL and pid != c.capital:
+			out.append(pid)
+	return out
+
+
+## País livre (morto, não-jogador) que assumiria os rebeldes, ou -1 se a guerra civil não é possível.
+## Prefere a nação histórica com mais núcleos entre os rebeldes; senão, o de menor id.
+func civil_war_possible(c: Country) -> int:
+	var n := c.province_ids.size()
+	if n < CIVIL_MIN_PROVINCES:
+		return -1
+	for e in civil_wars:
+		if int(e[0]) == c.id or int(e[1]) == c.id:
+			return -1
+	var reb := _civil_provinces(c)
+	if reb.is_empty() or reb.size() * 100 / n < CIVIL_REBEL_SHARE:
+		return -1
+	var cnt := {}
+	for pid in reb:
+		var t: int = provinces[int(pid)].core_owner
+		if t >= 0 and t != c.id and t != player_country and not countries[t].is_alive():
+			cnt[t] = int(cnt.get(t, 0)) + 1
+	var best := -1
+	for t in cnt.keys():
+		if best < 0 or int(cnt[t]) > int(cnt[best]) or (int(cnt[t]) == int(cnt[best]) and int(t) < best):
+			best = int(t)
+	if best >= 0:
+		return best
+	for k in countries.size():
+		if k != c.id and k != player_country and not countries[k].is_alive():
+			return k
+	return -1
+
+
+## Revolução com divisão do país: os rebeldes ficam com as províncias levantadas, metade das
+## proporções do tesouro, tropas paradas nelas e milícia; leis do movimento; guerra sem paz branca.
+@warning_ignore("integer_division")
+func _civil_war(c: Country, dom: int) -> String:
+	var tag := civil_war_possible(c)
+	var moved: Array = _civil_provinces(c)
+	var share: int = moved.size() * 100 / maxi(1, c.province_ids.size())
+	var nc := countries[tag]
+	for pid in moved:
+		transfer_province(int(pid), tag, false)
+		provinces[int(pid)].unrest = 10
+	_refresh_country_geometry(nc)
+	_refresh_country_geometry(c)
+	var cut: int = maxi(0, c.treasury) * share / 100
+	c.treasury -= cut
+	nc.treasury = cut + 100
+	for id in armies.keys():
+		var a: Army = armies[id]
+		if a.owner_id == c.id and moved.has(a.province_id) and not a.is_moving():
+			a.owner_id = tag
+			Events.army_changed.emit(id)
+	if nc.capital >= 0:
+		_add_regiments(nc.capital, tag, 2 + moved.size() / 4)
+	nc.laws = c.laws.duplicate()
+	nc.law_cd = []
+	for i in c.law_cd.size():
+		nc.law_cd.append(0)
+	var gov := Laws.group_index("gov")
+	var gt: int = int([1, 2, 2, 0, 0][dom])
+	if int(nc.laws[gov]) != gt:
+		_enact_law(nc, gov, gt, false, true)
+	for t in _laws_toward(nc, dom, gov, 3):
+		_enact_law(nc, int(t[0]), int(t[1]), false, true)
+	nc.seats = [0, 0, 0, 0, 0]
+	nc.elect_cd = 12
+	nc.overlord = -1
+	nc.infamy = 0
+	nc.rev_cd = REV_COOLDOWN
+	nc.rev_clock = 0
+	nc.strikes = 0
+	for i in 6:
+		nc.sat[i] = 50
+	for j in 5:
+		nc.radical[j] = 100 if j == dom else 0
+	nc.stability = int(politics_of(nc)["stability"])
+	for al in allies_of(tag):
+		alliances.erase(_pair(tag, int(al)))
+	civil_wars.append([c.id, tag, clock.year * 12 + clock.month])
+	_start_war(tag, c.id)
+	nc.infamy = 0
+	Events.treasury_changed.emit(tag)
+	return "%s: guerra civil! %d províncias se levantaram como %s (%s)." % [c.name, moved.size(), nc.name, revolution_label({"kind": 2, "dom": dom})]
+
+
+## Andamento mensal das guerras civis do país `c`: some da lista quando a guerra acaba por conquista;
+## em impasse (CIVIL_MAX_MONTHS) termina e os rebeldes ficam independentes.
+func _civil_step(c: Country) -> void:
+	var now: int = clock.year * 12 + clock.month
+	for i in range(civil_wars.size() - 1, -1, -1):
+		var e: Array = civil_wars[i]
+		if int(e[0]) != c.id:
+			continue
+		var rb: int = int(e[1])
+		if not at_war(c.id, rb) or not countries[rb].is_alive() or not c.is_alive():
+			civil_wars.remove_at(i)
+		elif now - int(e[2]) >= CIVIL_MAX_MONTHS:
+			civil_wars.remove_at(i)
+			_end_war(c.id, rb)
+			truces[_pair(c.id, rb)] = tick + TRUCE_DAYS
+			var txt := "%s: a guerra civil terminou em impasse; %s ficou independente." % [c.name, countries[rb].name]
+			chronicle.append([clock.year, clock.month, c.id, 5, txt])
+			while chronicle.size() > CHRONICLE_MAX:
+				chronicle.remove_at(0)
+			if c.id == player_country or rb == player_country:
+				Events.notice.emit(txt)
+			elif player_country >= 0:
+				Events.notice.emit("Notícia do mundo — " + txt)
+			Events.war_changed.emit()
 
 
 ## Contagem de províncias por nível de agitação: {protest, prone, rebel}.
@@ -4998,6 +5139,8 @@ func state_hash() -> int:
 	h = _mix(h, tick)
 	h = _mix(h, frame)
 	h = _mix(h, chronicle.size())
+	for cw in civil_wars:
+		h = _mix(h, int(cw[0]) * 1000 + int(cw[1]) + int(cw[2]) * 1000000)
 	h = _mix(h, speed)
 	h = _mix(h, next_army_id)
 	for p in provinces:
@@ -5294,6 +5437,7 @@ func serialize_state() -> Dictionary:
 		"rev_cd": _country_ints("rev_cd"),
 		"rev_type": _country_ints("rev_type"),
 		"chronicle": chronicle.duplicate(true),
+		"civil_wars": civil_wars.duplicate(true),
 		"bld": blds,
 		"tech": _country_ints("tech_pts"),
 		"techs": _tech_lists(),
@@ -5538,6 +5682,10 @@ func load_state(d: Dictionary) -> bool:
 	var stk: Array = d.get("strikes", [])
 	var rcd: Array = d.get("rev_cd", [])
 	var rty: Array = d.get("rev_type", [])
+	civil_wars = []
+	for cwe in d.get("civil_wars", []):
+		if cwe is Array and (cwe as Array).size() == 3:
+			civil_wars.append([int(cwe[0]), int(cwe[1]), int(cwe[2])])
 	chronicle = []
 	for ce in d.get("chronicle", []):
 		if ce is Array and (ce as Array).size() == 5:

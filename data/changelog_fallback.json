@@ -1,8 +1,13 @@
 {
- "version": "0.40.0",
- "title": "GeoEmpire 8 — v0.40.0 (Política B19b)",
- "body": "## Secessões nacionalistas\n- Se a corrente **nacionalista** domina e há províncias em protesto cujo **núcleo é de uma nação histórica que desapareceu**, o relógio da revolução termina em **secessão**: essas regiões declaram independência e a nação renasce.\n- A nova nação leva a parte proporcional do tesouro, as tropas paradas nas regiões e 2 regimentos de milícia; a capital e a última província do país original nunca saem.\n- Fica em paz, mas com relações ruins (−60) com o país original; 5 anos de carência para ambos.\n- Os avisos do relógio e a tela de Política mostram a previsão \"secessão nacionalista\". Na crônica aparece em dourado; no mapa a capital ganha anéis verdes.\n- A guerra civil (B19c) é a próxima etapa.\n- Saves antigos funcionam.",
+ "version": "0.41.0",
+ "title": "GeoEmpire 8 — v0.41.0 (Política B19c)",
+ "body": "## Guerra civil\n- Se uma revolução estoura com **35% ou mais das províncias rebeldes**, o país tem **6+ províncias** e existe uma nação livre (morta), o país se divide: os rebeldes assumem as províncias levantadas (a capital fica com o governo) sob o nome de uma nação histórica com núcleos ali.\n- Os rebeldes ficam com leis na direção do movimento, parte proporcional do tesouro, as tropas paradas nas regiões e milícia. A guerra é declarada na hora e aliados do governo entram.\n- **Sem paz branca, indenização ou vassalagem**: só a anexação (pontuação de guerra) ou a conquista total encerram. Em **impasse de 36 meses** a guerra termina e os rebeldes ficam independentes.\n- Previsão no relógio e na tela de Política (\"guerra civil socialista\" etc.); crônica em vermelho; anéis vermelhos na capital.\n- Corrigido: a secessão não cobra mais a perda de tesouro da revolução.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.40.0",
+   "title": "GeoEmpire 8 — v0.40.0 (Política B19b)",
+   "body": "## Secessões nacionalistas\n- Se a corrente **nacionalista** domina e há províncias em protesto cujo **núcleo é de uma nação histórica que desapareceu**, o relógio da revolução termina em **secessão**: essas regiões declaram independência e a nação renasce.\n- A nova nação leva a parte proporcional do tesouro, as tropas paradas nas regiões e 2 regimentos de milícia; a capital e a última província do país original nunca saem.\n- Fica em paz, mas com relações ruins (−60) com o país original; 5 anos de carência para ambos.\n- Os avisos do relógio e a tela de Política mostram a previsão \"secessão nacionalista\". Na crônica aparece em dourado; no mapa a capital ganha anéis verdes.\n- A guerra civil (B19c) é a próxima etapa.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.39.0",
    "title": "GeoEmpire 8 — v0.39.0 (Política B19a)",

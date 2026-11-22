@@ -16,6 +16,7 @@ func _initialize() -> void:
 	var start := _snapshot()
 	print("ANO  0 | ", _fmt(start))
 	_demo_probe(0)
+	_growth_probe(0)
 	for year in range(1, 11):
 		for i in 365:
 			g.step()
@@ -23,6 +24,8 @@ func _initialize() -> void:
 		print("ANO %2d | " % year, _fmt(s))
 		if year == 10:
 			_demo_probe(year)
+		if year == 5 or year == 10:
+			_growth_probe(year)
 		var vas := 0
 		for c in g.countries:
 			if c.is_alive() and c.overlord >= 0:
@@ -223,3 +226,36 @@ func _demo_probe(year: int) -> void:
 	pc1.sort()
 	gini.sort()
 	print("SONDA ano %d | n %d | sol min/med/max %d/%d/%d | pc camponeses %d/%d/%d | pc operarios %d/%d/%d | gini %d/%d/%d" % [year, sol.size(), sol[0], sol[sol.size() / 2], sol[-1], pc0[0], pc0[pc0.size() / 2], pc0[-1], pc1[0], pc1[pc1.size() / 2], pc1[-1], gini[0], gini[gini.size() / 2], gini[-1]])
+
+
+## Sonda (B25): de onde vem o crescimento do PIB — produção primária, fábricas, edifícios, população.
+func _growth_probe(year: int) -> void:
+	var prim := 0
+	var pop := 0
+	var fac := 0
+	var fac_n := 0
+	var lv := {}
+	var tech := 0
+	var lit := 0
+	var n := 0
+	for p in g.provinces:
+		if p.owner_id < 0:
+			continue
+		prim += p.production()
+		pop += p.population
+		if p.factory != "" and p.factory_level > 0:
+			fac += p.factory_level
+			fac_n += 1
+		for k in p.bld.keys():
+			lv[k] = int(lv.get(k, 0)) + int(p.bld[k])
+		lv["workshop"] = int(lv.get("workshop", 0)) + p.workshop
+	for c in g.countries:
+		if c.is_alive():
+			n += 1
+			tech += int(g.tech_fx(c)["prod"]) + int(g.tech_fx(c)["ind"])
+			lit += c.literacy
+	var parts := []
+	for k in lv.keys():
+		parts.append("%s %d" % [k, lv[k]])
+	parts.sort()
+	print("CRESC ano %d | prim %d | pop %d | prim/pop*1e6 %d | fabricas %d (niveis %d) | tech prod+ind medio %d | alfab media %d | edificios: %s" % [year, prim, pop, prim * 1000000 / maxi(1, pop), fac_n, fac, tech / maxi(1, n), lit / maxi(1, n), ", ".join(parts)])

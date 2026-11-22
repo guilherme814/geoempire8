@@ -106,8 +106,8 @@ func _check(year: int, s: Dictionary, start: Dictionary) -> void:
 		alerts.append("ano %d: indice de precos fora de 40..250 (%d..%d)" % [year, s["cpi_min"], s["cpi_max"]])
 	if int(s["p_max"]) > 400 or int(s["p_min"]) < 25:
 		alerts.append("ano %d: preco local extremo (%d%%..%d%%)" % [year, s["p_min"], s["p_max"]])
-	if int(s["gdp"]) > int(start["gdp"]) * 3 or int(s["gdp"]) * 2 < int(start["gdp"]):
-		alerts.append("ano %d: PIB mundial %d vs inicio %d (variacao >3x ou <0,5x)" % [year, s["gdp"], start["gdp"]])
+	if int(s["gdp"]) > int(start["gdp"]) * 2 or int(s["gdp"]) * 2 < int(start["gdp"]):
+		alerts.append("ano %d: PIB mundial %d vs inicio %d (variacao >2x ou <0,5x)" % [year, s["gdp"], start["gdp"]])
 	if int(s["pop"]) > int(start["pop"]) * 2 or int(s["pop"]) * 10 < int(start["pop"]) * 7:
 		alerts.append("ano %d: populacao mundial %d vs inicio %d" % [year, s["pop"], start["pop"]])
 	if int(s["tr_max"]) > 50000000:

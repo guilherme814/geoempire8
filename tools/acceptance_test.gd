@@ -1749,6 +1749,13 @@ func _secession() -> void:
 		c.radical[k] = 0
 	c.radical[3] = 900
 	c.rev_cd = 0
+	var dbg_n := 0
+	var dbg_u := 0
+	for pid in c.province_ids:
+		if g.provinces[pid].core_owner == other:
+			dbg_n += 1
+			dbg_u = g.provinces[pid].unrest
+	print("DEBUG secessao other=%d alvo=%d nucleos=%d unrest=%d capital=%d provs_other=%d" % [other, g.secession_target(c), dbg_n, dbg_u, c.capital, g.countries[other].province_ids.size()])
 	check("secessao: alvo e o pais historico morto", g.secession_target(c) == other)
 	var pol: Dictionary = g.politics_of(c)
 	check("secessao: previsao e secessao nacionalista", int(g.revolution_forecast(c, pol)["kind"]) == 3)

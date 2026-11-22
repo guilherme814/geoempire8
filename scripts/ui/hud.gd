@@ -1790,6 +1790,29 @@ func _add_admin_card(body: Control, c: Country) -> void:
 		card.add_child(dl)
 
 
+## Card "Pobreza e demografia" (B13): miséria, fome, natalidade, mortalidade e assistência social.
+func _add_welfare_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Pobreza e demografia", "people")
+	var col: Color = UIKit.NEG if c.poverty >= 60 else (UIKit.WARN if c.poverty >= 30 else UIKit.POS)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
+	var nm := UIKit.label("Na miséria", 16, UIKit.TEXT)
+	nm.custom_minimum_size = Vector2(250, 0)
+	row.add_child(nm)
+	row.add_child(UIKit.bar(float(c.poverty), 100.0, col, 14.0))
+	var tl := UIKit.label("%d%%" % c.poverty, 14, col)
+	tl.custom_minimum_size = Vector2(110, 0)
+	row.add_child(tl)
+	var dm: Dictionary = Game.demography_pm(c)
+	var wl: int = Government.level(c.budget_code, 3)
+	var gini: int = int(Game.class_income(c)["gini"])
+	var txt := "Natalidade %d‰ · mortalidade %d‰ ao ano · crescimento líquido %s%d‰. Desigualdade (Gini) %d,%02d%s. Assistência social: %s (reduz a miséria em %d pontos)." % [int(dm["birth"]), int(dm["death"]), "+" if int(dm["birth"]) >= int(dm["death"]) else "", int(dm["birth"]) - int(dm["death"]), gini / 1000, (gini % 1000) / 10, (" · fome em %d%% das províncias" % c.famine_pct) if c.famine_pct > 0 else "", str(Government.LEVEL_NAMES[wl]), int(Game.POVERTY_WELFARE[wl])]
+	var info := UIKit.label(txt + " Padrão de vida, hospitais, saneamento e alimentos reduzem a mortalidade; a miséria radicaliza o povo rumo ao socialismo.", 14, UIKit.TEXT_DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(info)
+
+
 ## Card "Cultura e religião" (B22): Estado, minorias e políticas de assimilação/conversão.
 func _add_culture_card(body: Control, c: Country) -> void:
 	var card := _card(body, "Cultura e religião", "scales")
@@ -2112,6 +2135,7 @@ func _refresh_politics() -> void:
 	_add_unrest_card(body, c)
 	_add_order_card(body, c)
 	_add_admin_card(body, c)
+	_add_welfare_card(body, c)
 	_add_culture_card(body, c)
 	_add_intervention_card(body, c)
 

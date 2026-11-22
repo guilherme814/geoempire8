@@ -687,6 +687,7 @@ func run_all() -> void:
 	_admin()
 	_cultures()
 	_intervention()
+	_welfare()
 	_money()
 
 
@@ -2059,4 +2060,63 @@ func _intervention() -> void:
 	g.load_state(bl)
 	var lc: Country = g.countries[me]
 	check("politica economica persiste no save", lc.mono_good == ri and (lc.sub_mask >> ti) & 1 == 1 and Province.is_sub(me, "textile") and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _welfare() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	# Pobreza-alvo: cai com o padrao de vida e com a assistencia social; sobe com a fome.
+	c.famine_pct = 0
+	c.budget_code = Government.with_level(c.budget_code, 3, 0)
+	var pob: int = g.poverty_target(c, 78)
+	var ric: int = g.poverty_target(c, 400)
+	check("pobreza: padrao baixo gera miseria alta", pob >= 90)
+	check("pobreza: padrao alto elimina a miseria", ric == 0)
+	var med: int = g.poverty_target(c, 130)
+	c.famine_pct = 60
+	check("pobreza: fome agrava a miseria", g.poverty_target(c, 130) == mini(100, med + 30))
+	c.famine_pct = 0
+	c.budget_code = Government.with_level(c.budget_code, 3, 2)
+	check("pobreza: assistencia social reduz a miseria", g.poverty_target(c, 130) == maxi(0, med - 18))
+	c.budget_code = Government.with_level(c.budget_code, 3, 0)
+	# Taxas demograficas: pobreza aumenta natalidade e mortalidade, com crescimento liquido positivo.
+	check("demografia: mortalidade sobe com a pobreza", g.death_rate(100) > g.death_rate(0))
+	check("demografia: natalidade sobe com a pobreza", g.birth_rate(100) > g.birth_rate(0))
+	check("demografia: crescimento liquido positivo em qualquer pobreza", g.birth_rate(0) > g.death_rate(0) and g.birth_rate(100) > g.death_rate(100))
+	check("demografia: miseria reduz o crescimento liquido", g.birth_rate(0) - g.death_rate(0) > g.birth_rate(100) - g.death_rate(100))
+	var dm: Dictionary = g.demography_pm(c)
+	check("demografia: taxas anuais plausiveis", int(dm["birth"]) > 0 and int(dm["death"]) > 0 and int(dm["birth"]) < 80 and int(dm["death"]) < 80)
+	# Populacao cresce menos num pais miseravel que num prospero (mesmo crescimento base).
+	var pid: int = c.province_ids[0]
+	var prov: Province = g.provinces[pid]
+	var p0: int = prov.population
+	c.poverty = 0
+	var fast: int = prov.population * (g.birth_rate(c.poverty) - g.death_rate(c.poverty)) / 100000
+	c.poverty = 100
+	var slow: int = prov.population * (g.birth_rate(c.poverty) - g.death_rate(c.poverty)) / 100000
+	check("demografia: crescimento menor na miseria", fast > slow and prov.population == p0)
+	# Miseria radicaliza (pressao socialista maior com pobreza alta).
+	var pol: Dictionary = g.politics_of(c)
+	c.poverty = 0
+	var t_rich: int = int(g.politics_of(c)["target"][0])
+	c.poverty = 100
+	var t_poor: int = int(g.politics_of(c)["target"][0])
+	check("pobreza: satisfacao dos camponeses cai com a miseria", t_rich >= t_poor and pol.has("sol"))
+	# Mes simulado atualiza pobreza rumo ao alvo (passo maximo 3) e fome.
+	c.poverty = 50
+	c.rev_cd = 999
+	var tgt: int = g.poverty_target(c, int(g.politics_of(c)["sol"]))
+	g._update_politics(c)
+	check("pobreza: anda no maximo 3 pontos por mes rumo ao alvo", absi(c.poverty - 50) <= 3 and (tgt == 50 or c.poverty != 50))
+	# Persistencia.
+	c.poverty = 37
+	c.famine_pct = 12
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	c.poverty = 80
+	c.famine_pct = 0
+	g.load_state(bl)
+	check("pobreza: persiste no save", g.countries[me].poverty == 37 and g.countries[me].famine_pct == 12 and g.state_hash() == hh)
 	g.load_state(blob)

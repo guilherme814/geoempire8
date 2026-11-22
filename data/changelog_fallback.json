@@ -1,8 +1,13 @@
 {
- "version": "0.45.0",
- "title": "GeoEmpire 8 — v0.45.0 (Política B23)",
- "body": "## Planejamento e intervenção econômica\nNova seção \"Planejamento e intervenção\" na tela de Política:\n- **Plano quinquenal**: um setor industrial ganha +15% de produção por 60 meses (carência de 2 anos depois).\n- **Subsídios**: o Estado paga 20% da folha de salários de até 2 setores; o lucro privado e os impostos sobem, o tesouro paga a conta.\n- **Estatização**: o Estado compra um setor (indenização de 6 meses de lucro): o tesouro fica com 90% do lucro operacional, capitais privados encolhem 15% e liberais/conservadores se radicalizam (socialistas se acalmam). Dá para privatizar de volta.\n- **Monopólio estatal** sobre um recurso: o Estado captura 25% da produção, mas as províncias produtoras ficam mais agitadas.\n- Tudo entra no orçamento e no mercado (a produção do plano afeta a oferta). A IA ainda não usa esses instrumentos (B24).\n- Saves antigos funcionam.",
+ "version": "0.46.0",
+ "title": "GeoEmpire 8 — v0.46.0 (Bem-estar B13)",
+ "body": "## Pobreza, natalidade e mortalidade\n- Cada país tem agora um índice de **miséria** (% da população pobre), calculado pelo padrão de vida, pela **fome** nas províncias e pela **assistência social** (Reforçada reduz 18 pontos, Normal 8). Anda no máximo 3 pontos por mês.\n- **Demografia**: natalidade e mortalidade dependem da miséria (pobres têm mais filhos e vivem menos); hospitais e saneamento continuam reduzindo a mortalidade e a fome ainda freia o crescimento. O crescimento total fica próximo do anterior, mas países prósperos crescem mais rápido que os miseráveis.\n- **Política**: a miséria derruba a satisfação de camponeses e operários e alimenta o **socialismo**; prosperidade ajuda a estabilidade.\n- Nova tela em Política: **Pobreza e demografia** (miséria, natalidade e mortalidade por mil, crescimento líquido, Gini, fome e assistência).\n- Saves antigos funcionam (a miséria converge em poucos meses).",
  "history": [
+  {
+   "version": "0.45.0",
+   "title": "GeoEmpire 8 — v0.45.0 (Política B23)",
+   "body": "## Planejamento e intervenção econômica\nNova seção \"Planejamento e intervenção\" na tela de Política:\n- **Plano quinquenal**: um setor industrial ganha +15% de produção por 60 meses (carência de 2 anos depois).\n- **Subsídios**: o Estado paga 20% da folha de salários de até 2 setores; o lucro privado e os impostos sobem, o tesouro paga a conta.\n- **Estatização**: o Estado compra um setor (indenização de 6 meses de lucro): o tesouro fica com 90% do lucro operacional, capitais privados encolhem 15% e liberais/conservadores se radicalizam (socialistas se acalmam). Dá para privatizar de volta.\n- **Monopólio estatal** sobre um recurso: o Estado captura 25% da produção, mas as províncias produtoras ficam mais agitadas.\n- Tudo entra no orçamento e no mercado (a produção do plano afeta a oferta). A IA ainda não usa esses instrumentos (B24).\n- Saves antigos funcionam."
+  },
   {
    "version": "0.44.0",
    "title": "GeoEmpire 8 — v0.44.0 (Política B22)",

@@ -3108,19 +3108,26 @@ func _month_run_stage(i: int) -> bool:
 			var food := region_food()
 			var pool := food_pool(food)
 			famine_regions = 0
+			var fam_n: Array = []
+			fam_n.resize(countries.size())
+			fam_n.fill(0)
 			for p in provinces:
 				# Crescimento demográfico: +0,1% ao mês (metade, em região com fome).
 				var own: int = p.owner_id
 				var pfx: Dictionary = tech_fx(countries[own]) if own >= 0 else {}
-				var grow: int = p.population / 1000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
+				var pov: int = countries[own].poverty if own >= 0 else 50
+				var grow: int = p.population * (birth_rate(pov) - death_rate(pov)) / 100000 + p.population * int(p.bld.get("hospital", 0)) / 3500 + p.population * int(pfx.get("pop", 0)) / 10000 + p.population * int(p.bld.get("sanitation", 0)) / 2500
 				if own >= 0 and region_famine(food, p, pool):
 					grow /= FAMINE_GROWTH_DIV
 					famine_regions += 1
+					fam_n[own] += 1
 				p.population += grow
 				# Recuperação de mão de obra.
 				var mx := p.manpower_max() * (100 + int(pfx.get("mp", 0))) / 100
 				if p.manpower < mx:
 					p.manpower = mini(mx, p.manpower + maxi(1, mx * MANPOWER_REGEN_PCT / 100))
+			for c in countries:
+				c.famine_pct = fam_n[c.id] * 100 / maxi(1, c.province_ids.size()) if c.is_alive() else 0
 		1:
 			_migr_init()
 		2:
@@ -3540,6 +3547,14 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 ## Retorna {"dono|região": [oferta, demanda]}. Derivado da produção e da população, não é estado.
 const FOOD := ["grain", "fish", "livestock"]
 const FAMINE_PCT := 50           # abaixo disso (oferta/demanda) a região passa fome
+## Bem-estar e demografia (B13): pobreza derivada do padrão de vida (sol), fome e assistência social.
+const POVERTY_LINE := 200            # padrão de vida (x10) em que a miséria some
+const POVERTY_SPAN := 130            # largura da faixa: sol = LINE-SPAN => 100% de pobres
+const POVERTY_WELFARE := [0, 8, 18]  # redução (pontos) por nível da assistência social
+const BIRTH_BASE := 170              # nascimentos por 100 mil por mês, sem pobreza
+const BIRTH_POOR := 40               # acréscimo com 100% de pobreza (famílias pobres têm mais filhos)
+const DEATH_BASE := 60               # mortes por 100 mil por mês, sem pobreza
+const DEATH_POOR := 60               # acréscimo com 100% de pobreza
 const FAMINE_GROWTH_DIV := 2     # fome corta o crescimento populacional pela metade
 
 
@@ -3598,6 +3613,41 @@ func region_ratio(food: Dictionary, owner: int, region: String, pool: Dictionary
 
 func region_famine(food: Dictionary, p: Province, pool: Dictionary = {}) -> bool:
 	return region_ratio(food, p.owner_id, p.region, pool) < FAMINE_PCT
+
+
+## Pobreza-alvo (0..100) a partir do padrão de vida, da fome e da assistência social.
+@warning_ignore("integer_division")
+func poverty_target(c: Country, sol: int) -> int:
+	var p: int = clampi((POVERTY_LINE - sol) * 100 / POVERTY_SPAN, 0, 100)
+	p += c.famine_pct / 2
+	p -= int(POVERTY_WELFARE[clampi(Government.level(c.budget_code, 3), 0, 2)])
+	return clampi(p, 0, 100)
+
+
+## Nascimentos e mortes por 100 mil habitantes por mês, dada a pobreza (0..100).
+func birth_rate(pov: int) -> int:
+	return BIRTH_BASE + pov * BIRTH_POOR / 100
+
+
+func death_rate(pov: int) -> int:
+	return DEATH_BASE + pov * DEATH_POOR / 100
+
+
+## Taxas anuais em por mil: {"birth", "death"} (hospitais e saneamento reduzem a mortalidade).
+@warning_ignore("integer_division")
+func demography_pm(c: Country) -> Dictionary:
+	var hosp := 0
+	var san := 0
+	var pop := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		hosp += p.population * int(p.bld.get("hospital", 0))
+		san += p.population * int(p.bld.get("sanitation", 0))
+		pop += p.population
+	var cut: int = (hosp * 100000 / 3500 + san * 100000 / 2500) / maxi(1, pop)
+	var b: int = birth_rate(c.poverty)
+	var d: int = maxi(10, death_rate(c.poverty) - cut)
+	return {"birth": b * 12 / 100, "death": d * 12 / 100}
 
 
 ## Pops (B1): população de cada província por profissão/classe [camponeses, operários, aristocratas,
@@ -3727,8 +3777,9 @@ func politics_of(c: Country) -> Dictionary:
 	var tax := c.tax_pct
 	var broke := c.treasury < 0
 	var tg := [0, 0, 0, 0, 0, 0]
-	tg[0] = 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 4
-	tg[1] = 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 2
+	var pov_t: int = (40 - c.poverty) / 6       # miséria derruba a satisfação dos pobres; prosperidade ajuda (B13)
+	tg[0] = pov_t + 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 4
+	tg[1] = pov_t + 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 2
 	tg[2] = 75 - (tax - 30) / 2 - c.literacy / 25
 	tg[3] = 45 + clampi(int(e["trade"]) / 10, 0, 25) + clampi(int(e["industry"]) / 10, 0, 15) - emb_n * 5 - (15 if is_blockaded(c.id) else 0) - (tax - 30)
 	tg[4] = 50 + (-30 if broke else 15) + c.literacy / 30
@@ -3775,7 +3826,7 @@ func politics_of(c: Country) -> Dictionary:
 		tg[i] = clampi(tg[i] + int(lmp["stab"]) + int(tech_fx(c)["stab"]) + int(lmp["sat"][i]) + legit + int(gsh[i]) + int(cterm[i]) + hist_bias + int(prof_sat.get(str(i), 0)), 0, 100)
 
 	return {"share": sh, "target": tg, "power": pw, "power_total": tot_pw, "ideo": ideo,
-		"fit": fit, "legit": legit, "stability": ssum / maxi(1, wsum)}
+		"fit": fit, "legit": legit, "stability": ssum / maxi(1, wsum), "sol": sol}
 
 
 ## Reformas que a corrente dominante exige: [{group, option, gain}] das 3 maiores melhorias de afinidade.
@@ -3819,6 +3870,7 @@ func _stability_from(c: Country, pol: Dictionary) -> int:
 @warning_ignore("integer_division")
 func _update_politics(c: Country) -> void:
 	var pol := politics_of(c)
+	c.poverty = c.poverty + clampi(poverty_target(c, int(pol["sol"])) - c.poverty, -3, 3)
 	for i in 6:
 		c.sat[i] = int(c.sat[i]) + clampi(int(pol["target"][i]) - int(c.sat[i]), -2, 2)
 	c.stability = _stability_from(c, pol)
@@ -3859,6 +3911,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 	if rep or sge:
 		for j in 5:
 			press[j] += 150 if sge else 90            # a repressão alimenta o ressentimento
+	press[2] += maxi(0, c.poverty - 35) * 2           # miséria alimenta o socialismo (B13)
 	press[3] += minority_pct(c)                      # minorias culturais alimentam o nacionalismo (B22)
 	var rmax := 0
 	for j in 5:
@@ -5659,6 +5712,7 @@ func state_hash() -> int:
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
 		h = _mix(h, c.admin * 1000 + c.anticorr)
+		h = _mix(h, c.poverty * 1000 + c.famine_pct)
 		h = _mix(h, c.plan_sector * 100000 + c.plan_left * 1000 + c.plan_cd + c.sub_mask * 7919 + c.nat_mask * 104729 + c.mono_good * 1299709)
 		h = _mix(h, c.culture * 10000 + c.faith * 100 + c.culture_policy * 10 + c.faith_policy)
 		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
@@ -5872,6 +5926,8 @@ func serialize_state() -> Dictionary:
 		"rev_cd": _country_ints("rev_cd"),
 		"security": _country_ints("security"),
 		"admin": _country_ints("admin"),
+		"poverty": _country_ints("poverty"),
+		"famine_pct": _country_ints("famine_pct"),
 		"plan_sector": _country_ints("plan_sector"),
 		"plan_left": _country_ints("plan_left"),
 		"plan_cd": _country_ints("plan_cd"),
@@ -6146,6 +6202,8 @@ func load_state(d: Dictionary) -> bool:
 	var rcd: Array = d.get("rev_cd", [])
 	var sec_a: Array = d.get("security", [])
 	var adm_a: Array = d.get("admin", [])
+	var pov_a: Array = d.get("poverty", [])
+	var fam_a: Array = d.get("famine_pct", [])
 	var psec_a: Array = d.get("plan_sector", [])
 	var plf_a: Array = d.get("plan_left", [])
 	var pcd_a: Array = d.get("plan_cd", [])
@@ -6211,6 +6269,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
 		countries[i].security = int(sec_a[i]) if i < sec_a.size() else 0
 		countries[i].admin = int(adm_a[i]) if i < adm_a.size() else 0
+		countries[i].poverty = int(pov_a[i]) if i < pov_a.size() else 50
+		countries[i].famine_pct = int(fam_a[i]) if i < fam_a.size() else 0
 		countries[i].culture = int(ccu_a[i]) if i < ccu_a.size() else -1
 		countries[i].faith = int(cfa_a[i]) if i < cfa_a.size() else -1
 		countries[i].culture_policy = int(cpo_a[i]) if i < cpo_a.size() else 0

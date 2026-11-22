@@ -33,7 +33,7 @@ Economia
 | B10 | Impostos detalhados por classe, consumo e tarifa; evasão | feita no código (v0.31.0) |
 | B11 | Infraestrutura e transporte entre mercados; comboios marítimos | feita no código (v0.32.0) |
 | B12 | Ciclos econômicos: expansão, recessão, crises | feita no código (v0.33.0): risco, pânico; ranking e gráficos |
-| B13 | Desigualdade e bem-estar: pobreza, natalidade e mortalidade | pendente |
+| B13 | Desigualdade e bem-estar: pobreza, natalidade e mortalidade | feita no código (v0.46.0): miséria, demografia, assistência, ligação com agitação |
 
 Política
 | # | Etapa | Estado |

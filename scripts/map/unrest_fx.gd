@@ -63,7 +63,7 @@ func _draw() -> void:
 	var t := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.006)
 	for fl in _flash:
 		var fc: Vector2 = fl[0]
-		var fcol := Color(0.55, 0.62, 0.95, 0.9) if int(fl[1]) == 1 else Color(1.0, 0.82, 0.25, 0.95)
+		var fcol := Color(0.55, 0.62, 0.95, 0.9) if int(fl[1]) == 1 else (Color(0.30, 0.95, 0.70, 0.95) if int(fl[1]) == 3 else Color(1.0, 0.82, 0.25, 0.95))
 		fcol.a *= 1.0 - float(int(fl[2])) * 0.3
 		for k in 3:
 			var rr := (14.0 + 16.0 * float(k) + 10.0 * t) / z

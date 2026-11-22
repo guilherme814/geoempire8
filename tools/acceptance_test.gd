@@ -681,6 +681,7 @@ func run_all() -> void:
 	_bills()
 	_unrest()
 	_revolutions()
+	_secession()
 	_money()
 
 
@@ -1723,4 +1724,44 @@ func _revolutions() -> void:
 	g.chronicle = []
 	g.load_state(bl)
 	check("cronica e carencia persistem no save", g.chronicle.size() == cs and g.countries[me].rev_cd == cd and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _secession() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var other := -1
+	for k in g.countries.size():
+		if k != me and g.countries[k].is_alive() and g.countries[k].province_ids.size() >= 2 and g.countries[k].overlord < 0:
+			other = k
+			break
+	if other < 0:
+		check("secessao: pais de teste encontrado", false)
+		g.load_state(blob)
+		return
+	g._annex_country(me, other)
+	check("secessao: pais anexado esta morto", not g.countries[other].is_alive())
+	var n_before: int = c.province_ids.size()
+	for pid in c.province_ids:
+		g.provinces[pid].unrest = 60
+	for k in 5:
+		c.radical[k] = 0
+	c.radical[3] = 900
+	c.rev_cd = 0
+	check("secessao: alvo e o pais historico morto", g.secession_target(c) == other)
+	var pol: Dictionary = g.politics_of(c)
+	check("secessao: previsao e secessao nacionalista", int(g.revolution_forecast(c, pol)["kind"]) == 3)
+	var tre: int = c.treasury
+	var nch: int = g.chronicle.size()
+	g._revolution(c, pol)
+	check("secessao: o pais historico renasce", g.countries[other].is_alive() and g.countries[other].capital >= 0)
+	check("secessao: provincias trocam de dono", c.province_ids.size() < n_before and g.provinces[g.countries[other].capital].owner_id == other)
+	check("secessao: tesouro dividido", c.treasury < tre and g.countries[other].treasury > 0)
+	check("secessao: capital do pais original fica", g.provinces[c.capital].owner_id == me and c.is_alive())
+	check("secessao: entra na cronica e gera carencia", g.chronicle.size() == nch + 1 and int(g.chronicle[nch][3]) == 3 and c.rev_cd > 0)
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	g.load_state(bl)
+	check("secessao: persiste no save", g.countries[other].is_alive() and g.state_hash() == hh)
 	g.load_state(blob)

@@ -3863,13 +3863,47 @@ func revolution_forecast(c: Country, pol: Dictionary) -> Dictionary:
 		if str(e["id"]) == "mil":
 			mil = int(e["tier"])
 	var coup: bool = (dom == 0 or dom == 3 or dom == 4) and mil >= 1
+	if dom == 3 and secession_target(c) >= 0:
+		return {"dom": dom, "kind": 3}              # nacionalistas com regiões de nações históricas: secessão
 	return {"dom": dom, "kind": 1 if coup else 2}
 
 
 func revolution_label(fc: Dictionary) -> String:
+	if int(fc["kind"]) == 3:
+		return "secessão nacionalista (regiões declaram independência)"
 	if int(fc["kind"]) == 1:
 		return "golpe militar %s" % REV_IDEO[int(fc["dom"])]
 	return "revolução %s" % REV_IDEO[int(fc["dom"])]
+
+
+## Províncias que podem se separar para o país histórico `tag` (morto): do país `c`, com núcleo desse
+## país e agitação de protesto ou mais; a capital e a última província nunca saem.
+func _secession_provinces(c: Country, tag: int) -> Array:
+	var out: Array = []
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		if p.core_owner == tag and p.unrest >= UNREST_PROTEST and pid != c.capital:
+			out.append(pid)
+	if out.size() >= c.province_ids.size():
+		out.pop_back()
+	return out
+
+
+## País histórico morto com mais províncias de `c` prontas para a secessão (menor id no empate), ou -1.
+func secession_target(c: Country) -> int:
+	var cnt := {}
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		var t := p.core_owner
+		if t >= 0 and t != c.id and t < countries.size() and not countries[t].is_alive() and p.unrest >= UNREST_PROTEST and pid != c.capital:
+			cnt[t] = int(cnt.get(t, 0)) + 1
+	var best := -1
+	for t in cnt.keys():
+		if best < 0 or int(cnt[t]) > int(cnt[best]) or (int(cnt[t]) == int(cnt[best]) and int(t) < best):
+			best = int(t)
+	if best >= 0 and _secession_provinces(c, best).is_empty():
+		return -1
+	return best
 
 
 ## Melhores mudanças de lei na direção de uma corrente: [[grupo, opção, ganho]].
@@ -3899,24 +3933,33 @@ func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
 	var fc := revolution_forecast(c, pol)
 	var dom: int = int(fc["dom"])
 	var kind: int = force_kind if force_kind > 0 else int(fc["kind"])
-	var gov := Laws.group_index("gov")
-	var changes: Array = []
-	var gt: int = 0 if kind == 1 else int([1, 2, 2, 0, 0][dom])
-	if int(c.laws[gov]) != gt:
-		changes.append([gov, gt])
-	if kind == 1:
-		var pg := Laws.group_index("press")
-		if pg >= 0 and int(c.laws[pg]) != 0:
-			changes.append([pg, 0])
+	var sec_tag := -1
+	if kind == 3:
+		sec_tag = secession_target(c)
+		if sec_tag < 0:
+			kind = 2
+	var sec_txt := ""
+	if kind == 3:
+		sec_txt = _secede(c, sec_tag)
 	else:
-		for t in _laws_toward(c, dom, gov, 3):
-			changes.append([int(t[0]), int(t[1])])
-	for ch in changes:
-		_enact_law(c, int(ch[0]), int(ch[1]), false, true)
-		c.law_cd[int(ch[0])] = Laws.COOLDOWN_MONTHS
-	_clear_bill(c)
-	c.seats = [0, 0, 0, 0, 0]
-	c.elect_cd = 12 if kind == 2 else ELECTION_MONTHS
+		var gov := Laws.group_index("gov")
+		var changes: Array = []
+		var gt: int = 0 if kind == 1 else int([1, 2, 2, 0, 0][dom])
+		if int(c.laws[gov]) != gt:
+			changes.append([gov, gt])
+		if kind == 1:
+			var pg := Laws.group_index("press")
+			if pg >= 0 and int(c.laws[pg]) != 0:
+				changes.append([pg, 0])
+		else:
+			for t in _laws_toward(c, dom, gov, 3):
+				changes.append([int(t[0]), int(t[1])])
+		for ch in changes:
+			_enact_law(c, int(ch[0]), int(ch[1]), false, true)
+			c.law_cd[int(ch[0])] = Laws.COOLDOWN_MONTHS
+		_clear_bill(c)
+		c.seats = [0, 0, 0, 0, 0]
+		c.elect_cd = 12 if kind == 2 else ELECTION_MONTHS
 	for pid in c.province_ids:
 		provinces[pid].unrest = mini(provinces[pid].unrest, 25)
 	if c.treasury > 0:
@@ -3931,14 +3974,54 @@ func _revolution(c: Country, pol: Dictionary, force_kind: int = 0) -> void:
 	c.strikes = 0
 	c.stability = int(politics_of(c)["stability"])
 	var txt := "%s: %s." % [c.name, revolution_label({"kind": kind, "dom": dom}).capitalize()]
+	if kind == 3:
+		txt = sec_txt
 	chronicle.append([clock.year, clock.month, c.id, kind, txt])
 	while chronicle.size() > CHRONICLE_MAX:
 		chronicle.remove_at(0)
 	Events.treasury_changed.emit(c.id)
 	if c.id == player_country:
-		Events.notice.emit("%s O regime mudou; as leis e o parlamento foram refeitos." % txt)
+		Events.notice.emit(("%s O regime mudou; as leis e o parlamento foram refeitos." if kind != 3 else "%s") % txt)
 	elif player_country >= 0:
 		Events.notice.emit("Notícia do mundo — %s" % txt)
+
+
+## Secessão (B19b): as províncias de `tag` se separam de `c` e o país histórico renasce, independente.
+## Leva a parte do tesouro proporcional, tropas paradas nessas províncias e 2 regimentos de milícia.
+@warning_ignore("integer_division")
+func _secede(c: Country, tag: int) -> String:
+	var moved: Array = _secession_provinces(c, tag)
+	var share: int = moved.size() * 100 / maxi(1, c.province_ids.size())
+	var nc := countries[tag]
+	for pid in moved:
+		transfer_province(int(pid), tag, false)
+		provinces[int(pid)].unrest = 10
+	_refresh_country_geometry(nc)
+	_refresh_country_geometry(c)
+	var cut: int = maxi(0, c.treasury) * share / 100
+	c.treasury -= cut
+	nc.treasury = cut + 100
+	for id in armies.keys():
+		var a: Army = armies[id]
+		if a.owner_id == c.id and moved.has(a.province_id) and not a.is_moving():
+			a.owner_id = tag
+			Events.army_changed.emit(id)
+	if nc.capital >= 0:
+		_add_regiments(nc.capital, tag, 2)
+	nc.overlord = -1
+	nc.infamy = 0
+	nc.rev_cd = REV_COOLDOWN
+	nc.rev_clock = 0
+	nc.strikes = 0
+	for i in 6:
+		nc.sat[i] = 50
+	for j in 5:
+		nc.radical[j] = 0
+	nc.stability = int(politics_of(nc)["stability"])
+	relations[_pair(c.id, tag)] = -60
+	Events.treasury_changed.emit(tag)
+	Events.war_changed.emit()
+	return "%s: %d províncias declararam independência como %s." % [c.name, moved.size(), nc.name]
 
 
 ## Contagem de províncias por nível de agitação: {protest, prone, rebel}.

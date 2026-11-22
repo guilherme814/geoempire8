@@ -1711,7 +1711,7 @@ func _add_unrest_card(body: Control, c: Country) -> void:
 		var shown := 0
 		for k in range(Game.chronicle.size() - 1, -1, -1):
 			var ce: Array = Game.chronicle[k]
-			var chl := UIKit.label("%02d/%d — %s" % [int(ce[1]), int(ce[0]), str(ce[4])], 14, UIKit.NEG if int(ce[3]) == 2 else UIKit.WARN)
+			var chl := UIKit.label("%02d/%d — %s" % [int(ce[1]), int(ce[0]), str(ce[4])], 14, UIKit.NEG if int(ce[3]) == 2 else (UIKit.GOLD_BRIGHT if int(ce[3]) == 3 else UIKit.WARN))
 			chl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			card.add_child(chl)
 			shown += 1

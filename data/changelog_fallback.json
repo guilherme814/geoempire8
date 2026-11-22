@@ -1,8 +1,13 @@
 {
- "version": "0.39.0",
- "title": "GeoEmpire 8 — v0.39.0 (Política B19a)",
- "body": "## Golpes e revoluções\n- Quando o **relógio da revolução** chega a 12, o regime cai. A causa é a corrente mais radicalizada.\n- **Golpe militar** (corrente conservadora, nacionalista ou reacionária com os Militares ao menos influentes): autocracia, imprensa censurada, parlamento dissolvido.\n- **Revolução** (nos demais casos): o sistema de governo e 3 leis passam para a direção do movimento, o parlamento é refeito (nova eleição em 12 meses) e o tesouro perde 15%.\n- Depois: rebeldes dispersos, estabilidade reposta, **5 anos de carência**.\n- **Avisos** aos 6, 9 e 11 meses do relógio dizendo qual desfecho está a caminho; a tela de Política mostra a previsão.\n- **Crônica política do mundo** (golpes e revoluções de todos os países) e notícias no HUD.\n- No mapa, a capital ganha anéis pulsantes dourados (revolução) ou azuis (golpe).\n- A divisão do país (secessão e guerra civil) vem na B19b e B19c.\n- Saves antigos funcionam.",
+ "version": "0.40.0",
+ "title": "GeoEmpire 8 — v0.40.0 (Política B19b)",
+ "body": "## Secessões nacionalistas\n- Se a corrente **nacionalista** domina e há províncias em protesto cujo **núcleo é de uma nação histórica que desapareceu**, o relógio da revolução termina em **secessão**: essas regiões declaram independência e a nação renasce.\n- A nova nação leva a parte proporcional do tesouro, as tropas paradas nas regiões e 2 regimentos de milícia; a capital e a última província do país original nunca saem.\n- Fica em paz, mas com relações ruins (−60) com o país original; 5 anos de carência para ambos.\n- Os avisos do relógio e a tela de Política mostram a previsão \"secessão nacionalista\". Na crônica aparece em dourado; no mapa a capital ganha anéis verdes.\n- A guerra civil (B19c) é a próxima etapa.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.39.0",
+   "title": "GeoEmpire 8 — v0.39.0 (Política B19a)",
+   "body": "## Golpes e revoluções\n- Quando o **relógio da revolução** chega a 12, o regime cai. A causa é a corrente mais radicalizada.\n- **Golpe militar** (corrente conservadora, nacionalista ou reacionária com os Militares ao menos influentes): autocracia, imprensa censurada, parlamento dissolvido.\n- **Revolução** (nos demais casos): o sistema de governo e 3 leis passam para a direção do movimento, o parlamento é refeito (nova eleição em 12 meses) e o tesouro perde 15%.\n- Depois: rebeldes dispersos, estabilidade reposta, **5 anos de carência**.\n- **Avisos** aos 6, 9 e 11 meses do relógio dizendo qual desfecho está a caminho; a tela de Política mostra a previsão.\n- **Crônica política do mundo** (golpes e revoluções de todos os países) e notícias no HUD.\n- No mapa, a capital ganha anéis pulsantes dourados (revolução) ou azuis (golpe).\n- A divisão do país (secessão e guerra civil) vem na B19b e B19c.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.38.0",
    "title": "GeoEmpire 8 — v0.38.0 (logs pela internet)",

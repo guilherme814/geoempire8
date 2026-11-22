@@ -53,7 +53,7 @@ Política
 Fechamento
 | # | Etapa | Estado |
 |---|-------|--------|
-| B25 | Balanceamento, painéis finais de economia e política, auditorias | feita parcialmente (v0.48.0): painel político e alertas na auditoria, demografia ajustada; pendente calibrar crescimento do PIB (~2,2x em 10 anos) |
+| B25 | Balanceamento, painéis finais de economia e política, auditorias | feita no código (v0.49.0): painel político e alertas na auditoria, demografia e crescimento do PIB calibrados (~2x em 10 anos)
 
 ## Trilha C — Nova HUD (referência visual enviada em 20/11/2026)
 

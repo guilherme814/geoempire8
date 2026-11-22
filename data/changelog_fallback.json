@@ -1,8 +1,13 @@
 {
- "version": "0.48.0",
- "title": "GeoEmpire 8 — v0.48.0 (Balanceamento B25)",
- "body": "## Balanceamento e auditorias\n- Crescimento populacional base um pouco menor (natalidade ajustada); ainda cresce mais rápido em países prósperos.\n- A auditoria ganhou um painel político por ano (miséria, estabilidade, relógio da revolução, províncias em protesto/rebelião e crônica de revoluções) com alertas de balanceamento.\n- Alerta novo quando o PIB mundial cresce mais de 2x em 10 anos — hoje ele dispara (PIB ~2,2x), indicando que o crescimento econômico está rápido demais; a calibração fica para a próxima etapa.",
+ "version": "0.49.0",
+ "title": "GeoEmpire 8 — v0.49.0 (Calibração B25)",
+ "body": "## Crescimento econômico mais realista\n- O PIB mundial agora cresce cerca de 2x em 10 anos (antes ~2,2x), com a população crescendo bem menos.\n- Minas, fazendas e madeireiras dão +30% por nível (antes +35%); natalidade base menor.\n- A linha de pobreza acompanha o crescimento: a miséria mediana cai de ~80% (1836) para ~40% em 10 anos, em vez de sumir.\n- Em simulação de 10 anos: poucas revoluções, sem países em rebelião generalizada.",
  "history": [
+  {
+   "version": "0.48.0",
+   "title": "GeoEmpire 8 — v0.48.0 (Balanceamento B25)",
+   "body": "## Balanceamento e auditorias\n- Crescimento populacional base um pouco menor (natalidade ajustada); ainda cresce mais rápido em países prósperos.\n- A auditoria ganhou um painel político por ano (miséria, estabilidade, relógio da revolução, províncias em protesto/rebelião e crônica de revoluções) com alertas de balanceamento.\n- Alerta novo quando o PIB mundial cresce mais de 2x em 10 anos — hoje ele dispara (PIB ~2,2x), indicando que o crescimento econômico está rápido demais; a calibração fica para a próxima etapa."
+  },
   {
    "version": "0.47.0",
    "title": "GeoEmpire 8 — v0.47.0 (IA em crise B24)",

@@ -634,8 +634,18 @@ func _add_log_options(body: Control) -> void:
 		GameLog.set_downloads_enabled(not GameLog.downloads_enabled())
 		b_auto.text = "Enviar log para Downloads ao sair: " + ("ligado" if GameLog.downloads_enabled() else "desligado"))
 	body.add_child(b_auto)
+	if GameLog.uploader != null and GameLog.uploader.configured:
+		var b_net := UIKit.button("", Vector2(0, 56))
+		b_net.text = "Enviar log ao GitHub (internet): " + ("ligado" if LogUploader.enabled() else "desligado")
+		b_net.pressed.connect(func():
+			LogUploader.set_enabled(not LogUploader.enabled())
+			b_net.text = "Enviar log ao GitHub (internet): " + ("ligado" if LogUploader.enabled() else "desligado"))
+		body.add_child(b_net)
 	var b_now := UIKit.button("Exportar log agora", Vector2(0, 56))
-	b_now.pressed.connect(func(): status.text = GameLog.export_now("manual"))
+	b_now.pressed.connect(func():
+		status.text = GameLog.export_now("manual")
+		if GameLog.uploader != null and GameLog.uploader.configured:
+			status.text += "\n" + GameLog.uploader.status)
 	body.add_child(b_now)
 	var b_copy := UIKit.button("Copiar log (colar no chat)", Vector2(0, 56))
 	b_copy.pressed.connect(func():

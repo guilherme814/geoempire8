@@ -19,6 +19,7 @@ const HITCH_MS := 120.0
 const GODOT_LOG_TAIL := 400
 
 var buf := LogBuffer.new()
+var uploader: LogUploader
 var session_stamp := ""
 var last_export_status := "Ainda não exportado."
 var last_export_path := ""
@@ -57,6 +58,8 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(LOG_DIR))
 	buf.add(LogBuffer.INFO, "sessao", "Início da sessão %s" % session_stamp)
 	buf.add(LogBuffer.INFO, "aparelho", device_summary())
+	uploader = LogUploader.new()
+	add_child(uploader)
 	_check_previous_session()
 	_open_journal()
 	buf.on_important = _on_important
@@ -700,6 +703,8 @@ func write_local(reason: String = "autosave") -> String:
 func export_now(reason: String = "manual") -> String:
 	_last_export_ms = Time.get_ticks_msec()
 	var text := write_local(reason)
+	if uploader != null:
+		uploader.send(text, session_stamp, str(ProjectSettings.get_setting("application/config/version", "?")), reason != "periódico")
 	if not downloads_enabled():
 		last_export_status = "Cópia para Downloads desligada. Log salvo só dentro do app."
 		return last_export_status

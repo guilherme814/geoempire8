@@ -92,6 +92,20 @@ jobs:
         timeout 540 godot --headless --path . --script tools/economy_audit.gd 2>&1 | tee economy.log || true
         grep -E "SCRIPT ERROR|Parse Error" economy.log && exit 1 || true
 
+    - name: Configurar envio de logs pela internet (opcional)
+      # Só gera o arquivo se os segredos LOG_REPO (dono/nome) e LOG_TOKEN existirem; depois dos testes.
+      env:
+        LOG_REPO: ${{ secrets.LOG_REPO }}
+        LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
+      run: |
+        if [ -n "$LOG_REPO" ] && [ -n "$LOG_TOKEN" ]; then
+          printf '{"repo":"%s","token":"%s","branch":"main"}' "$LOG_REPO" "$LOG_TOKEN" > data/log_sink.json
+          godot --headless --path . --import || true
+          echo "Envio de logs: configurado para $LOG_REPO"
+        else
+          echo "Envio de logs: segredos ausentes, desligado"
+        fi
+
     - name: Export APK
       run: |
         mkdir -p build

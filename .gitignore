@@ -15,3 +15,6 @@ __pycache__/
 *.pyc
 tools/preview*.png
 !tools/signing/debug.keystore
+
+# Config de envio de logs (gerada no CI a partir de segredos)
+data/log_sink.json

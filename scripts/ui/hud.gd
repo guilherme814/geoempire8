@@ -1755,6 +1755,41 @@ func _add_order_card(body: Control, c: Country) -> void:
 		card.add_child(tl)
 
 
+## Card "Burocracia e corrupção" (B21): capacidade do Estado, corrupção e vazamento de arrecadação.
+func _add_admin_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Burocracia e corrupção", "scales")
+	var corr: int = Game.corruption_of(c)
+	var cov: int = Game.admin_coverage(c)
+	var col: Color = UIKit.NEG if corr >= 40 else (UIKit.WARN if corr >= 20 else UIKit.POS)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	card.add_child(row)
+	var nm := UIKit.label("Corrupção", 16, UIKit.TEXT)
+	nm.custom_minimum_size = Vector2(250, 0)
+	row.add_child(nm)
+	row.add_child(UIKit.bar(float(corr), 70.0, col, 14.0))
+	var tl := UIKit.label("%d%%" % corr, 14, col)
+	tl.custom_minimum_size = Vector2(110, 0)
+	row.add_child(tl)
+	var info := UIKit.label("Administração nível %d/%d · cobertura do Estado %d%% (capacidade %d para uma carga de %d) · arrecadação desviada: %d%%%s. Países grandes exigem mais burocracia; alfabetização, imprensa livre e república reduzem a corrupção; autocracia e censura aumentam." % [c.admin, Game.ADMIN_MAX, cov, Game.admin_capacity(c), Game.admin_load(c), Game.corruption_leak(c), (" · campanha anticorrupção: %d meses" % c.anticorr) if c.anticorr > 0 else ""], 14, UIKit.TEXT_DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(info)
+	var defs := [["admin", "Ampliar a administração", "+25 de capacidade: mais cobertura, menos corrupção."], ["anticorr", "Campanha anticorrupção (24 meses)", "Reduz a corrupção em 12 pontos enquanto durar."]]
+	for d in defs:
+		var why: String = Game.order_block_reason(c, str(d[0]))
+		var b := UIKit.button("%s (%s)" % [str(d[1]), Money.fmt(Game.order_cost(c, str(d[0])))], Vector2(0, 46))
+		b.disabled = why != ""
+		b.tooltip_text = why if why != "" else str(d[2])
+		var kind: String = str(d[0])
+		b.pressed.connect(func():
+			Game.submit_command(Cmd.public_order(kind))
+			_refresh_windows())
+		card.add_child(b)
+		var dl := UIKit.label(why if why != "" else str(d[2]), 14, UIKit.TEXT_DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(dl)
+
+
 func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
 	var card := _card(body, "Grupos de interesse", "people")
 	var groups: Array = Game.interest_groups(c, pol)
@@ -1967,6 +2002,7 @@ func _refresh_politics() -> void:
 	_add_groups_card(body, c, pol)
 	_add_unrest_card(body, c)
 	_add_order_card(body, c)
+	_add_admin_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())

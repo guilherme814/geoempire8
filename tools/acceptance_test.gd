@@ -684,6 +684,7 @@ func run_all() -> void:
 	_secession()
 	_civil_war()
 	_orders()
+	_admin()
 	_money()
 
 
@@ -1861,4 +1862,66 @@ func _orders() -> void:
 	g.load_state(bl)
 	var lc: Country = g.countries[me]
 	check("ordem publica persiste no save", lc.security == 1 and lc.siege_left > 0 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _admin() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.treasury = 10000000
+	c.admin = 0
+	c.anticorr = 0
+	var c0: int = g.corruption_of(c)
+	check("corrupcao dentro da faixa", c0 >= 0 and c0 <= 70)
+	c.admin = 3
+	check("mais administracao reduz a corrupcao", g.corruption_of(c) <= c0 and g.admin_capacity(c) > 60)
+	c.admin = 0
+	# Pais grande tem corrupcao maior que pais pequeno com a mesma administracao.
+	var big: Country = null
+	var small: Country = null
+	for k in g.countries:
+		if k.is_alive():
+			if big == null or k.province_ids.size() > big.province_ids.size():
+				big = k
+			if small == null or k.province_ids.size() < small.province_ids.size():
+				small = k
+	if big != null and small != null and big.id != small.id:
+		var ba: int = big.admin
+		var sa: int = small.admin
+		var bl_: int = big.literacy
+		var sl_: int = small.literacy
+		big.admin = 0
+		small.admin = 0
+		big.literacy = 300
+		small.literacy = 300
+		check("pais grande tem mais corrupcao que o pequeno", g.corruption_of(big) >= g.corruption_of(small))
+		big.admin = ba
+		small.admin = sa
+		big.literacy = bl_
+		small.literacy = sl_
+	# Vazamento so acima de 15%.
+	check("vazamento = (corrupcao - 15)/2", g.corruption_leak(c) == maxi(0, g.corruption_of(c) - 15) / 2)
+	# Compra de administracao.
+	var cost: int = g.order_cost(c, "admin")
+	var t0: int = c.treasury
+	g.apply_command({"type": "public_order", "kind": "admin", "issuer": me})
+	check("ampliar a administracao cobra e sobe o nivel", c.admin == 1 and c.treasury == t0 - cost)
+	# Campanha anticorrupcao: so com corrupcao >= 20.
+	c.admin = 0
+	c.literacy = 0
+	c.laws[Laws.group_index("press")] = 0
+	check("corrupcao alta habilita a campanha", g.corruption_of(c) >= 20 and g.order_block_reason(c, "anticorr") == "")
+	var before: int = g.corruption_of(c)
+	g.apply_command({"type": "public_order", "kind": "anticorr", "issuer": me})
+	check("campanha reduz a corrupcao em 12", c.anticorr == g.ANTICORR_MONTHS and g.corruption_of(c) == maxi(0, before - 12))
+	check("campanha em curso bloqueia outra", g.order_block_reason(c, "anticorr") != "")
+	# Persistencia.
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	c.admin = 4
+	c.anticorr = 0
+	g.load_state(bl)
+	var lc: Country = g.countries[me]
+	check("administracao e campanha persistem no save", lc.admin == 0 and lc.anticorr == g.ANTICORR_MONTHS and g.state_hash() == hh)
 	g.load_state(blob)

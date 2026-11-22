@@ -1,8 +1,13 @@
 {
- "version": "0.42.0",
- "title": "GeoEmpire 8 — v0.42.0 (Política B20)",
- "body": "## Ordem pública e concessões\nNova seção na tela de Política para agir **antes** da revolução:\n- **Fazer concessões**: apazigua o movimento dominante (−250 de radicalização, −50 nos outros), recua o relógio em 3, acalma as províncias e satisfaz as classes do movimento. Carência de 12 meses.\n- **Reprimir** (12 meses): derruba a agitação local (−25%), mas a radicalização cresce todo mês e as classes ficam mais insatisfeitas.\n- **Estado de sítio** (6 meses, só com o relógio em 3+): agitação −50%, o relógio recua 2 por mês, parlamento suspenso (leis por decreto) e arrecadação −15%; depois, 3 anos de carência.\n- **Aparato de segurança** (guarda nacional / polícia secreta, 3 níveis, permanente): −8% de agitação por nível.\n- Custos escalam com o tamanho do país. A IA ainda não usa isso (B24).\n- Saves antigos funcionam.",
+ "version": "0.43.0",
+ "title": "GeoEmpire 8 — v0.43.0 (Política B21)",
+ "body": "## Burocracia e corrupção\n- O Estado tem **capacidade administrativa** (base + níveis de administração + alfabetização) contra uma **carga** que cresce com o número de províncias. Cobertura baixa = **corrupção alta**.\n- Corrupção acima de 15% **desvia arrecadação** (metade do excedente); passa de 25%, aumenta a agitação local. República e imprensa livre reduzem; autocracia e censura aumentam.\n- Impérios grandes sofrem mais; países pequenos quase não.\n- Novas ações na tela de Política: **Ampliar a administração** (5 níveis, +25 de capacidade cada) e **Campanha anticorrupção** (24 meses, −12 pontos).\n- A IA passa a ampliar a administração quando a corrupção está alta e o tesouro permite.\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.42.0",
+   "title": "GeoEmpire 8 — v0.42.0 (Política B20)",
+   "body": "## Ordem pública e concessões\nNova seção na tela de Política para agir **antes** da revolução:\n- **Fazer concessões**: apazigua o movimento dominante (−250 de radicalização, −50 nos outros), recua o relógio em 3, acalma as províncias e satisfaz as classes do movimento. Carência de 12 meses.\n- **Reprimir** (12 meses): derruba a agitação local (−25%), mas a radicalização cresce todo mês e as classes ficam mais insatisfeitas.\n- **Estado de sítio** (6 meses, só com o relógio em 3+): agitação −50%, o relógio recua 2 por mês, parlamento suspenso (leis por decreto) e arrecadação −15%; depois, 3 anos de carência.\n- **Aparato de segurança** (guarda nacional / polícia secreta, 3 níveis, permanente): −8% de agitação por nível.\n- Custos escalam com o tamanho do país. A IA ainda não usa isso (B24).\n- Saves antigos funcionam."
+  },
   {
    "version": "0.41.0",
    "title": "GeoEmpire 8 — v0.41.0 (Política B19c)",

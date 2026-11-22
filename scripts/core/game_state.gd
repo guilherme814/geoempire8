@@ -127,6 +127,8 @@ const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
 const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
 const REV_COOLDOWN := 60             # meses sem nova revolução após uma (B19)
 const CHRONICLE_MAX := 80
+const ADMIN_MAX := 5                 # níveis da administração pública (B21)
+const ANTICORR_MONTHS := 24
 const SECURITY_MAX := 3              # níveis de guarda nacional / polícia secreta (B20)
 const REPRESS_MONTHS := 12
 const SIEGE_MONTHS := 6
@@ -3258,6 +3260,10 @@ func _private_invest(c: Country) -> void:
 
 
 func _country_month(c: Country) -> void:
+	c.anticorr = maxi(0, c.anticorr - 1)
+	if not is_human(c.id) and (clock.month + c.id) % 6 == 0 and c.admin < ADMIN_MAX and corruption_of(c) > 25 \
+			and c.treasury > 4 * order_cost(c, "admin"):
+		_public_order(c, "admin")
 	_bill_step(c)
 	_group_step(c)
 	_election_step(c)
@@ -3845,7 +3851,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		c.strikes = 0
 		c.rev_clock = 0
 		return
-	var base := clampi((50 - c.stability) * 2, 0, 100) - c.security * 8 - (25 if rep else 0) - (50 if sge else 0)
+	var base := clampi((50 - c.stability) * 2, 0, 100) - c.security * 8 - (25 if rep else 0) - (50 if sge else 0) + maxi(0, corruption_of(c) - 25) / 5
 	if rmax >= RADICAL_ACTIVE:
 		base += mini(30, (rmax - RADICAL_ACTIVE) / 20)
 	var protest := 0
@@ -3882,6 +3888,43 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		_revolution(c, pol)
 
 
+## Burocracia e corrupção (B21) ------------------------------------------------------------
+## Capacidade administrativa x carga (cresce com o tamanho). Cobertura baixa = corrupção alta;
+## acima de 15% a corrupção vaza arrecadação. Tudo derivado de estado salvo (admin, anticorr, leis,
+## alfabetização, nº de províncias).
+@warning_ignore("integer_division")
+func admin_capacity(c: Country) -> int:
+	return 60 + c.admin * 25 + c.literacy / 20
+
+
+func admin_load(c: Country) -> int:
+	return c.province_ids.size() * 4 + 20
+
+
+@warning_ignore("integer_division")
+func admin_coverage(c: Country) -> int:
+	return clampi(admin_capacity(c) * 100 / maxi(1, admin_load(c)), 0, 100)
+
+
+@warning_ignore("integer_division")
+func corruption_of(c: Country) -> int:
+	var v: int = (100 - admin_coverage(c)) * 60 / 100 + 8
+	var gg := Laws.group_index("gov")
+	if gg >= 0 and gg < c.laws.size():
+		v += int([6, 0, -2][clampi(int(c.laws[gg]), 0, 2)])
+	var pg := Laws.group_index("press")
+	if pg >= 0 and pg < c.laws.size():
+		v += int([6, 0, -6][clampi(int(c.laws[pg]), 0, 2)])
+	if c.anticorr > 0:
+		v -= 12
+	return clampi(v, 0, 70)
+
+
+@warning_ignore("integer_division")
+func corruption_leak(c: Country) -> int:
+	return maxi(0, corruption_of(c) - 15) / 2
+
+
 ## Ordem pública (B20) --------------------------------------------------------------------
 func order_cost(c: Country, kind: String) -> int:
 	var n := c.province_ids.size()
@@ -3894,6 +3937,10 @@ func order_cost(c: Country, kind: String) -> int:
 			return 200 + 5 * n
 		"security":
 			return 150 * (c.security + 1)
+		"admin":
+			return 200 * (c.admin + 1) * (1 + n / 8)
+		"anticorr":
+			return 150 + 4 * n
 	return 0
 
 
@@ -3928,6 +3975,14 @@ func order_block_reason(c: Country, kind: String) -> String:
 		"security":
 			if c.security >= SECURITY_MAX:
 				return "Nível máximo"
+		"admin":
+			if c.admin >= ADMIN_MAX:
+				return "Nível máximo"
+		"anticorr":
+			if c.anticorr > 0:
+				return "Campanha em curso (%d meses)" % c.anticorr
+			if corruption_of(c) < 20:
+				return "Corrupção já é baixa"
 		_:
 			return "Ordem desconhecida"
 	return ""
@@ -3971,6 +4026,14 @@ func _public_order(c: Country, kind: String) -> void:
 			c.security += 1
 			if c.id == player_country:
 				Events.notice.emit("Aparato de segurança nível %d." % c.security)
+		"admin":
+			c.admin += 1
+			if c.id == player_country:
+				Events.notice.emit("Administração pública nível %d: corrupção agora %d%%." % [c.admin, corruption_of(c)])
+		"anticorr":
+			c.anticorr = ANTICORR_MONTHS
+			if c.id == player_country:
+				Events.notice.emit("Campanha anticorrupção por %d meses." % ANTICORR_MONTHS)
 	Events.treasury_changed.emit(c.id)
 
 
@@ -4451,6 +4514,9 @@ func estimate_monthly(c: Country) -> Dictionary:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	if c.strikes > 0:
 		tax = tax * (100 - c.strikes / 2) / 100            # greves e protestos (B18)
+	var leak: int = corruption_leak(c)
+	if leak > 0:
+		tax = tax * (100 - leak) / 100                      # corrupção desvia arrecadação (B21)
 	if c.siege_left > 0:
 		tax = tax * 85 / 100                                # estado de sítio emperra a economia (B20)
 	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
@@ -5361,6 +5427,7 @@ func state_hash() -> int:
 		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
+		h = _mix(h, c.admin * 1000 + c.anticorr)
 		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
 		for rj in 5:
 			h = _mix(h, int(c.radical[rj]))
@@ -5555,6 +5622,8 @@ func serialize_state() -> Dictionary:
 		"strikes": _country_ints("strikes"),
 		"rev_cd": _country_ints("rev_cd"),
 		"security": _country_ints("security"),
+		"admin": _country_ints("admin"),
+		"anticorr": _country_ints("anticorr"),
 		"repress_left": _country_ints("repress_left"),
 		"siege_left": _country_ints("siege_left"),
 		"order_cd": _country_ints("order_cd"),
@@ -5806,6 +5875,8 @@ func load_state(d: Dictionary) -> bool:
 	var stk: Array = d.get("strikes", [])
 	var rcd: Array = d.get("rev_cd", [])
 	var sec_a: Array = d.get("security", [])
+	var adm_a: Array = d.get("admin", [])
+	var acr_a: Array = d.get("anticorr", [])
 	var rpl: Array = d.get("repress_left", [])
 	var sgl: Array = d.get("siege_left", [])
 	var ocd: Array = d.get("order_cd", [])
@@ -5859,6 +5930,8 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].strikes = int(stk[i]) if i < stk.size() else 0
 		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
 		countries[i].security = int(sec_a[i]) if i < sec_a.size() else 0
+		countries[i].admin = int(adm_a[i]) if i < adm_a.size() else 0
+		countries[i].anticorr = int(acr_a[i]) if i < acr_a.size() else 0
 		countries[i].repress_left = int(rpl[i]) if i < rpl.size() else 0
 		countries[i].siege_left = int(sgl[i]) if i < sgl.size() else 0
 		countries[i].order_cd = int(ocd[i]) if i < ocd.size() else 0

@@ -2825,7 +2825,7 @@ func _advance_ai() -> void:
 
 
 const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "worksite", "hospital", "dock", "textile", "carpentry", "university",
-	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery"]
+	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery", "glassworks", "housing", "city_hall", "station", "chemical"]
 const AI_INVEST_RESERVE_MONTHS := 8
 const AI_MAX_METHOD := 1          # a IA só chega à Manufatura (a Mecanizada fica de vantagem do jogador)
 
@@ -4106,6 +4106,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 				if p.conv >= 100:
 					p.religion = c.faith
 					p.conv = 0
+		pen -= 5 * int(p.bld.get("housing", 0))            # bairros operários acalmam a província (B26b)
 		if mono_n != "" and p.resource_type == mono_n:
 			pen += 6                               # produtores revoltam-se contra o monopólio estatal (B23)
 		var tg := maxi(0, base + occ + pen + (pid * 37 % 11) - 5)
@@ -4238,7 +4239,7 @@ func minority_pct(c: Country, faith: bool = false) -> int:
 ## alfabetização, nº de províncias).
 @warning_ignore("integer_division")
 func admin_capacity(c: Country) -> int:
-	return 60 + c.admin * 25 + c.literacy / 20
+	return 60 + c.admin * 25 + c.literacy / 20 + 12 * bld_total(c, "city_hall")
 
 
 func admin_load(c: Country) -> int:
@@ -4903,7 +4904,7 @@ func tech_gain(c: Country) -> int:
 	return b + b * c.research_pct / 20 + b * SCIENCE_ALLY_PCT * science_allies(c) / 100
 
 
-const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot", "worksite"]
+const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot", "worksite", "housing", "city_hall", "station"]
 
 
 func estimate_monthly(c: Country) -> Dictionary:
@@ -4978,7 +4979,7 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var edu := edu_levels(c)
 	var up_edu: int = edu.x * SCHOOL_UPKEEP + edu.y * UNIVERSITY_UPKEEP
 	var trade: int = int(trade_bonus[c.id]) if c.id < trade_bonus.size() else 0
-	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph")) + port_trade_pct(c) + c.grp_trade) / 100
+	trade = trade * (100 + treaty_trade_pct(c.id) + int(lm["trade"]) + int(tf["trade"]) + mini(30, 5 * bld_total(c, "telegraph")) + mini(30, 4 * bld_total(c, "station")) + port_trade_pct(c) + c.grp_trade) / 100
 	var bc: int = c.budget_code
 	var dexp: int = 100 + Government.decree_field(c.decree, "exp")
 	up_prov = up_prov * Government.pct(bc, 2) / 100 * dexp / 100

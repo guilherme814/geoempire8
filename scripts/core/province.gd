@@ -27,9 +27,9 @@ const RESOURCE_PRICE := {
 }
 
 ## Bens processados (preço-base em décimos de ouro por unidade).
-const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28, "steel": 42, "paper": 26, "machines": 60}
+const PROCESSED := {"fabric": 30, "tools": 36, "furniture": 28, "steel": 42, "paper": 26, "machines": 60, "glass": 26, "chemicals": 32}
 ## Demanda-base por habitante (escala do mercado) dos bens processados; padrão 3000.
-const PROCESSED_DEM := {"paper": 1500, "machines": 1200}
+const PROCESSED_DEM := {"paper": 1500, "machines": 1200, "glass": 900, "chemicals": 700}
 ## Fábricas: por nível produzem `amount` unidades de `out` por mês e consomem `inputs` do mercado.
 const FACTORIES := {
 	"textile": {"out": "fabric", "amount": 100, "inputs": {"cotton": 60, "wool": 60}},
@@ -38,6 +38,8 @@ const FACTORIES := {
 	"steel": {"out": "steel", "amount": 100, "inputs": {"iron": 100, "coal": 100}},
 	"paper": {"out": "paper", "amount": 100, "inputs": {"timber": 100}},
 	"machinery": {"out": "machines", "amount": 100, "inputs": {"steel": 60, "tools": 60}},
+	"glassworks": {"out": "glass", "amount": 100, "inputs": {"salt": 40, "coal": 60}},
+	"chemical": {"out": "chemicals", "amount": 100, "inputs": {"coal": 60, "salt": 80}},
 }
 
 ## Métodos de produção das fábricas (estilo Victoria 3): trocam trabalho por produtividade.
@@ -119,11 +121,16 @@ const BUILDINGS := {
 	"bank": {"tab": "inf", "name": "Banco", "cost": 240, "tech": 0, "req": 7, "desc": "+6% de imposto da província por nível"},
 	"shipyard": {"tab": "inf", "name": "Estaleiro naval", "cost": 280, "tech": 0, "req": 15, "desc": "Manutenção da frota -10% por nível (só litoral)"},
 	"depot": {"tab": "inf", "name": "Depósito de suprimentos", "cost": 220, "tech": 0, "req": 9, "desc": "Fonte de abastecimento do exército: alcance +2000 e +8 regimentos atendidos por nível"},
+	"glassworks": {"tab": "ind", "name": "Vidraçaria", "cost": 140, "tech": 1, "desc": "Sal + carvão -> vidro (hospitais, mercados, urbanismo)"},
+	"chemical": {"tab": "ind", "name": "Indústria química", "cost": 300, "tech": 3, "desc": "Carvão + sal -> químicos (adubos, saneamento, laboratórios)"},
+	"housing": {"tab": "inf", "name": "Bairro operário", "cost": 140, "tech": 1, "desc": "Moradia digna: -5 de agitação local por nível"},
+	"city_hall": {"tab": "gov", "name": "Prefeitura", "cost": 200, "tech": 1, "desc": "+12 de capacidade administrativa nacional por nível"},
+	"station": {"tab": "inf", "name": "Estação ferroviária", "cost": 240, "tech": 2, "desc": "Exige ferrovia na província: +4% de comércio nacional por nível (máx. +30%)"},
 	"worksite": {"tab": "inf", "name": "Canteiro de obras", "cost": 150, "tech": 0, "desc": "+20 pontos de obra por mês por nível (setor de obras)"},
 	"telegraph": {"tab": "inf", "name": "Central telegráfica", "cost": 220, "tech": 0, "req": 19, "desc": "+5% de comércio nacional por nível (máx. +30%)"},
 }
 const EXTRA_KINDS := ["school", "university", "mine", "farm", "logging", "hospital", "market", "railway", "dock",
-	"library", "sanitation", "academy", "arsenal", "lab", "irrigation", "power_plant", "bank", "shipyard", "telegraph", "depot", "worksite"]
+	"library", "sanitation", "academy", "arsenal", "lab", "irrigation", "power_plant", "bank", "shipyard", "telegraph", "depot", "worksite", "housing", "city_hall", "station"]
 const MINE_RES := ["coal", "iron", "salt", "gold"]
 
 ## ECONOMIA DOS EDIFÍCIOS (salários, impostos e materiais de obra).
@@ -135,19 +142,19 @@ const FACTORIES_PRIVATE := true
 const WAGE_PCT := {
 	"mine": 35, "farm": 28, "logging": 30, "workshop": 25,
 	"textile": 30, "carpentry": 28, "smithy": 32, "steel": 38, "railway": 28, "paper": 28, "machinery": 36,
-	"irrigation": 26, "power_plant": 30,
+	"irrigation": 26, "power_plant": 30, "glassworks": 30, "chemical": 34,
 }
 ## Custo mensal fixo por nível dos edifícios de governo (escola e universidade já eram
 ## SCHOOL_UPKEEP / UNIVERSITY_UPKEEP do game_state; o quartel passa a ter soldo de instrutores).
 const GOV_UPKEEP := {"school": 2, "university": 5, "barracks": 3, "hospital": 3, "market": 2, "dock": 3,
-	"library": 1, "sanitation": 3, "academy": 4, "arsenal": 4, "lab": 6, "bank": 3, "shipyard": 4, "telegraph": 3, "depot": 3, "worksite": 2}
+	"library": 1, "sanitation": 3, "academy": 4, "arsenal": 4, "lab": 6, "bank": 3, "shipyard": 4, "telegraph": 3, "depot": 3, "worksite": 2, "housing": 2, "city_hall": 4, "station": 3}
 ## Empregos criados por nível (informativo: aparece na interface).
 const JOBS_PER_LEVEL := {
 	"school": 12, "university": 30, "barracks": 20, "mine": 300, "farm": 220, "logging": 180,
 	"workshop": 120, "textile": 260, "carpentry": 140, "smithy": 160, "steel": 340, "paper": 150, "machinery": 280,
 	"hospital": 40, "market": 90, "railway": 200, "dock": 150,
 	"library": 10, "sanitation": 50, "academy": 25, "arsenal": 60, "lab": 35, "irrigation": 120,
-	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40, "depot": 60, "worksite": 80,
+	"power_plant": 150, "bank": 60, "shipyard": 180, "telegraph": 40, "depot": 60, "worksite": 80, "glassworks": 180, "chemical": 220, "housing": 30, "city_hall": 40, "station": 90,
 }
 ## Materiais de obra por nível construído (unidades de bens). São pagos em ouro, ao preço
 ## de mercado do país, junto com o custo base (não há estoque no jogo).
@@ -181,6 +188,11 @@ const BUILD_MATERIALS := {
 	"telegraph": {"iron": 120, "tools": 60},
 	"depot": {"timber": 200, "iron": 60, "tools": 20},
 	"worksite": {"timber": 120, "tools": 40},
+	"glassworks": {"timber": 200, "tools": 50},
+	"chemical": {"iron": 250, "timber": 120, "tools": 80},
+	"housing": {"timber": 200, "tools": 30},
+	"city_hall": {"timber": 150, "iron": 40, "paper": 50},
+	"station": {"iron": 200, "timber": 150, "tools": 50},
 }
 
 var id: int = 0
@@ -382,6 +394,8 @@ func side_timber() -> int:
 
 ## Esta província pode receber a construção?
 func can_host(kind: String) -> bool:
+	if kind == "station":
+		return int(bld.get("railway", 0)) > 0
 	if kind == "mine":
 		return resource_type in MINE_RES
 	if kind == "farm":

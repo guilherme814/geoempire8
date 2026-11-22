@@ -690,6 +690,7 @@ func run_all() -> void:
 	_welfare()
 	_ai_crisis()
 	_works()
+	_new_structures()
 	_money()
 
 
@@ -2258,4 +2259,51 @@ func _works() -> void:
 		k.treasury = 100000000
 		g._ai_invest(k)
 		check("obras: IA enfileira em vez de construir na hora", k.works.size() > 0)
+	g.load_state(blob)
+
+
+func _new_structures() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var ok := true
+	for k in Province.BUILDINGS.keys():
+		if not Province.BUILD_MATERIALS.has(k):
+			ok = false
+			print("  sem materiais de obra: ", k)
+	check("estruturas: toda construcao tem materiais de obra", ok)
+	var okf := true
+	for k in Province.FACTORIES.keys():
+		var f: Dictionary = Province.FACTORIES[k]
+		if not Province.BUILDINGS.has(k) or not Province.PROCESSED.has(str(f["out"])):
+			okf = false
+	check("estruturas: fabricas novas registradas (construcao e bem processado)", okf and Province.FACTORIES.has("glassworks") and Province.FACTORIES.has("chemical"))
+	check("estruturas: vidro e quimicos no mercado", g.goods_list().has("glass") and g.goods_list().has("chemicals"))
+	var pid: int = c.province_ids[0]
+	var p: Province = g.provinces[pid]
+	var rw0: int = p.building_level("railway")
+	p.set_building_level("railway", 0)
+	check("estruturas: estacao exige ferrovia", not p.can_host("station"))
+	p.set_building_level("railway", 1)
+	check("estruturas: estacao liberada com ferrovia", p.can_host("station"))
+	p.set_building_level("railway", rw0)
+	var cap0: int = g.admin_capacity(c)
+	var ch0: int = p.building_level("city_hall")
+	p.set_building_level("city_hall", ch0 + 2)
+	check("estruturas: prefeitura amplia a capacidade administrativa", g.admin_capacity(c) == cap0 + 24)
+	p.set_building_level("city_hall", ch0)
+	var f0: String = p.factory
+	var fl0: int = p.factory_level
+	p.factory = "glassworks"
+	p.factory_level = 2
+	check("estruturas: vidracaria produz unidades", p.factory_units() > 0)
+	check("estruturas: relatorio da vidracaria", int(p.building_report("glassworks", 2, 30)["jobs"]) > 0)
+	p.factory = f0
+	p.factory_level = fl0
+	var hh: int = g.state_hash()
+	p.set_building_level("housing", 2)
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	p.set_building_level("housing", 0)
+	g.load_state(bl)
+	check("estruturas: bairro operario persiste no save", g.provinces[pid].building_level("housing") == 2 and g.state_hash() != hh)
 	g.load_state(blob)

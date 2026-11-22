@@ -77,7 +77,8 @@ func method_pct(field: String) -> int:
 func factory_units() -> int:
 	if factory == "" or factory_level <= 0:
 		return 0
-	return int(FACTORIES[factory]["amount"]) * factory_level * method_pct("out") / 100
+	var pb: int = PLAN_OUT_PCT if is_plan(owner_id, factory) else 0
+	return int(FACTORIES[factory]["amount"]) * factory_level * (method_pct("out") + pb) / 100
 
 
 ## Insumo consumido por mês (unidades do bem `good`) pela fábrica, no método atual.
@@ -280,6 +281,32 @@ static func from_dict(d: Dictionary) -> Province:
 
 ## Preços locais (% do preço-base) de cada país, indexados pelo id do dono; preenchido pelo Game.
 static var country_prices: Array = []
+## Política econômica por país (B23): máscaras de setores (bit = posição em FACTORIES) e setor em plano.
+static var pol_nat: Array = []        # setores estatizados
+static var pol_sub: Array = []        # setores subsidiados
+static var pol_plan: Array = []       # índice do setor em plano quinquenal (-1 = nenhum)
+const SUBSIDY_PCT := 20               # % da folha de salários paga pelo Estado
+const PLAN_OUT_PCT := 15              # bônus de produção do setor em plano
+const NAT_EFF_PCT := 90               # eficiência da gestão estatal (lucro que o tesouro recebe)
+
+
+static func sector_index(kind: String) -> int:
+	return FACTORIES.keys().find(kind)
+
+
+static func is_nat(owner: int, kind: String) -> bool:
+	var i := sector_index(kind)
+	return i >= 0 and owner >= 0 and owner < pol_nat.size() and (int(pol_nat[owner]) >> i) & 1 == 1
+
+
+static func is_sub(owner: int, kind: String) -> bool:
+	var i := sector_index(kind)
+	return i >= 0 and owner >= 0 and owner < pol_sub.size() and (int(pol_sub[owner]) >> i) & 1 == 1
+
+
+static func is_plan(owner: int, kind: String) -> bool:
+	var i := sector_index(kind)
+	return i >= 0 and owner >= 0 and owner < pol_plan.size() and int(pol_plan[owner]) == i
 
 
 ## Preço de mercado de um bem no país dono desta província.
@@ -411,7 +438,7 @@ func factory_profit() -> int:
 func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 	var r := {
 		"units": 0, "product": "", "revenue": 0, "inputs": [], "inputs_cost": 0, "wages": 0,
-		"operating": 0, "tax": 0, "net": 0, "state_income": 0,
+		"operating": 0, "tax": 0, "net": 0, "state_income": 0, "subsidy": 0,
 		"jobs": int(JOBS_PER_LEVEL.get(kind, 0)) * maxi(0, level),
 	}
 	if kind == primary_extractor() and level > 0:
@@ -429,6 +456,8 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 			o_pct = method_pct("out")
 			i_pct = method_pct("inp")
 			r["jobs"] = int(r["jobs"]) * method_pct("jobs") / 100
+		if is_plan(owner_id, kind):
+			o_pct += PLAN_OUT_PCT
 		r["units"] = int(f["amount"]) * level * o_pct / 100
 		r["revenue"] = int(r["units"]) * base_price(out) * price_of(out) / 10000
 		var ins: Dictionary = f["inputs"]
@@ -449,9 +478,17 @@ func building_report(kind: String, level: int, tax_pct: int) -> Dictionary:
 		r["product"] = "timber" if (kind == "logging" and resource_type != "timber") else resource_type
 	if WAGE_PCT.has(kind):
 		r["wages"] = int(r["revenue"]) * int(WAGE_PCT[kind]) / 100
+		var nat: bool = is_factory and is_nat(owner_id, kind)
+		if is_factory and not nat and is_sub(owner_id, kind):
+			var sb: int = int(r["wages"]) * SUBSIDY_PCT / 100
+			r["wages"] = int(r["wages"]) - sb
+			r["subsidy"] = sb
 		var op: int = int(r["revenue"]) - int(r["inputs_cost"]) - int(r["wages"])
 		r["operating"] = op
-		if is_factory and not FACTORIES_PRIVATE:
+		if nat:
+			r["net"] = op * NAT_EFF_PCT / 100
+			r["state_income"] = op * NAT_EFF_PCT / 100
+		elif is_factory and not FACTORIES_PRIVATE:
 			r["net"] = op
 			r["state_income"] = op
 		else:

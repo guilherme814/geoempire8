@@ -127,6 +127,9 @@ const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
 const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
 const REV_COOLDOWN := 60             # meses sem nova revolução após uma (B19)
 const CHRONICLE_MAX := 80
+const PLAN_MONTHS := 60              # plano quinquenal (B23)
+const PLAN_CD := 24
+const MONOPOLY_PCT := 25             # % da produção de um recurso que o monopólio estatal captura
 const ADMIN_MAX := 5                 # níveis da administração pública (B21)
 const ANTICORR_MONTHS := 24
 const SECURITY_MAX := 3              # níveis de guarda nacional / polícia secreta (B20)
@@ -691,6 +694,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 					_add_ships(_port_province_of(c), c.id, (nv - 1) * nv)
 
 	_assign_cultures()
+	_sync_policy_all()
 	for c in countries:
 		if c.is_alive():
 			var pol := politics_of(c)
@@ -1089,7 +1093,7 @@ func apply_command(cmd: Dictionary) -> void:
 
 	elif t == Cmd.PUBLIC_ORDER:
 		if issuer >= 0 and issuer < countries.size():
-			_public_order(countries[issuer], str(cmd.get("kind", "")))
+			_public_order(countries[issuer], str(cmd.get("kind", "")), int(cmd.get("arg", -1)))
 
 	elif t == Cmd.CANCEL_BILL:
 		if issuer >= 0 and issuer < countries.size() and countries[issuer].bill_g >= 0:
@@ -3243,6 +3247,8 @@ func _private_invest(c: Country) -> void:
 		var p := provinces[int(pid)]
 		if p.factory == "" or p.factory_level <= 0:
 			continue
+		if Province.is_nat(c.id, p.factory):
+			continue          # fábrica estatal: sem lucro privado nem ampliação por capitalistas
 		var fp: int = p.factory_profit()
 		if fp > 0:
 			profit += fp
@@ -3262,6 +3268,13 @@ func _private_invest(c: Country) -> void:
 
 func _country_month(c: Country) -> void:
 	c.anticorr = maxi(0, c.anticorr - 1)
+	c.plan_cd = maxi(0, c.plan_cd - 1)
+	if c.plan_left > 0:
+		c.plan_left -= 1
+		if c.plan_left == 0:
+			_sync_policy(c)
+			if c.id == player_country:
+				Events.notice.emit("O plano quinquenal terminou.")
 	if not is_human(c.id) and (clock.month + c.id) % 6 == 0 and c.admin < ADMIN_MAX and corruption_of(c) > 25 \
 			and c.treasury > 4 * order_cost(c, "admin"):
 		_public_order(c, "admin")
@@ -3859,6 +3872,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 	var base := clampi((50 - c.stability) * 2, 0, 100) - c.security * 8 - (25 if rep else 0) - (50 if sge else 0) + maxi(0, corruption_of(c) - 25) / 5
 	if rmax >= RADICAL_ACTIVE:
 		base += mini(30, (rmax - RADICAL_ACTIVE) / 20)
+	var mono_n := str(Province.RESOURCE_PRICE.keys()[c.mono_good]) if c.mono_good >= 0 and c.mono_good < Province.RESOURCE_PRICE.size() else ""
 	var protest := 0
 	var rebels := 0
 	for pid in c.province_ids:
@@ -3880,6 +3894,8 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 				if p.conv >= 100:
 					p.religion = c.faith
 					p.conv = 0
+		if mono_n != "" and p.resource_type == mono_n:
+			pen += 6                               # produtores revoltam-se contra o monopólio estatal (B23)
 		var tg := maxi(0, base + occ + pen + (pid * 37 % 11) - 5)
 		var was := p.unrest
 		p.unrest = clampi(p.unrest + clampi(tg - p.unrest, -3, 3), 0, 100)
@@ -3907,6 +3923,58 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		c.rev_clock = mini(c.rev_clock, REV_CLOCK_MAX - 1)      # carência: sem nova revolução
 	elif c.rev_clock >= REV_CLOCK_MAX:
 		_revolution(c, pol)
+
+
+## Política econômica avançada (B23) ----------------------------------------------------------
+func _sector_key(i: int) -> String:
+	var ks: Array = Province.FACTORIES.keys()
+	return str(ks[i]) if i >= 0 and i < ks.size() else ""
+
+
+func _popcount(m: int) -> int:
+	var n := 0
+	while m > 0:
+		n += m & 1
+		m >>= 1
+	return n
+
+
+func sector_count(c: Country, kind: String) -> int:
+	var n := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		if p.factory == kind and p.factory_level > 0:
+			n += 1
+	return n
+
+
+## Lucro operacional mensal das fábricas do setor no país.
+func sector_profit(c: Country, kind: String) -> int:
+	var s := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		if p.factory == kind and p.factory_level > 0:
+			s += int(p.building_report(kind, p.factory_level, c.tax_pct)["operating"])
+	return s
+
+
+func _sync_policy(c: Country) -> void:
+	var n := countries.size()
+	while Province.pol_nat.size() < n:
+		Province.pol_nat.append(0)
+		Province.pol_sub.append(0)
+		Province.pol_plan.append(-1)
+	Province.pol_nat[c.id] = c.nat_mask
+	Province.pol_sub[c.id] = c.sub_mask
+	Province.pol_plan[c.id] = c.plan_sector if c.plan_left > 0 else -1
+
+
+func _sync_policy_all() -> void:
+	Province.pol_nat = []
+	Province.pol_sub = []
+	Province.pol_plan = []
+	for c in countries:
+		_sync_policy(c)
 
 
 ## Cultura e religião (B22) ---------------------------------------------------------------
@@ -3990,7 +4058,7 @@ func corruption_leak(c: Country) -> int:
 
 
 ## Ordem pública (B20) --------------------------------------------------------------------
-func order_cost(c: Country, kind: String) -> int:
+func order_cost(c: Country, kind: String, arg: int = -1) -> int:
 	var n := c.province_ids.size()
 	match kind:
 		"concede":
@@ -4007,11 +4075,19 @@ func order_cost(c: Country, kind: String) -> int:
 			return 150 + 4 * n
 		"cpolicy", "fpolicy":
 			return 60 + 2 * n
+		"plan":
+			return 400 + 10 * n
+		"subsidy":
+			return 50 + n
+		"nationalize":
+			return maxi(200, 6 * maxi(0, sector_profit(c, _sector_key(arg))))
+		"monopoly":
+			return 100 + 3 * n if arg >= 0 else 0
 	return 0
 
 
 ## Motivo de a ordem não poder ser dada agora ("" = pode).
-func order_block_reason(c: Country, kind: String) -> String:
+func order_block_reason(c: Country, kind: String, arg: int = -1) -> String:
 	if not c.is_alive():
 		return "País sem províncias"
 	if c.treasury < order_cost(c, kind):
@@ -4051,18 +4127,59 @@ func order_block_reason(c: Country, kind: String) -> String:
 				return "Corrupção já é baixa"
 		"cpolicy", "fpolicy":
 			pass
+		"plan":
+			if c.plan_left > 0:
+				return "Plano em curso (%d meses)" % c.plan_left
+			if c.plan_cd > 0:
+				return "Novo plano em %d meses" % c.plan_cd
+			if _sector_key(arg) == "" or sector_count(c, _sector_key(arg)) == 0:
+				return "Sem fábricas nesse setor"
+		"subsidy":
+			if _sector_key(arg) == "":
+				return "Setor inválido"
+			if (c.nat_mask >> arg) & 1 == 1:
+				return "Setor estatizado"
+			if (c.sub_mask >> arg) & 1 == 0:
+				if sector_count(c, _sector_key(arg)) == 0:
+					return "Sem fábricas nesse setor"
+				if _popcount(c.sub_mask) >= 2:
+					return "No máximo 2 setores subsidiados"
+		"nationalize":
+			if _sector_key(arg) == "":
+				return "Setor inválido"
+			if (c.nat_mask >> arg) & 1 == 1:
+				return "Já estatizado"
+			if sector_count(c, _sector_key(arg)) == 0:
+				return "Sem fábricas nesse setor"
+		"privatize":
+			if _sector_key(arg) == "" or (c.nat_mask >> arg) & 1 == 0:
+				return "Setor não estatizado"
+		"monopoly":
+			if arg >= 0:
+				if arg >= Province.RESOURCE_PRICE.size():
+					return "Recurso inválido"
+				var rn: String = str(Province.RESOURCE_PRICE.keys()[arg])
+				var has := false
+				for pid in c.province_ids:
+					if provinces[pid].resource_type == rn:
+						has = true
+						break
+				if not has:
+					return "Nenhuma província produz isso"
+			elif c.mono_good < 0:
+				return "Sem monopólio"
 		_:
 			return "Ordem desconhecida"
 	return ""
 
 
 @warning_ignore("integer_division")
-func _public_order(c: Country, kind: String) -> void:
-	if order_block_reason(c, kind) != "":
+func _public_order(c: Country, kind: String, arg: int = -1) -> void:
+	if order_block_reason(c, kind, arg) != "":
 		if c.id == player_country:
-			Events.notice.emit("Não é possível: %s." % order_block_reason(c, kind))
+			Events.notice.emit("Não é possível: %s." % order_block_reason(c, kind, arg))
 		return
-	c.treasury -= order_cost(c, kind)
+	c.treasury -= order_cost(c, kind, arg)
 	match kind:
 		"concede":
 			var dom := 0
@@ -4098,6 +4215,37 @@ func _public_order(c: Country, kind: String) -> void:
 			c.admin += 1
 			if c.id == player_country:
 				Events.notice.emit("Administração pública nível %d: corrupção agora %d%%." % [c.admin, corruption_of(c)])
+		"plan":
+			c.plan_sector = arg
+			c.plan_left = PLAN_MONTHS
+			c.plan_cd = PLAN_MONTHS + PLAN_CD
+			_sync_policy(c)
+			if c.id == player_country:
+				Events.notice.emit("Plano quinquenal: %s (+%d%% de produção por %d meses)." % [_sector_key(arg), Province.PLAN_OUT_PCT, PLAN_MONTHS])
+		"subsidy":
+			c.sub_mask = c.sub_mask ^ (1 << arg)
+			_sync_policy(c)
+			if c.id == player_country:
+				Events.notice.emit("Subsídio %s: %s." % [_sector_key(arg), "ligado" if (c.sub_mask >> arg) & 1 == 1 else "desligado"])
+		"nationalize":
+			c.nat_mask = c.nat_mask | (1 << arg)
+			c.sub_mask = c.sub_mask & ~(1 << arg)
+			c.private_capital = c.private_capital * 85 / 100
+			c.radical[2] = maxi(0, int(c.radical[2]) - 60)
+			c.radical[1] = mini(1000, int(c.radical[1]) + 60)
+			c.radical[0] = mini(1000, int(c.radical[0]) + 40)
+			_sync_policy(c)
+			if c.id == player_country:
+				Events.notice.emit("Setor %s estatizado: o Estado fica com o lucro; capitalistas e liberais protestam." % _sector_key(arg))
+		"privatize":
+			c.nat_mask = c.nat_mask & ~(1 << arg)
+			_sync_policy(c)
+			if c.id == player_country:
+				Events.notice.emit("Setor %s devolvido ao setor privado." % _sector_key(arg))
+		"monopoly":
+			c.mono_good = arg
+			if c.id == player_country:
+				Events.notice.emit("Monopólio estatal sobre %s." % str(Province.RESOURCE_PRICE.keys()[arg]) if arg >= 0 else "Monopólio estatal encerrado.")
 		"cpolicy":
 			c.culture_policy = 1 - c.culture_policy
 			if c.id == player_country:
@@ -4558,6 +4706,9 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var f_tax := 0
 	var up_barracks := 0
 	var up_infra := 0
+	var sub_cost := 0
+	var mono_inc := 0
+	var mono_name := str(Province.RESOURCE_PRICE.keys()[c.mono_good]) if c.mono_good >= 0 and c.mono_good < Province.RESOURCE_PRICE.size() else ""
 	for pid in c.province_ids:
 		var p := provinces[pid]
 		for ik in INFRA_UPKEEP_KINDS:
@@ -4576,6 +4727,9 @@ func estimate_monthly(c: Country) -> Dictionary:
 			f_inputs += int(rp["inputs_cost"])
 			f_wages += int(rp["wages"])
 			f_tax += int(rp["tax"])
+			sub_cost += int(rp["subsidy"])
+		if mono_name != "" and p.resource_type == mono_name:
+			mono_inc += pprod * MONOPOLY_PCT / 100
 		flat += Province.FLAT_TAX
 		prod += pprod
 	var lm := law_mods(c)
@@ -4625,10 +4779,10 @@ func estimate_monthly(c: Country) -> Dictionary:
 	var up_debt: int = c.debt * c.interest / 100
 	return {
 		"upkeep_research": up_research,
-		"income": tax + excise_rev + industry_state + trade, "tax": tax, "excise": excise_rev, "evasion": evasion, "industry": industry, "trade": trade,
+		"income": tax + excise_rev + industry_state + trade + mono_inc, "monopoly": mono_inc, "subsidies": sub_cost, "tax": tax, "excise": excise_rev, "evasion": evasion, "industry": industry, "trade": trade,
 		"industry_state": industry_state, "factory_revenue": f_rev, "factory_inputs": f_inputs,
 		"factory_wages": f_wages, "factory_tax": f_tax, "upkeep_barracks": up_barracks,
-		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt + up_welfare, "upkeep_welfare": up_welfare, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
+		"expense": up_prov + up_army + up_navy + up_edu + up_barracks + up_infra + up_research + up_debt + up_welfare + sub_cost, "upkeep_welfare": up_welfare, "upkeep_debt": up_debt, "upkeep_infra": up_infra, "upkeep_edu": up_edu, "regiments": regs,
 		"flat": flat, "production": prod, "upkeep_prov": up_prov, "upkeep_army": up_army, "upkeep_navy": up_navy,
 	}
 
@@ -5505,6 +5659,7 @@ func state_hash() -> int:
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
 		h = _mix(h, c.admin * 1000 + c.anticorr)
+		h = _mix(h, c.plan_sector * 100000 + c.plan_left * 1000 + c.plan_cd + c.sub_mask * 7919 + c.nat_mask * 104729 + c.mono_good * 1299709)
 		h = _mix(h, c.culture * 10000 + c.faith * 100 + c.culture_policy * 10 + c.faith_policy)
 		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
 		for rj in 5:
@@ -5717,6 +5872,12 @@ func serialize_state() -> Dictionary:
 		"rev_cd": _country_ints("rev_cd"),
 		"security": _country_ints("security"),
 		"admin": _country_ints("admin"),
+		"plan_sector": _country_ints("plan_sector"),
+		"plan_left": _country_ints("plan_left"),
+		"plan_cd": _country_ints("plan_cd"),
+		"sub_mask": _country_ints("sub_mask"),
+		"nat_mask": _country_ints("nat_mask"),
+		"mono_good": _country_ints("mono_good"),
 		"anticorr": _country_ints("anticorr"),
 		"repress_left": _country_ints("repress_left"),
 		"siege_left": _country_ints("siege_left"),
@@ -5985,6 +6146,12 @@ func load_state(d: Dictionary) -> bool:
 	var rcd: Array = d.get("rev_cd", [])
 	var sec_a: Array = d.get("security", [])
 	var adm_a: Array = d.get("admin", [])
+	var psec_a: Array = d.get("plan_sector", [])
+	var plf_a: Array = d.get("plan_left", [])
+	var pcd_a: Array = d.get("plan_cd", [])
+	var smk_a: Array = d.get("sub_mask", [])
+	var nmk_a: Array = d.get("nat_mask", [])
+	var mgd_a: Array = d.get("mono_good", [])
 	var ccu_a: Array = d.get("c_culture", [])
 	var cfa_a: Array = d.get("c_faith", [])
 	var cpo_a: Array = d.get("c_cpol", [])
@@ -6049,6 +6216,12 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].culture_policy = int(cpo_a[i]) if i < cpo_a.size() else 0
 		countries[i].faith_policy = int(fpo_a[i]) if i < fpo_a.size() else 0
 		_fix_state_culture(countries[i])
+		countries[i].plan_sector = int(psec_a[i]) if i < psec_a.size() else -1
+		countries[i].plan_left = int(plf_a[i]) if i < plf_a.size() else 0
+		countries[i].plan_cd = int(pcd_a[i]) if i < pcd_a.size() else 0
+		countries[i].sub_mask = int(smk_a[i]) if i < smk_a.size() else 0
+		countries[i].nat_mask = int(nmk_a[i]) if i < nmk_a.size() else 0
+		countries[i].mono_good = int(mgd_a[i]) if i < mgd_a.size() else -1
 		countries[i].anticorr = int(acr_a[i]) if i < acr_a.size() else 0
 		countries[i].repress_left = int(rpl[i]) if i < rpl.size() else 0
 		countries[i].siege_left = int(sgl[i]) if i < sgl.size() else 0
@@ -6057,6 +6230,7 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].rev_type = int(rty[i]) if i < rty.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0
+	_sync_policy_all()
 	var lin: Array = d.get("last_income", [])
 	var lex: Array = d.get("last_expense", [])
 	for i in countries.size():

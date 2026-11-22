@@ -148,9 +148,10 @@ static func enact_law(group: int, option: int) -> Dictionary:
 	return {"type": ENACT_LAW, "group": group, "option": option}
 
 
-## Ordem pública (B20): kind = "concede", "repress", "siege" ou "security".
-static func public_order(kind: String) -> Dictionary:
-	return {"type": PUBLIC_ORDER, "kind": kind}
+## Ordem pública (B20) e política econômica (B23): kind = "concede", "repress", "siege", "security", "admin",
+## "anticorr", "cpolicy", "fpolicy", "plan"/"subsidy"/"nationalize"/"privatize" (arg = setor), "monopoly" (arg = recurso ou -1).
+static func public_order(kind: String, arg: int = -1) -> Dictionary:
+	return {"type": PUBLIC_ORDER, "kind": kind, "arg": arg}
 
 
 ## Retira o projeto de lei em votação (carência de 2 anos naquele grupo de leis).

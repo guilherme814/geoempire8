@@ -686,6 +686,7 @@ func run_all() -> void:
 	_orders()
 	_admin()
 	_cultures()
+	_intervention()
 	_money()
 
 
@@ -1986,4 +1987,76 @@ func _cultures() -> void:
 	c.faith_policy = 0
 	g.load_state(bl)
 	check("cultura: persiste no save", g.provinces[mp.id].culture == pcul and g.countries[me].faith_policy == 1 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _intervention() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.treasury = 100000000
+	# Garante uma fabrica de tecido para o teste.
+	var fp: Province = null
+	for pid in c.province_ids:
+		var p: Province = g.provinces[pid]
+		if p.factory == "textile" and p.factory_level > 0:
+			fp = p
+			break
+	if fp == null:
+		fp = g.provinces[c.province_ids[0]]
+		fp.factory = "textile"
+		fp.factory_level = 2
+	var ti: int = Province.sector_index("textile")
+	check("intervencao: indice do setor", ti >= 0 and g._sector_key(ti) == "textile")
+	var e0: Dictionary = g.estimate_monthly(c)
+	var rep0: Dictionary = fp.building_report("textile", fp.factory_level, c.tax_pct)
+	var units0: int = fp.factory_units()
+	# Subsidio: folha de salarios cai 20%, Estado paga.
+	g.apply_command({"type": "public_order", "kind": "subsidy", "arg": ti, "issuer": me})
+	var rep1: Dictionary = fp.building_report("textile", fp.factory_level, c.tax_pct)
+	check("subsidio liga e reduz a folha", (c.sub_mask >> ti) & 1 == 1 and int(rep1["subsidy"]) > 0 and int(rep1["wages"]) < int(rep0["wages"]) and int(rep1["operating"]) > int(rep0["operating"]))
+	var e1: Dictionary = g.estimate_monthly(c)
+	check("subsidio entra nas despesas", int(e1["subsidies"]) > 0 and int(e1["expense"]) > int(e0["expense"]))
+	g.apply_command({"type": "public_order", "kind": "subsidy", "arg": ti, "issuer": me})
+	check("subsidio desliga", (c.sub_mask >> ti) & 1 == 0 and int(g.estimate_monthly(c)["subsidies"]) == 0)
+	# Plano: producao +15%.
+	g.apply_command({"type": "public_order", "kind": "plan", "arg": ti, "issuer": me})
+	check("plano quinquenal ativa e aumenta a producao", c.plan_left == g.PLAN_MONTHS and fp.factory_units() > units0)
+	check("novo plano bloqueado enquanto dura", g.order_block_reason(c, "plan", ti) != "")
+	c.plan_left = 1
+	g._country_month(c)
+	check("plano termina e a producao volta", c.plan_left == 0 and fp.factory_units() == units0)
+	# Estatizacao: o tesouro fica com o lucro; capitais privados encolhem.
+	c.private_capital = 100000
+	var rad1: int = int(c.radical[1])
+	var cost: int = g.order_cost(c, "nationalize", ti)
+	var t0: int = c.treasury
+	g.apply_command({"type": "public_order", "kind": "nationalize", "arg": ti, "issuer": me})
+	var rep2: Dictionary = fp.building_report("textile", fp.factory_level, c.tax_pct)
+	check("estatizacao cobra indenizacao e marca o setor", (c.nat_mask >> ti) & 1 == 1 and c.treasury == t0 - cost)
+	check("estatal: o Estado recebe o lucro (90%)", int(rep2["tax"]) == 0 and int(rep2["state_income"]) == int(rep2["operating"]) * Province.NAT_EFF_PCT / 100)
+	check("estatizacao encolhe capitais privados e radicaliza liberais", c.private_capital == 85000 and int(c.radical[1]) >= rad1)
+	check("estatizado nao aceita subsidio", g.order_block_reason(c, "subsidy", ti) != "")
+	g.apply_command({"type": "public_order", "kind": "privatize", "arg": ti, "issuer": me})
+	check("privatizar devolve o setor", (c.nat_mask >> ti) & 1 == 0 and not Province.is_nat(me, "textile"))
+	# Monopolio estatal sobre um recurso que o pais produz.
+	var rname_ := ""
+	for pid in c.province_ids:
+		rname_ = g.provinces[pid].resource_type
+		if Province.RESOURCE_PRICE.has(rname_):
+			break
+	var ri: int = Province.RESOURCE_PRICE.keys().find(rname_)
+	var m0: int = int(g.estimate_monthly(c)["monopoly"])
+	g.apply_command({"type": "public_order", "kind": "monopoly", "arg": ri, "issuer": me})
+	check("monopolio gera renda", c.mono_good == ri and int(g.estimate_monthly(c)["monopoly"]) > m0)
+	# Persistencia.
+	g.apply_command({"type": "public_order", "kind": "subsidy", "arg": ti, "issuer": me})
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	c.mono_good = -1
+	c.sub_mask = 0
+	Province.pol_sub[me] = 0
+	g.load_state(bl)
+	var lc: Country = g.countries[me]
+	check("politica economica persiste no save", lc.mono_good == ri and (lc.sub_mask >> ti) & 1 == 1 and Province.is_sub(me, "textile") and g.state_hash() == hh)
 	g.load_state(blob)

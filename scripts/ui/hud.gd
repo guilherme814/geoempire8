@@ -1835,6 +1835,70 @@ func _add_culture_card(body: Control, c: Country) -> void:
 		card.add_child(dl)
 
 
+## Card "Planejamento e intervenção" (B23): plano quinquenal, subsídios, estatização e monopólio.
+func _add_intervention_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Planejamento e intervenção", "scales")
+	var st: Array[String] = []
+	if c.plan_left > 0:
+		st.append("Plano quinquenal: %s, +%d%% de produção, %d meses restantes." % [Game._sector_key(c.plan_sector), Province.PLAN_OUT_PCT, c.plan_left])
+	if c.mono_good >= 0:
+		st.append("Monopólio estatal: %s (%d%% da produção vai ao tesouro, produtores se agitam)." % [str(Province.RESOURCE_PRICE.keys()[c.mono_good]), Game.MONOPOLY_PCT])
+	var e: Dictionary = Game.estimate_monthly(c)
+	st.append("Renda de monopólio: %s/mês · Subsídios pagos: %s/mês." % [Money.fmt(int(e["monopoly"])), Money.fmt(int(e["subsidies"]))])
+	var il := UIKit.label("\n".join(PackedStringArray(st)), 14, UIKit.TEXT_DIM)
+	il.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(il)
+	var keys: Array = Province.FACTORIES.keys()
+	for i in keys.size():
+		var k: String = str(keys[i])
+		var cnt: int = Game.sector_count(c, k)
+		var nat: bool = (c.nat_mask >> i) & 1 == 1
+		var sb: bool = (c.sub_mask >> i) & 1 == 1
+		var nm: String = str(Province.BUILDINGS[k]["name"])
+		var tag := " [ESTATAL]" if nat else (" [subsidiado]" if sb else "")
+		card.add_child(UIKit.label("%s — %d fábricas, lucro %s/mês%s%s" % [nm, cnt, Money.fmt(Game.sector_profit(c, k)), tag, " · PLANO" if c.plan_left > 0 and c.plan_sector == i else ""], 15, UIKit.TEXT))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		card.add_child(row)
+		var acts: Array = [
+			["subsidy", "Subsídio: desligar" if sb else "Subsídio: ligar", Game.order_block_reason(c, "subsidy", i), Game.order_cost(c, "subsidy", i)],
+			["privatize" if nat else "nationalize", "Privatizar" if nat else "Estatizar", Game.order_block_reason(c, "privatize" if nat else "nationalize", i), 0 if nat else Game.order_cost(c, "nationalize", i)],
+			["plan", "Plano", Game.order_block_reason(c, "plan", i), Game.order_cost(c, "plan", i)],
+		]
+		for a in acts:
+			var why: String = str(a[2])
+			var b := UIKit.button("%s\n%s" % [str(a[1]), Money.fmt(int(a[3]))] if int(a[3]) > 0 else str(a[1]), Vector2(0, 52))
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			b.disabled = why != ""
+			b.tooltip_text = why
+			var kind: String = str(a[0])
+			var sector: int = i
+			b.pressed.connect(func():
+				Game.submit_command(Cmd.public_order(kind, sector))
+				_refresh_windows())
+			row.add_child(b)
+	var mrow := HBoxContainer.new()
+	mrow.add_theme_constant_override("separation", 6)
+	card.add_child(mrow)
+	var ob := OptionButton.new()
+	ob.custom_minimum_size = Vector2(0, 52)
+	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ob.add_item("Monopólio sobre…", 0)
+	var goods: Array = Province.RESOURCE_PRICE.keys()
+	for gi in goods.size():
+		ob.add_item(str(goods[gi]), gi + 1)
+	ob.select(c.mono_good + 1)
+	mrow.add_child(ob)
+	var mb := UIKit.button("Decretar monopólio", Vector2(0, 52))
+	mb.pressed.connect(func():
+		Game.submit_command(Cmd.public_order("monopoly", ob.get_selected_id() - 1))
+		_refresh_windows())
+	mrow.add_child(mb)
+	var hint := UIKit.label("Plano: +15%% de produção no setor por 5 anos. Subsídio: o Estado paga 20%% dos salários do setor (máx. 2). Estatizar: o tesouro fica com o lucro (gestão 90%% eficiente), capitais privados encolhem e liberais/conservadores se radicalizam. Monopólio: o Estado captura %d%% da produção do recurso, mas os produtores se agitam. Escolha \"Monopólio sobre…\" e confirme para encerrar." % Game.MONOPOLY_PCT, 14, UIKit.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(hint)
+
+
 func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
 	var card := _card(body, "Grupos de interesse", "people")
 	var groups: Array = Game.interest_groups(c, pol)
@@ -2049,6 +2113,7 @@ func _refresh_politics() -> void:
 	_add_order_card(body, c)
 	_add_admin_card(body, c)
 	_add_culture_card(body, c)
+	_add_intervention_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())

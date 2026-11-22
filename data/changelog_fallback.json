@@ -1,8 +1,13 @@
 {
- "version": "0.43.0",
- "title": "GeoEmpire 8 — v0.43.0 (Política B21)",
- "body": "## Burocracia e corrupção\n- O Estado tem **capacidade administrativa** (base + níveis de administração + alfabetização) contra uma **carga** que cresce com o número de províncias. Cobertura baixa = **corrupção alta**.\n- Corrupção acima de 15% **desvia arrecadação** (metade do excedente); passa de 25%, aumenta a agitação local. República e imprensa livre reduzem; autocracia e censura aumentam.\n- Impérios grandes sofrem mais; países pequenos quase não.\n- Novas ações na tela de Política: **Ampliar a administração** (5 níveis, +25 de capacidade cada) e **Campanha anticorrupção** (24 meses, −12 pontos).\n- A IA passa a ampliar a administração quando a corrupção está alta e o tesouro permite.\n- Saves antigos funcionam.",
+ "version": "0.44.0",
+ "title": "GeoEmpire 8 — v0.44.0 (Política B22)",
+ "body": "## Cultura, religião e minorias\n- Cada província tem agora **cultura** (50 culturas) e **religião** (9), atribuídas pela geografia (Irlanda católica, Quebec francês, Bálcãs ortodoxos e muçulmanos, Cáucaso, Índia, Sudeste Asiático etc.). A cultura e a religião de Estado vêm da capital.\n- **Minorias** geram agitação extra (menos se a cultura é do mesmo grupo) e alimentam o **movimento nacionalista** — impérios multiétnicos (Rússia, Otomano, Áustria, Reino Unido) ficam mais frágeis.\n- **Políticas** (tela de Política): cultura = *tolerância* (atrito menor) ou *assimilação*; religião = *tolerância* ou *conversão*. Assimilar/converter leva cerca de 3 anos por província, com mais atrito durante o processo.\n- **Mapa**: dois modos novos, **Cultura** e **Religião**. A província mostra cultura, religião e se é minoria.\n- A IA assimila minorias numerosas quando está estável.\n- Saves antigos funcionam (a cultura é recalculada pela geografia).",
  "history": [
+  {
+   "version": "0.43.0",
+   "title": "GeoEmpire 8 — v0.43.0 (Política B21)",
+   "body": "## Burocracia e corrupção\n- O Estado tem **capacidade administrativa** (base + níveis de administração + alfabetização) contra uma **carga** que cresce com o número de províncias. Cobertura baixa = **corrupção alta**.\n- Corrupção acima de 15% **desvia arrecadação** (metade do excedente); passa de 25%, aumenta a agitação local. República e imprensa livre reduzem; autocracia e censura aumentam.\n- Impérios grandes sofrem mais; países pequenos quase não.\n- Novas ações na tela de Política: **Ampliar a administração** (5 níveis, +25 de capacidade cada) e **Campanha anticorrupção** (24 meses, −12 pontos).\n- A IA passa a ampliar a administração quando a corrupção está alta e o tesouro permite.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.42.0",
    "title": "GeoEmpire 8 — v0.42.0 (Política B20)",

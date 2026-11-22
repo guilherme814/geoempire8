@@ -46,7 +46,7 @@ Política
 | B19 | Golpes, revoluções e guerras civis; mudança de regime | B19 inteira feita no código: B19a golpe/revolução (v0.39.0), B19b secessão (v0.40.0), B19c guerra civil (v0.41.0) |
 | B20 | Reformas, concessões e repressão: crise de legitimidade | feita no código (v0.42.0): concessões, repressão, estado de sítio, aparato de segurança |
 | B21 | Burocracia: capacidade do Estado e corrupção | feita no código (v0.43.0): administração, corrupção, vazamento de arrecadação |
-| B22 | Cultura, religião e minorias; propaganda | pendente |
+| B22 | Cultura, religião e minorias; propaganda | feita no código (v0.44.0): culturas, religiões, minorias, assimilação/conversão, modos de mapa |
 | B23 | Política econômica avançada: planejamento, subsídios, monopólios, nacionalização | pendente |
 | B24 | IA econômica e política reagindo a crises | pendente |
 

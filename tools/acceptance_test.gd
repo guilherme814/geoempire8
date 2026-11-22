@@ -685,6 +685,7 @@ func run_all() -> void:
 	_civil_war()
 	_orders()
 	_admin()
+	_cultures()
 	_money()
 
 
@@ -1924,4 +1925,65 @@ func _admin() -> void:
 	g.load_state(bl)
 	var lc: Country = g.countries[me]
 	check("administracao e campanha persistem no save", lc.admin == 0 and lc.anticorr == g.ANTICORR_MONTHS and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _cultures() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	check("cultura: dados carregados", Cultures.count() >= 40 and Cultures.religion_count() >= 8)
+	var dub: Vector2i = Cultures.assign(-6.2, 53.3, "GBR")
+	var lon_: Vector2i = Cultures.assign(-0.1, 51.5, "GBR")
+	check("cultura: Dublin e irlandesa catolica, Londres e inglesa protestante", Cultures.cid(dub.x) == "irish" and Cultures.cid(lon_.x) == "english" and Cultures.rname(dub.y) != Cultures.rname(lon_.y))
+	var bad := 0
+	for p in g.provinces:
+		if p.culture < 0 or p.culture >= Cultures.count() or p.religion < 0 or p.religion >= Cultures.religion_count():
+			bad += 1
+	check("cultura: toda provincia tem cultura e religiao validas", bad == 0)
+	var cult_ok := 0
+	for k in g.countries:
+		if k.culture >= 0 and k.faith >= 0:
+			cult_ok += 1
+	check("cultura: todo pais tem cultura e religiao de Estado", cult_ok == g.countries.size())
+	check("cultura: Reino Unido e inglês", Cultures.cid(c.culture) == "english" or me != 0)
+	# Minoria: encontra uma provincia minoritaria e testa o atrito + assimilacao.
+	var mp: Province = null
+	for pid in c.province_ids:
+		if g.provinces[pid].culture != c.culture:
+			mp = g.provinces[pid]
+			break
+	if mp == null:
+		mp = g.provinces[c.province_ids[c.province_ids.size() - 1]]
+		mp.culture = (c.culture + 1) % Cultures.count()
+	var pol: Dictionary = g.politics_of(c)
+	c.stability = 80
+	c.culture_policy = 0
+	mp.unrest = 0
+	for i in 12:
+		g._unrest_step(c, pol)
+	var u_tol: int = mp.unrest
+	check("cultura: minoria gera agitacao mesmo com estabilidade", u_tol > 0)
+	check("cultura: minorias cultural percentual entre 0 e 100", g.minority_pct(c) >= 1 and g.minority_pct(c) <= 100)
+	var cc: int = c.culture
+	c.culture_policy = 1
+	c.rev_cd = 999
+	for i in 40:
+		g._unrest_step(c, pol)
+	check("cultura: assimilacao converte a minoria", mp.culture == cc)
+	# Politica por comando.
+	c.treasury = 1000000
+	var cp0: int = c.culture_policy
+	g.apply_command({"type": "public_order", "kind": "cpolicy", "issuer": me})
+	check("cultura: comando alterna a politica cultural", c.culture_policy == 1 - cp0)
+	g.apply_command({"type": "public_order", "kind": "fpolicy", "issuer": me})
+	check("cultura: comando alterna a politica religiosa", c.faith_policy == 1)
+	# Persistencia.
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var pcul: int = mp.culture
+	mp.culture = (pcul + 3) % Cultures.count()
+	c.faith_policy = 0
+	g.load_state(bl)
+	check("cultura: persiste no save", g.provinces[mp.id].culture == pcul and g.countries[me].faith_policy == 1 and g.state_hash() == hh)
 	g.load_state(blob)

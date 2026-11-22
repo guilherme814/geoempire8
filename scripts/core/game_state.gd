@@ -690,6 +690,7 @@ func load_world(path: String = WORLD_PATH) -> bool:
 				if nv >= 2:
 					_add_ships(_port_province_of(c), c.id, (nv - 1) * nv)
 
+	_assign_cultures()
 	for c in countries:
 		if c.is_alive():
 			var pol := politics_of(c)
@@ -3264,6 +3265,9 @@ func _country_month(c: Country) -> void:
 	if not is_human(c.id) and (clock.month + c.id) % 6 == 0 and c.admin < ADMIN_MAX and corruption_of(c) > 25 \
 			and c.treasury > 4 * order_cost(c, "admin"):
 		_public_order(c, "admin")
+	if not is_human(c.id) and (clock.month + c.id) % 6 == 3 and c.culture_policy == 0 and c.stability >= 55 and minority_pct(c) >= 35 \
+			and c.treasury > 6 * order_cost(c, "cpolicy"):
+		_public_order(c, "cpolicy")          # a IA assimila minorias numerosas quando está estável
 	_bill_step(c)
 	_group_step(c)
 	_election_step(c)
@@ -3842,6 +3846,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 	if rep or sge:
 		for j in 5:
 			press[j] += 150 if sge else 90            # a repressão alimenta o ressentimento
+	press[3] += minority_pct(c)                      # minorias culturais alimentam o nacionalismo (B22)
 	var rmax := 0
 	for j in 5:
 		c.radical[j] = clampi(int(c.radical[j]) + press[j] / 10 - RADICAL_DECAY, 0, 1000)
@@ -3859,7 +3864,23 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 	for pid in c.province_ids:
 		var p := provinces[pid]
 		var occ := 25 if (p.core_owner >= 0 and p.core_owner != c.id) else 0
-		var tg := maxi(0, base + occ + (pid * 37 % 11) - 5)
+		var pen := 0
+		if p.culture != c.culture:
+			var cb: int = 6 if Cultures.group_of(p.culture) == Cultures.group_of(c.culture) else 12
+			pen += cb / 2 if c.culture_policy == 0 else cb + 4
+			if c.culture_policy == 1:
+				p.assim += 3
+				if p.assim >= 100:
+					p.culture = c.culture
+					p.assim = 0
+		if p.religion != c.faith:
+			pen += 4 if c.faith_policy == 0 else 12
+			if c.faith_policy == 1:
+				p.conv += 3
+				if p.conv >= 100:
+					p.religion = c.faith
+					p.conv = 0
+		var tg := maxi(0, base + occ + pen + (pid * 37 % 11) - 5)
 		var was := p.unrest
 		p.unrest = clampi(p.unrest + clampi(tg - p.unrest, -3, 3), 0, 100)
 		if p.unrest >= UNREST_PROTEST:
@@ -3886,6 +3907,49 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		c.rev_clock = mini(c.rev_clock, REV_CLOCK_MAX - 1)      # carência: sem nova revolução
 	elif c.rev_clock >= REV_CLOCK_MAX:
 		_revolution(c, pol)
+
+
+## Cultura e religião (B22) ---------------------------------------------------------------
+## Atribuição inicial: regras geográficas (data/cultures_1836.json) pelo dono de origem; a cultura
+## e a religião de Estado de cada país vêm da capital.
+func _assign_cultures() -> void:
+	for p in provinces:
+		var tg := ""
+		if p.core_owner >= 0 and p.core_owner < countries.size():
+			tg = countries[p.core_owner].tag
+		var a := Cultures.assign(p.lon, p.lat, tg)
+		p.culture = a.x
+		p.religion = a.y
+		p.assim = 0
+		p.conv = 0
+	for c in countries:
+		_fix_state_culture(c)
+
+
+func _fix_state_culture(c: Country) -> void:
+	if c.culture >= 0 and c.faith >= 0:
+		return
+	var cp := c.capital
+	if cp >= 0 and cp < provinces.size():
+		c.culture = provinces[cp].culture
+		c.faith = provinces[cp].religion
+	else:
+		c.culture = Cultures.count() - 1
+		c.faith = 0
+
+
+## % de províncias do país com cultura (ou religião) diferente da do Estado.
+@warning_ignore("integer_division")
+func minority_pct(c: Country, faith: bool = false) -> int:
+	var n := c.province_ids.size()
+	if n == 0:
+		return 0
+	var m := 0
+	for pid in c.province_ids:
+		var p := provinces[pid]
+		if (p.religion != c.faith) if faith else (p.culture != c.culture):
+			m += 1
+	return m * 100 / n
 
 
 ## Burocracia e corrupção (B21) ------------------------------------------------------------
@@ -3941,6 +4005,8 @@ func order_cost(c: Country, kind: String) -> int:
 			return 200 * (c.admin + 1) * (1 + n / 8)
 		"anticorr":
 			return 150 + 4 * n
+		"cpolicy", "fpolicy":
+			return 60 + 2 * n
 	return 0
 
 
@@ -3983,6 +4049,8 @@ func order_block_reason(c: Country, kind: String) -> String:
 				return "Campanha em curso (%d meses)" % c.anticorr
 			if corruption_of(c) < 20:
 				return "Corrupção já é baixa"
+		"cpolicy", "fpolicy":
+			pass
 		_:
 			return "Ordem desconhecida"
 	return ""
@@ -4030,6 +4098,14 @@ func _public_order(c: Country, kind: String) -> void:
 			c.admin += 1
 			if c.id == player_country:
 				Events.notice.emit("Administração pública nível %d: corrupção agora %d%%." % [c.admin, corruption_of(c)])
+		"cpolicy":
+			c.culture_policy = 1 - c.culture_policy
+			if c.id == player_country:
+				Events.notice.emit("Política cultural: %s." % ("assimilação das minorias" if c.culture_policy == 1 else "tolerância"))
+		"fpolicy":
+			c.faith_policy = 1 - c.faith_policy
+			if c.id == player_country:
+				Events.notice.emit("Política religiosa: %s." % ("conversão das minorias" if c.faith_policy == 1 else "tolerância"))
 		"anticorr":
 			c.anticorr = ANTICORR_MONTHS
 			if c.id == player_country:
@@ -5333,6 +5409,7 @@ func state_hash() -> int:
 		h = _mix(h, p.manpower)
 		h = _mix(h, p.workshop * 10 + p.barracks)
 		h = _mix(h, p.unrest)
+		h = _mix(h, p.culture * 100000 + p.religion * 1000 + p.assim * 10 + p.conv)
 		for k in Province.EXTRA_KINDS:
 			h = _mix(h, int(p.bld.get(k, 0)))
 		h = _mix(h, (Province.FACTORIES.keys().find(p.factory) + 1) * 10 + p.factory_level)
@@ -5428,6 +5505,7 @@ func state_hash() -> int:
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
 		h = _mix(h, c.admin * 1000 + c.anticorr)
+		h = _mix(h, c.culture * 10000 + c.faith * 100 + c.culture_policy * 10 + c.faith_policy)
 		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
 		for rj in 5:
 			h = _mix(h, int(c.radical[rj]))
@@ -5581,8 +5659,16 @@ func serialize_state() -> Dictionary:
 	var fmethods: Array = []
 	var rmethods: Array = []
 	var unrests: Array = []
+	var pcul: Array = []
+	var prel: Array = []
+	var pass_: Array = []
+	var pconv: Array = []
 	for p in provinces:
 		unrests.append(p.unrest)
+		pcul.append(p.culture)
+		prel.append(p.religion)
+		pass_.append(p.assim)
+		pconv.append(p.conv)
 		owners.append(p.owner_id)
 		pops.append(p.population)
 		mps.append(p.manpower)
@@ -5617,6 +5703,14 @@ func serialize_state() -> Dictionary:
 		"manpower": mps,
 		"workshops": workshops,
 		"unrest": unrests,
+		"p_culture": pcul,
+		"p_religion": prel,
+		"p_assim": pass_,
+		"p_conv": pconv,
+		"c_culture": _country_ints("culture"),
+		"c_faith": _country_ints("faith"),
+		"c_cpol": _country_ints("culture_policy"),
+		"c_fpol": _country_ints("faith_policy"),
 		"radical": _country_radical(),
 		"rev_clock": _country_ints("rev_clock"),
 		"strikes": _country_ints("strikes"),
@@ -5750,6 +5844,21 @@ func load_state(d: Dictionary) -> bool:
 		provinces[i].barracks = int(barracks[i])
 		var unr: Array = d.get("unrest", [])
 		provinces[i].unrest = int(unr[i]) if i < unr.size() else 0
+		var pcu: Array = d.get("p_culture", [])
+		var pre: Array = d.get("p_religion", [])
+		var pas: Array = d.get("p_assim", [])
+		var pcv: Array = d.get("p_conv", [])
+		if i < pcu.size() and i < pre.size():
+			provinces[i].culture = int(pcu[i])
+			provinces[i].religion = int(pre[i])
+			provinces[i].assim = int(pas[i]) if i < pas.size() else 0
+			provinces[i].conv = int(pcv[i]) if i < pcv.size() else 0
+		else:
+			var ca := Cultures.assign(provinces[i].lon, provinces[i].lat, countries[provinces[i].core_owner].tag if provinces[i].core_owner >= 0 and provinces[i].core_owner < countries.size() else "")
+			provinces[i].culture = ca.x
+			provinces[i].religion = ca.y
+			provinces[i].assim = 0
+			provinces[i].conv = 0
 		var fk: Array = d.get("factory", [])
 		var fl: Array = d.get("factory_lvl", [])
 		provinces[i].factory = str(fk[i]) if i < fk.size() else ""
@@ -5876,6 +5985,10 @@ func load_state(d: Dictionary) -> bool:
 	var rcd: Array = d.get("rev_cd", [])
 	var sec_a: Array = d.get("security", [])
 	var adm_a: Array = d.get("admin", [])
+	var ccu_a: Array = d.get("c_culture", [])
+	var cfa_a: Array = d.get("c_faith", [])
+	var cpo_a: Array = d.get("c_cpol", [])
+	var fpo_a: Array = d.get("c_fpol", [])
 	var acr_a: Array = d.get("anticorr", [])
 	var rpl: Array = d.get("repress_left", [])
 	var sgl: Array = d.get("siege_left", [])
@@ -5931,6 +6044,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
 		countries[i].security = int(sec_a[i]) if i < sec_a.size() else 0
 		countries[i].admin = int(adm_a[i]) if i < adm_a.size() else 0
+		countries[i].culture = int(ccu_a[i]) if i < ccu_a.size() else -1
+		countries[i].faith = int(cfa_a[i]) if i < cfa_a.size() else -1
+		countries[i].culture_policy = int(cpo_a[i]) if i < cpo_a.size() else 0
+		countries[i].faith_policy = int(fpo_a[i]) if i < fpo_a.size() else 0
+		_fix_state_culture(countries[i])
 		countries[i].anticorr = int(acr_a[i]) if i < acr_a.size() else 0
 		countries[i].repress_left = int(rpl[i]) if i < rpl.size() else 0
 		countries[i].siege_left = int(sgl[i]) if i < sgl.size() else 0

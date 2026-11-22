@@ -7,9 +7,9 @@ extends Node2D
 ## A malha é uma única ArrayMesh (todas as províncias, triangulação feita uma vez em
 ## Province.from_dict), então zoom e pan não custam CPU.
 
-enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE, UNREST }
+enum Mode { POLITICAL, TERRAIN, POPULATION, RESOURCE, UNREST, CULTURE, FAITH }
 
-const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos", "Revolta"]
+const MODE_NAMES: Array[String] = ["Político", "Terreno", "População", "Recursos", "Revolta", "Cultura", "Religião"]
 const GRID_SIZE := 100.0
 const OCEAN_COLOR := Color(0.045, 0.125, 0.185)  # azul petróleo escuro (borda do mapa)
 const OCEAN_CENTER := Color(0.10, 0.27, 0.36)    # azul mais claro no centro (vinheta)
@@ -188,11 +188,24 @@ func _on_gfx_changed() -> void:
 func _on_month_changed(_date: Dictionary) -> void:
 	if mode == Mode.POPULATION:
 		_recolor()
+	elif mode == Mode.CULTURE or mode == Mode.FAITH:
+		var cs := _calc_cult_sig()
+		if cs != _unrest_sig:
+			_unrest_sig = cs
+			_recolor()
 	elif mode == Mode.POLITICAL or mode == Mode.UNREST:
 		var sg := _calc_unrest_sig()
 		if sg != _unrest_sig:
 			_unrest_sig = sg
 			_recolor()
+
+
+## Assinatura de cultura/religião (o mapa só recolore quando alguma província muda).
+func _calc_cult_sig() -> int:
+	var h := 11
+	for p in Game.provinces:
+		h = (h * 31 + (p.culture if mode == Mode.CULTURE else p.religion) + p.id) & 0x7fffffff
+	return h
 
 
 ## Assinatura das faixas de agitação (para só recolorir o mapa quando algo muda).
@@ -309,6 +322,11 @@ func _province_color(p: Province) -> Color:
 	if mode == Mode.POPULATION:
 		var t := pow(float(p.population) / float(_max_pop), 0.3)   # curva suave: realça diferenças
 		return Color(0.95, 0.92, 0.80).lerp(Color(0.62, 0.12, 0.08), t)
+	if mode == Mode.CULTURE or mode == Mode.FAITH:
+		if p.owner_id < 0:
+			return Color(0.20, 0.22, 0.25)
+		var cc: Color = Cultures.color(p.culture) if mode == Mode.CULTURE else Cultures.rcolor(p.religion)
+		return cc.darkened(shade * 0.5)
 	if mode == Mode.UNREST:
 		if p.owner_id < 0:
 			return Color(0.20, 0.22, 0.25)

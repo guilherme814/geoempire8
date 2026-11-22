@@ -197,6 +197,10 @@ var resource_type: String = "grain"
 var coastal: bool = false
 var population: int = 0
 var core_owner: int = -1                          # dono no início (para marcar território conquistado)
+var culture: int = 0                              # cultura da população (índice em Cultures) (B22)
+var religion: int = 0                             # religião da população (B22)
+var assim: int = 0                                # progresso de assimilação cultural 0..100 (B22)
+var conv: int = 0                                 # progresso de conversão religiosa 0..100 (B22)
 var unrest: int = 0                                # agitação local 0..100 (B18): >=40 protestos, >=70 rebeldes
 var region: String = ""                           # província histórica (data/regions.json)
 var owner_id: int = -1                              # -1 = terra sem dono

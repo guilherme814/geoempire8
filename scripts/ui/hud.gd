@@ -1790,6 +1790,51 @@ func _add_admin_card(body: Control, c: Country) -> void:
 		card.add_child(dl)
 
 
+## Card "Cultura e religião" (B22): Estado, minorias e políticas de assimilação/conversão.
+func _add_culture_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Cultura e religião", "scales")
+	card.add_child(UIKit.label("Cultura de Estado: %s · Religião de Estado: %s" % [Cultures.cname(c.culture), Cultures.rname(c.faith)], 16, UIKit.GOLD_BRIGHT))
+	var cnt := {}
+	var rcnt := {}
+	for pid in c.province_ids:
+		var p: Province = Game.provinces[pid]
+		if p.culture != c.culture:
+			cnt[p.culture] = int(cnt.get(p.culture, 0)) + 1
+		if p.religion != c.faith:
+			rcnt[p.religion] = int(rcnt.get(p.religion, 0)) + 1
+	var n := maxi(1, c.province_ids.size())
+	var txt: Array[String] = []
+	txt.append("Minorias culturais: %d%% das províncias · religiosas: %d%%." % [Game.minority_pct(c), Game.minority_pct(c, true)])
+	var keys: Array = cnt.keys()
+	keys.sort_custom(func(a, b): return int(cnt[a]) > int(cnt[b]) or (int(cnt[a]) == int(cnt[b]) and int(a) < int(b)))
+	var parts: Array[String] = []
+	for k in keys.slice(0, 4):
+		parts.append("%s %d%%" % [Cultures.cname(int(k)), int(cnt[k]) * 100 / n])
+	if not parts.is_empty():
+		txt.append("Maiores: " + ", ".join(PackedStringArray(parts)) + ".")
+	txt.append("Minorias culturais alimentam o movimento nacionalista; cada província minoritária gera agitação extra.")
+	var tl := UIKit.label("\n".join(PackedStringArray(txt)), 14, UIKit.TEXT_DIM)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(tl)
+	var defs := [
+		["cpolicy", "Política cultural: %s" % ("ASSIMILAÇÃO" if c.culture_policy == 1 else "tolerância"), "Alterna. Assimilação converte províncias minoritárias em ~3 anos, mas aumenta o atrito durante o processo."],
+		["fpolicy", "Política religiosa: %s" % ("CONVERSÃO" if c.faith_policy == 1 else "tolerância"), "Alterna. Conversão leva a religião de Estado às minorias em ~3 anos, com atrito maior no processo."],
+	]
+	for d in defs:
+		var why: String = Game.order_block_reason(c, str(d[0]))
+		var b := UIKit.button("%s (%s)" % [str(d[1]), Money.fmt(Game.order_cost(c, str(d[0])))], Vector2(0, 46))
+		b.disabled = why != ""
+		b.tooltip_text = why if why != "" else str(d[2])
+		var kind: String = str(d[0])
+		b.pressed.connect(func():
+			Game.submit_command(Cmd.public_order(kind))
+			_refresh_windows())
+		card.add_child(b)
+		var dl := UIKit.label(why if why != "" else str(d[2]), 14, UIKit.TEXT_DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(dl)
+
+
 func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
 	var card := _card(body, "Grupos de interesse", "people")
 	var groups: Array = Game.interest_groups(c, pol)
@@ -2003,6 +2048,7 @@ func _refresh_politics() -> void:
 	_add_unrest_card(body, c)
 	_add_order_card(body, c)
 	_add_admin_card(body, c)
+	_add_culture_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())
@@ -2592,6 +2638,7 @@ func _refresh_info() -> void:
 	lines.append("Preço do recurso: %d%%" % p.price_of(p.resource_type))
 	lines.append("Produção: %d/mês   Imposto: %d/mês" % [p.production(), p.monthly_tax(tax) if has_owner else 0])
 	lines.append("Mão de obra: %s / %s" % [_fmt_pop(p.manpower), _fmt_pop(p.manpower_max())])
+	lines.append("Cultura: %s · %s%s" % [Cultures.cname(p.culture), Cultures.rname(p.religion), (" · minoria" if has_owner and p.owner_id >= 0 and (p.culture != Game.countries[p.owner_id].culture or p.religion != Game.countries[p.owner_id].faith) else "")])
 	if has_owner:
 		lines.append("Agitação: %d%% — %s" % [p.unrest, "REBELDES" if p.unrest >= Game.UNREST_REBEL else ("propensa à revolução" if p.unrest >= Game.UNREST_PRONE else ("protestos e greves" if p.unrest >= Game.UNREST_PROTEST else "calma"))])
 	var bl := _buildings_summary(p)

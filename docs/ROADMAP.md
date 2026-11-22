@@ -106,3 +106,6 @@ Victoria 3 (métodos de produção, infâmia), Age of History 3, Geopolitical Si
 
 
 Pesquisa de referência (Victoria 3 e história econômica): `docs/ECONOMIA_PESQUISA.md` e `docs/POLITICA_PESQUISA.md`.
+| B26a | Setor de obras: fila, capacidade, canteiro de obras | feita no código (v0.50.0) |
+| B26b | Estruturas novas: vidraçaria, química, bairro operário, prefeitura, estação | feita no código (v0.50.0) |
+| B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | em andamento |

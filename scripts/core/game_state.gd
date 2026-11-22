@@ -3835,7 +3835,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		press[int(CLASS_RADICAL[i])] += unh * int(sh[i]) / 100
 	if rep or sge:
 		for j in 5:
-			press[j] += 70 if sge else 30            # a repressão alimenta o ressentimento
+			press[j] += 150 if sge else 90            # a repressão alimenta o ressentimento
 	var rmax := 0
 	for j in 5:
 		c.radical[j] = clampi(int(c.radical[j]) + press[j] / 10 - RADICAL_DECAY, 0, 1000)

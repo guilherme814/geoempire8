@@ -127,6 +127,12 @@ const REV_CLOCK_MAX := 12            # meses até a revolução (B19)
 const REV_REBEL_SHARE := 25          # % de províncias rebeldes que corre o relógio
 const REV_COOLDOWN := 60             # meses sem nova revolução após uma (B19)
 const CHRONICLE_MAX := 80
+const SECURITY_MAX := 3              # níveis de guarda nacional / polícia secreta (B20)
+const REPRESS_MONTHS := 12
+const SIEGE_MONTHS := 6
+const REPRESS_CD := 12
+const SIEGE_CD := 36
+const CONCEDE_CD := 12
 const CIVIL_REBEL_SHARE := 35        # % de províncias rebeldes para a revolução virar guerra civil (B19c)
 const CIVIL_MIN_PROVINCES := 6       # países menores não se dividem
 const CIVIL_MAX_MONTHS := 36         # impasse: depois disto a guerra termina e os rebeldes ficam independentes
@@ -1078,6 +1084,10 @@ func apply_command(cmd: Dictionary) -> void:
 		else:
 			_enact_law(lc, lg, lo)
 
+	elif t == Cmd.PUBLIC_ORDER:
+		if issuer >= 0 and issuer < countries.size():
+			_public_order(countries[issuer], str(cmd.get("kind", "")))
+
 	elif t == Cmd.CANCEL_BILL:
 		if issuer >= 0 and issuer < countries.size() and countries[issuer].bill_g >= 0:
 			var cb: Country = countries[issuer]
@@ -2018,8 +2028,8 @@ func _group_step(c: Country) -> void:
 
 ## Com parlamento (sufrágio e cadeiras já eleitas) as leis precisam ser votadas (B17).
 func needs_vote(c: Country) -> bool:
-	if suffrage_of(c) <= 0:
-		return false
+	if suffrage_of(c) <= 0 or c.siege_left > 0:
+		return false              # estado de sítio suspende o parlamento
 	var tot := 0
 	for j in 5:
 		tot += int(c.seats[j])
@@ -3809,11 +3819,23 @@ func _update_politics(c: Country) -> void:
 func _unrest_step(c: Country, pol: Dictionary) -> void:
 	c.rev_cd = maxi(0, c.rev_cd - 1)
 	_civil_step(c)
+	var rep: bool = c.repress_left > 0
+	var sge: bool = c.siege_left > 0
+	c.repress_left = maxi(0, c.repress_left - 1)
+	c.siege_left = maxi(0, c.siege_left - 1)
+	c.order_cd = maxi(0, c.order_cd - 1)
+	c.concede_cd = maxi(0, c.concede_cd - 1)
+	if rep or sge:
+		for i in 6:
+			c.sat[i] = maxi(0, int(c.sat[i]) - (3 if sge else 1))
 	var sh: Array = pol["share"]
 	var press := [0, 0, 0, 0, 0]
 	for i in 6:
 		var unh := maxi(0, 50 - int(c.sat[i]))
 		press[int(CLASS_RADICAL[i])] += unh * int(sh[i]) / 100
+	if rep or sge:
+		for j in 5:
+			press[j] += 70 if sge else 30            # a repressão alimenta o ressentimento
 	var rmax := 0
 	for j in 5:
 		c.radical[j] = clampi(int(c.radical[j]) + press[j] / 10 - RADICAL_DECAY, 0, 1000)
@@ -3823,7 +3845,7 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 		c.strikes = 0
 		c.rev_clock = 0
 		return
-	var base := clampi((50 - c.stability) * 2, 0, 100)
+	var base := clampi((50 - c.stability) * 2, 0, 100) - c.security * 8 - (25 if rep else 0) - (50 if sge else 0)
 	if rmax >= RADICAL_ACTIVE:
 		base += mini(30, (rmax - RADICAL_ACTIVE) / 20)
 	var protest := 0
@@ -3852,10 +3874,104 @@ func _unrest_step(c: Country, pol: Dictionary) -> void:
 			Events.notice.emit("Perigo de revolução! Relógio %d/%d. Se chegar a %d: %s." % [c.rev_clock, REV_CLOCK_MAX, REV_CLOCK_MAX, revolution_label(fc)])
 	else:
 		c.rev_clock = maxi(0, c.rev_clock - 1)
+	if sge:
+		c.rev_clock = maxi(0, c.rev_clock - 2)
 	if c.rev_cd > 0:
 		c.rev_clock = mini(c.rev_clock, REV_CLOCK_MAX - 1)      # carência: sem nova revolução
 	elif c.rev_clock >= REV_CLOCK_MAX:
 		_revolution(c, pol)
+
+
+## Ordem pública (B20) --------------------------------------------------------------------
+func order_cost(c: Country, kind: String) -> int:
+	var n := c.province_ids.size()
+	match kind:
+		"concede":
+			return 120 + 6 * n
+		"repress":
+			return 80 + 3 * n
+		"siege":
+			return 200 + 5 * n
+		"security":
+			return 150 * (c.security + 1)
+	return 0
+
+
+## Motivo de a ordem não poder ser dada agora ("" = pode).
+func order_block_reason(c: Country, kind: String) -> String:
+	if not c.is_alive():
+		return "País sem províncias"
+	if c.treasury < order_cost(c, kind):
+		return "Tesouro insuficiente"
+	match kind:
+		"concede":
+			if c.concede_cd > 0:
+				return "Nova concessão em %d meses" % c.concede_cd
+			var any := c.rev_clock > 0
+			for j in 5:
+				if int(c.radical[j]) >= 100:
+					any = true
+			if not any:
+				return "Sem movimento a apaziguar"
+		"repress":
+			if c.repress_left > 0 or c.siege_left > 0:
+				return "Já há repressão ou estado de sítio"
+			if c.order_cd > 0:
+				return "Nova ordem em %d meses" % c.order_cd
+		"siege":
+			if c.repress_left > 0 or c.siege_left > 0:
+				return "Já há repressão ou estado de sítio"
+			if c.order_cd > 0:
+				return "Nova ordem em %d meses" % c.order_cd
+			if c.rev_clock < 3:
+				return "Só em crise (relógio da revolução ≥ 3)"
+		"security":
+			if c.security >= SECURITY_MAX:
+				return "Nível máximo"
+		_:
+			return "Ordem desconhecida"
+	return ""
+
+
+@warning_ignore("integer_division")
+func _public_order(c: Country, kind: String) -> void:
+	if order_block_reason(c, kind) != "":
+		if c.id == player_country:
+			Events.notice.emit("Não é possível: %s." % order_block_reason(c, kind))
+		return
+	c.treasury -= order_cost(c, kind)
+	match kind:
+		"concede":
+			var dom := 0
+			for j in 5:
+				if int(c.radical[j]) > int(c.radical[dom]):
+					dom = j
+			for j in 5:
+				c.radical[j] = maxi(0, int(c.radical[j]) - (250 if j == dom else 50))
+			c.rev_clock = maxi(0, c.rev_clock - 3)
+			for i in 6:
+				if int(CLASS_RADICAL[i]) == dom:
+					c.sat[i] = mini(100, int(c.sat[i]) + 8)
+			for pid in c.province_ids:
+				provinces[pid].unrest = maxi(0, provinces[pid].unrest - 10)
+			c.concede_cd = CONCEDE_CD
+			if c.id == player_country:
+				Events.notice.emit("Concessões feitas ao movimento %s: a pressão cede." % REV_IDEO[dom])
+		"repress":
+			c.repress_left = REPRESS_MONTHS
+			c.order_cd = REPRESS_MONTHS + REPRESS_CD
+			if c.id == player_country:
+				Events.notice.emit("Repressão iniciada por %d meses: menos agitação agora, mais radicalização depois." % REPRESS_MONTHS)
+		"siege":
+			c.siege_left = SIEGE_MONTHS
+			c.order_cd = SIEGE_MONTHS + SIEGE_CD
+			if c.id == player_country:
+				Events.notice.emit("Estado de sítio por %d meses: parlamento suspenso, relógio da revolução recua." % SIEGE_MONTHS)
+		"security":
+			c.security += 1
+			if c.id == player_country:
+				Events.notice.emit("Aparato de segurança nível %d." % c.security)
+	Events.treasury_changed.emit(c.id)
 
 
 ## Previsão do desfecho se o relógio chegar ao fim: movimento dominante e tipo (1 golpe, 2 revolução).
@@ -4335,6 +4451,8 @@ func estimate_monthly(c: Country) -> Dictionary:
 		tax = tax * (70 + c.stability * 3 / 4) / 100       # instabilidade reduz a arrecadação
 	if c.strikes > 0:
 		tax = tax * (100 - c.strikes / 2) / 100            # greves e protestos (B18)
+	if c.siege_left > 0:
+		tax = tax * 85 / 100                                # estado de sítio emperra a economia (B20)
 	tax = tax * (100 + Government.eff(c.budget_code, 2) + Government.decree_field(c.decree, "tax")) / 100
 	tax = tax * (100 - c.inflation / 2) / 100                  # inflação corrói a arrecadação real
 	var evasion: int = tax_evasion(c)
@@ -5243,6 +5361,7 @@ func state_hash() -> int:
 		h = _mix(h, c.grp_tax * 100 + c.grp_trade)
 		h = _mix(h, c.rev_clock * 1000 + c.strikes)
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
+		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
 		for rj in 5:
 			h = _mix(h, int(c.radical[rj]))
 		for sj in 5:
@@ -5435,6 +5554,11 @@ func serialize_state() -> Dictionary:
 		"rev_clock": _country_ints("rev_clock"),
 		"strikes": _country_ints("strikes"),
 		"rev_cd": _country_ints("rev_cd"),
+		"security": _country_ints("security"),
+		"repress_left": _country_ints("repress_left"),
+		"siege_left": _country_ints("siege_left"),
+		"order_cd": _country_ints("order_cd"),
+		"concede_cd": _country_ints("concede_cd"),
 		"rev_type": _country_ints("rev_type"),
 		"chronicle": chronicle.duplicate(true),
 		"civil_wars": civil_wars.duplicate(true),
@@ -5681,6 +5805,11 @@ func load_state(d: Dictionary) -> bool:
 	var rvc: Array = d.get("rev_clock", [])
 	var stk: Array = d.get("strikes", [])
 	var rcd: Array = d.get("rev_cd", [])
+	var sec_a: Array = d.get("security", [])
+	var rpl: Array = d.get("repress_left", [])
+	var sgl: Array = d.get("siege_left", [])
+	var ocd: Array = d.get("order_cd", [])
+	var ccd: Array = d.get("concede_cd", [])
 	var rty: Array = d.get("rev_type", [])
 	civil_wars = []
 	for cwe in d.get("civil_wars", []):
@@ -5729,6 +5858,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].rev_clock = int(rvc[i]) if i < rvc.size() else 0
 		countries[i].strikes = int(stk[i]) if i < stk.size() else 0
 		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
+		countries[i].security = int(sec_a[i]) if i < sec_a.size() else 0
+		countries[i].repress_left = int(rpl[i]) if i < rpl.size() else 0
+		countries[i].siege_left = int(sgl[i]) if i < sgl.size() else 0
+		countries[i].order_cd = int(ocd[i]) if i < ocd.size() else 0
+		countries[i].concede_cd = int(ccd[i]) if i < ccd.size() else 0
 		countries[i].rev_type = int(rty[i]) if i < rty.size() else 0
 		countries[i].interest = int(ints[i]) if i < ints.size() else LOAN_RATE_PCT
 		countries[i].inflation = int(infl[i]) if i < infl.size() else 0

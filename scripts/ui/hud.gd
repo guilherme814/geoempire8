@@ -1722,6 +1722,39 @@ func _add_unrest_card(body: Control, c: Country) -> void:
 	card.add_child(hint)
 
 
+## Card "Ordem pública e concessões" (B20): ceder, reprimir, estado de sítio e aparato de segurança.
+func _add_order_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Ordem pública e concessões", "shield")
+	var st: Array[String] = []
+	st.append("Aparato de segurança: nível %d/%d (agitação −%d%%, aceita upgrades)" % [c.security, Game.SECURITY_MAX, c.security * 8])
+	if c.repress_left > 0:
+		st.append("Repressão ativa: %d meses (agitação −25%%, mas a radicalização cresce)" % c.repress_left)
+	if c.siege_left > 0:
+		st.append("ESTADO DE SÍTIO: %d meses (parlamento suspenso, arrecadação −15%%)" % c.siege_left)
+	var sl := UIKit.label("\n".join(PackedStringArray(st)), 15, UIKit.TEXT)
+	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(sl)
+	var defs := [
+		["concede", "Fazer concessões", "Apazigua o movimento dominante (−25% de radicalização), recua o relógio em 3 e acalma províncias."],
+		["repress", "Reprimir (12 meses)", "Derruba a agitação local, mas alimenta o ressentimento e a radicalização."],
+		["siege", "Estado de sítio (6 meses)", "Só em crise: recua o relógio da revolução e suspende o parlamento; custo político alto."],
+		["security", "Reforçar a segurança", "Guarda nacional / polícia secreta: reduz a agitação de todas as províncias, de forma permanente."],
+	]
+	for d in defs:
+		var why: String = Game.order_block_reason(c, str(d[0]))
+		var b := UIKit.button("%s (%s)" % [str(d[1]), Money.fmt(Game.order_cost(c, str(d[0])))], Vector2(0, 46))
+		b.disabled = why != ""
+		b.tooltip_text = why if why != "" else str(d[2])
+		var kind: String = str(d[0])
+		b.pressed.connect(func():
+			Game.submit_command(Cmd.public_order(kind))
+			_refresh_windows())
+		card.add_child(b)
+		var tl := UIKit.label(why if why != "" else str(d[2]), 14, UIKit.TEXT_DIM)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(tl)
+
+
 func _add_groups_card(body: Control, c: Country, pol: Dictionary) -> void:
 	var card := _card(body, "Grupos de interesse", "people")
 	var groups: Array = Game.interest_groups(c, pol)
@@ -1933,6 +1966,7 @@ func _refresh_politics() -> void:
 	_add_parliament_card(body, c)
 	_add_groups_card(body, c, pol)
 	_add_unrest_card(body, c)
+	_add_order_card(body, c)
 
 	var mcard := _card(body, "Migração e imigração", "people")
 	var att: Dictionary = Game.attractiveness(c, Game.world_density())

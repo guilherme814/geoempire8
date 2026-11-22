@@ -683,6 +683,7 @@ func run_all() -> void:
 	_revolutions()
 	_secession()
 	_civil_war()
+	_orders()
 	_money()
 
 
@@ -1807,4 +1808,57 @@ func _civil_war() -> void:
 	g.civil_wars[0][2] = g.clock.year * 12 + g.clock.month - g.CIVIL_MAX_MONTHS
 	g._civil_step(g.countries[me])
 	check("guerra civil: impasse encerra a guerra", not g.at_war(me, tag) and g.civil_wars.is_empty() and g.countries[tag].is_alive())
+	g.load_state(blob)
+
+
+func _orders() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	var pol: Dictionary = g.politics_of(c)
+	c.treasury = 10000000
+	c.rev_cd = 999
+	for k in 5:
+		c.radical[k] = 0
+	c.rev_clock = 0
+	check("concessao sem movimento e bloqueada", g.order_block_reason(c, "concede") != "")
+	check("sitio fora de crise e bloqueado", g.order_block_reason(c, "siege") != "")
+	c.radical[2] = 600
+	c.rev_clock = 5
+	for pid in c.province_ids:
+		g.provinces[pid].unrest = 50
+	var t0: int = c.treasury
+	g.apply_command({"type": "public_order", "kind": "concede", "issuer": me})
+	check("concessao reduz radicalizacao e relogio", int(c.radical[2]) == 350 and c.rev_clock == 2 and c.concede_cd == g.CONCEDE_CD)
+	check("concessao cobra o custo e acalma provincias", c.treasury == t0 - (120 + 6 * c.province_ids.size()) and g.provinces[c.province_ids[0]].unrest == 40)
+	check("nova concessao em carencia", g.order_block_reason(c, "concede") != "")
+	# Seguranca permanente.
+	g.apply_command({"type": "public_order", "kind": "security", "issuer": me})
+	check("seguranca sobe de nivel", c.security == 1)
+	# Repressao: agitacao cai, radicalizacao cresce.
+	c.stability = 20
+	g.apply_command({"type": "public_order", "kind": "repress", "issuer": me})
+	check("repressao ativa", c.repress_left == g.REPRESS_MONTHS and g.order_block_reason(c, "siege") != "")
+	var rad0: int = int(c.radical[0])
+	for i in 6:
+		g._unrest_step(c, pol)
+	check("repressao alimenta radicalizacao", int(c.radical[0]) > rad0)
+	# Estado de sitio: relogio recua, parlamento suspenso.
+	c.repress_left = 0
+	c.order_cd = 0
+	c.rev_clock = 6
+	c.laws[Laws.group_index("gov")] = 2
+	c.seats = [20, 20, 20, 20, 20]
+	g.apply_command({"type": "public_order", "kind": "siege", "issuer": me})
+	check("estado de sitio suspende o parlamento", c.siege_left == g.SIEGE_MONTHS and not g.needs_vote(c))
+	g._unrest_step(c, pol)
+	check("estado de sitio faz o relogio recuar", c.rev_clock < 6)
+	# Persistencia.
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	c.security = 0
+	c.siege_left = 0
+	g.load_state(bl)
+	var lc: Country = g.countries[me]
+	check("ordem publica persiste no save", lc.security == 1 and lc.siege_left > 0 and g.state_hash() == hh)
 	g.load_state(blob)

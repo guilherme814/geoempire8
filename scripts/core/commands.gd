@@ -37,6 +37,7 @@ const ACCEPT_PEACE := "accept_peace"
 const REJECT_PEACE := "reject_peace"
 const ENACT_LAW := "enact_law"
 const CANCEL_BILL := "cancel_bill"
+const PUBLIC_ORDER := "public_order"
 const SET_RESEARCH := "set_research"
 const SET_RESEARCH_TARGET := "set_research_target"
 const SET_IMMIGRATION := "set_immigration"
@@ -145,6 +146,11 @@ static func set_speed(speed: int) -> Dictionary:
 ## Aprova uma lei: `group` = índice em Laws.GROUPS, `option` = opção escolhida.
 static func enact_law(group: int, option: int) -> Dictionary:
 	return {"type": ENACT_LAW, "group": group, "option": option}
+
+
+## Ordem pública (B20): kind = "concede", "repress", "siege" ou "security".
+static func public_order(kind: String) -> Dictionary:
+	return {"type": PUBLIC_ORDER, "kind": kind}
 
 
 ## Retira o projeto de lei em votação (carência de 2 anos naquele grupo de leis).

@@ -1,8 +1,13 @@
 {
- "version": "0.41.0",
- "title": "GeoEmpire 8 — v0.41.0 (Política B19c)",
- "body": "## Guerra civil\n- Se uma revolução estoura com **35% ou mais das províncias rebeldes**, o país tem **6+ províncias** e existe uma nação livre (morta), o país se divide: os rebeldes assumem as províncias levantadas (a capital fica com o governo) sob o nome de uma nação histórica com núcleos ali.\n- Os rebeldes ficam com leis na direção do movimento, parte proporcional do tesouro, as tropas paradas nas regiões e milícia. A guerra é declarada na hora e aliados do governo entram.\n- **Sem paz branca, indenização ou vassalagem**: só a anexação (pontuação de guerra) ou a conquista total encerram. Em **impasse de 36 meses** a guerra termina e os rebeldes ficam independentes.\n- Previsão no relógio e na tela de Política (\"guerra civil socialista\" etc.); crônica em vermelho; anéis vermelhos na capital.\n- Corrigido: a secessão não cobra mais a perda de tesouro da revolução.\n- Saves antigos funcionam.",
+ "version": "0.42.0",
+ "title": "GeoEmpire 8 — v0.42.0 (Política B20)",
+ "body": "## Ordem pública e concessões\nNova seção na tela de Política para agir **antes** da revolução:\n- **Fazer concessões**: apazigua o movimento dominante (−250 de radicalização, −50 nos outros), recua o relógio em 3, acalma as províncias e satisfaz as classes do movimento. Carência de 12 meses.\n- **Reprimir** (12 meses): derruba a agitação local (−25%), mas a radicalização cresce todo mês e as classes ficam mais insatisfeitas.\n- **Estado de sítio** (6 meses, só com o relógio em 3+): agitação −50%, o relógio recua 2 por mês, parlamento suspenso (leis por decreto) e arrecadação −15%; depois, 3 anos de carência.\n- **Aparato de segurança** (guarda nacional / polícia secreta, 3 níveis, permanente): −8% de agitação por nível.\n- Custos escalam com o tamanho do país. A IA ainda não usa isso (B24).\n- Saves antigos funcionam.",
  "history": [
+  {
+   "version": "0.41.0",
+   "title": "GeoEmpire 8 — v0.41.0 (Política B19c)",
+   "body": "## Guerra civil\n- Se uma revolução estoura com **35% ou mais das províncias rebeldes**, o país tem **6+ províncias** e existe uma nação livre (morta), o país se divide: os rebeldes assumem as províncias levantadas (a capital fica com o governo) sob o nome de uma nação histórica com núcleos ali.\n- Os rebeldes ficam com leis na direção do movimento, parte proporcional do tesouro, as tropas paradas nas regiões e milícia. A guerra é declarada na hora e aliados do governo entram.\n- **Sem paz branca, indenização ou vassalagem**: só a anexação (pontuação de guerra) ou a conquista total encerram. Em **impasse de 36 meses** a guerra termina e os rebeldes ficam independentes.\n- Previsão no relógio e na tela de Política (\"guerra civil socialista\" etc.); crônica em vermelho; anéis vermelhos na capital.\n- Corrigido: a secessão não cobra mais a perda de tesouro da revolução.\n- Saves antigos funcionam."
+  },
   {
    "version": "0.40.0",
    "title": "GeoEmpire 8 — v0.40.0 (Política B19b)",

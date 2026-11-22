@@ -51,6 +51,7 @@ var _max_pop: int = 1
 var _bucket: int = 0
 var _debug_draw := true
 var _fx: UnrestFx
+var _bfx: BuildingFx
 var _unrest_sig := 0
 
 
@@ -92,6 +93,8 @@ func _ready() -> void:
 
 	_fx = UnrestFx.new()
 	add_child(_fx)
+	_bfx = BuildingFx.new()
+	add_child(_bfx)
 	_build_grid()
 	_build_coast_and_sea()
 	_refresh_all()

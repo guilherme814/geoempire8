@@ -95,6 +95,7 @@ var _info_panel: PanelContainer
 var _info_flag: FlagRect
 var _info_title: Label
 var _info_sub: Label
+var _info_scene: ProvinceScene
 var _info_body: Label
 var _btn_recruit: Button
 var _btn_take: Button
@@ -503,6 +504,7 @@ func _building_detail(p: Province, kind: String, lv: int, me: int) -> String:
 		for m in p.material_list(kind, nxt):
 			mats.append("%d %s" % [int(m["amount"]), str(RESOURCE_PT.get(m["good"], m["good"])).to_lower()])
 		parts.append("Obra: %s + materiais %s (%s)" % [Money.fmt(Game.build_cost(p, kind)), Money.fmt(Game.build_material_cost(p, kind)), ", ".join(mats)])
+		parts.append("Setor de obras: %d pontos (mín. %d meses; capacidade do país %d/mês)" % [Game.work_points(p, kind), Game.WORK_MIN_MONTHS, Game.work_capacity(Game.countries[me])])
 	var lbl := "Nível %d" % nxt
 	if Province.FACTORIES.has(kind) or Province.WAGE_PCT.has(kind):
 		parts.append("%s: produz %d %s/mês · receita %d" % [lbl, int(rep["units"]), str(RESOURCE_PT.get(rep["product"], rep["product"])).to_lower(), int(rep["revenue"])])
@@ -2388,6 +2390,8 @@ func _build_info_panel() -> void:
 	_info_sub = UIKit.label("", 15, UIKit.TEXT)
 	tcol.add_child(_info_sub)
 
+	_info_scene = ProvinceScene.new()
+	col.add_child(_info_scene)
 	_info_body = UIKit.label("", 17, UIKit.TEXT)
 	_info_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_info_body)
@@ -2747,6 +2751,7 @@ func _refresh_info() -> void:
 	var has_owner := p.owner_id >= 0 and p.owner_id < Game.countries.size()
 	var mine := has_owner and p.owner_id == Game.player_country
 	_info_panel.visible = true
+	_info_scene.set_province(p)
 	_info_title.text = p.name
 	var sub := "%s%s" % ["★ " if p.capital_city else "", p.city] if p.city != "" else ""
 	if has_owner and p.core_owner >= 0 and p.core_owner != p.owner_id and p.core_owner < Game.countries.size():

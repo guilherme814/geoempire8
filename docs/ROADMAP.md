@@ -54,6 +54,9 @@ Fechamento
 | # | Etapa | Estado |
 |---|-------|--------|
 | B25 | Balanceamento, painéis finais de economia e política, auditorias | feita no código (v0.49.0): painel político e alertas na auditoria, demografia e crescimento do PIB calibrados (~2x em 10 anos)
+| B26a | Setor de obras: fila, capacidade, canteiro de obras | feita no código (v0.50.0) |
+| B26b | Estruturas novas: vidraçaria, química, bairro operário, prefeitura, estação | feita no código (v0.50.0) |
+| B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | em andamento |
 
 ## Trilha C — Nova HUD (referência visual enviada em 20/11/2026)
 
@@ -106,6 +109,3 @@ Victoria 3 (métodos de produção, infâmia), Age of History 3, Geopolitical Si
 
 
 Pesquisa de referência (Victoria 3 e história econômica): `docs/ECONOMIA_PESQUISA.md` e `docs/POLITICA_PESQUISA.md`.
-| B26a | Setor de obras: fila, capacidade, canteiro de obras | feita no código (v0.50.0) |
-| B26b | Estruturas novas: vidraçaria, química, bairro operário, prefeitura, estação | feita no código (v0.50.0) |
-| B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | em andamento |

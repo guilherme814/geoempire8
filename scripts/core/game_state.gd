@@ -3606,10 +3606,10 @@ func _apply_event_option(e: Dictionary, option: int) -> void:
 const FOOD := ["grain", "fish", "livestock"]
 const FAMINE_PCT := 50           # abaixo disso (oferta/demanda) a região passa fome
 ## Bem-estar e demografia (B13): pobreza derivada do padrão de vida (sol), fome e assistência social.
-const POVERTY_LINE := 200            # padrão de vida (x10) em que a miséria some
-const POVERTY_SPAN := 130            # largura da faixa: sol = LINE-SPAN => 100% de pobres
+const POVERTY_LINE := 260            # padrão de vida (x10) em que a miséria some
+const POVERTY_SPAN := 180            # largura da faixa: sol = LINE-SPAN => 100% de pobres
 const POVERTY_WELFARE := [0, 8, 18]  # redução (pontos) por nível da assistência social
-const BIRTH_BASE := 120              # nascimentos por 100 mil por mês, sem pobreza
+const BIRTH_BASE := 110              # nascimentos por 100 mil por mês, sem pobreza
 const BIRTH_POOR := 40               # acréscimo com 100% de pobreza (famílias pobres têm mais filhos)
 const DEATH_BASE := 60               # mortes por 100 mil por mês, sem pobreza
 const DEATH_POOR := 60               # acréscimo com 100% de pobreza
@@ -3835,7 +3835,7 @@ func politics_of(c: Country) -> Dictionary:
 	var tax := c.tax_pct
 	var broke := c.treasury < 0
 	var tg := [0, 0, 0, 0, 0, 0]
-	var pov_t: int = (40 - c.poverty) / 6       # miséria derruba a satisfação dos pobres; prosperidade ajuda (B13)
+	var pov_t: int = (40 - c.poverty) / 8       # miséria derruba a satisfação dos pobres; prosperidade ajuda (B13)
 	tg[0] = pov_t + 55 - (grain - 100) / 2 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 4
 	tg[1] = pov_t + 20 + sol / 3 - (grain - 100) / 2 - (fabric - 100) / 4 - (tax - 30) / 2 - wars_n * 4 - (unemp - UNEMP_BASE) / 2
 	tg[2] = 75 - (tax - 30) / 2 - c.literacy / 25

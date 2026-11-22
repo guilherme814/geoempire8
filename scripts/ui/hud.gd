@@ -52,7 +52,7 @@ const BUILD_ICON := {
 	"textile": "spool", "carpentry": "logs", "smithy": "anvil", "steel": "ingot", "paper": "book", "machinery": "anvil",
 	"market": "stall", "railway": "rail", "dock": "anchor",
 	"library": "book", "sanitation": "cross", "academy": "shield", "arsenal": "anvil", "lab": "bulb",
-	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars", "depot": "tent",
+	"irrigation": "wheat", "power_plant": "factory", "bank": "coin", "shipyard": "anchor", "telegraph": "bars", "depot": "tent", "worksite": "hammer",
 }
 const TAB_ICON := {"gov": "building", "res": "pick", "ind": "factory", "inf": "rail"}
 const TAB_ORDER := ["gov", "res", "ind", "inf"]
@@ -595,6 +595,13 @@ func _refresh_build_panel() -> void:
 			btn.disabled = true
 		elif Province.FACTORIES.has(k) and p.factory != "" and p.factory != k:
 			btn.text = "Outra fábrica"
+			btn.disabled = true
+		elif Game.work_index(Game.countries[me], p.id, k) >= 0:
+			var wq: Array = Game.countries[me].works[Game.work_index(Game.countries[me], p.id, k)]
+			btn.text = "Em obras\n%d%%" % (int(wq[3]) * 100 / maxi(1, int(wq[4])))
+			btn.disabled = true
+		elif Game.countries[me].works.size() >= Game.WORK_QUEUE_MAX:
+			btn.text = "Fila cheia"
 			btn.disabled = true
 		else:
 			btn.text = "Construir\n%s" % Money.fmt(Game.build_total_cost(p, k))
@@ -2058,6 +2065,51 @@ func _add_income_card(body: Control, c: Country) -> void:
 	card.add_child(UIKit.label("Desigualdade (Gini): %.2f — %s" % [float(g) / 1000.0, "alta" if g >= 450 else ("média" if g >= 300 else "baixa")], 16, UIKit.NEG if g >= 450 else UIKit.TEXT))
 
 
+## Card "Setor de obras" (B26a): capacidade, fila de obras com progresso, prioridade e cancelamento.
+func _add_works_card(body: Control, c: Country) -> void:
+	var card := _card(body, "Setor de obras", "hammer")
+	var cap: int = Game.work_capacity(c)
+	var dem: int = Game.work_demand(c)
+	var col: Color = UIKit.WARN if dem > cap else UIKit.POS
+	card.add_child(UIKit.label("Capacidade: %d pontos/mês · demanda da fila: %d · canteiros de obras: %d níveis" % [cap, dem, Game.bld_total(c, "worksite")], 16, col))
+	var info := UIKit.label("Cada obra leva ao menos %d meses e paga o custo conforme avança; se faltar ouro, ela para. Construa canteiros de obras (Infraestrutura) para ampliar a capacidade (+%d por nível)." % [Game.WORK_MIN_MONTHS, Game.WORK_PER_SITE], 14, UIKit.TEXT_DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(info)
+	if c.works.is_empty():
+		card.add_child(UIKit.label("Nenhuma obra em andamento.", 15, UIKit.TEXT_DIM))
+		return
+	for i in c.works.size():
+		var w: Array = c.works[i]
+		var kind: String = Game.work_kind(int(w[1]))
+		var pn: String = Game.provinces[int(w[0])].name
+		var pct: int = int(w[3]) * 100 / maxi(1, int(w[4]))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		card.add_child(row)
+		var nm := UIKit.label("%d. %s (nív. %d) — %s" % [i + 1, str(Province.BUILDINGS[kind]["name"]), int(w[2]), pn], 15, UIKit.TEXT)
+		nm.custom_minimum_size = Vector2(250, 0)
+		nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(nm)
+		row.add_child(UIKit.bar(float(pct), 100.0, UIKit.GOLD, 14.0))
+		var pl := UIKit.label("%d%%" % pct, 14, UIKit.GOLD)
+		pl.custom_minimum_size = Vector2(56, 0)
+		row.add_child(pl)
+		var idx: int = i
+		if i > 0:
+			var up := UIKit.button("↑", Vector2(52, 40))
+			up.tooltip_text = "Prioridade máxima"
+			up.pressed.connect(func():
+				Game.submit_command(Cmd.work_priority(idx))
+				_refresh_windows())
+			row.add_child(up)
+		var cn := UIKit.button("✕", Vector2(52, 40))
+		cn.tooltip_text = "Cancelar obra (o ouro já gasto não volta)"
+		cn.pressed.connect(func():
+			Game.submit_command(Cmd.work_cancel(idx))
+			_refresh_windows())
+		row.add_child(cn)
+
+
 ## Cards "Orçamento" (ministérios) e "Decretos" da tela de Política.
 func _add_government_cards(body: Control, c: Country) -> void:
 	var bcard := _card(body, "Orçamento dos ministérios", "scroll")
@@ -2134,6 +2186,7 @@ func _refresh_politics() -> void:
 	_add_groups_card(body, c, pol)
 	_add_unrest_card(body, c)
 	_add_order_card(body, c)
+	_add_works_card(body, c)
 	_add_admin_card(body, c)
 	_add_welfare_card(body, c)
 	_add_culture_card(body, c)

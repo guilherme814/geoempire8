@@ -689,6 +689,7 @@ func run_all() -> void:
 	_intervention()
 	_welfare()
 	_ai_crisis()
+	_works()
 	_money()
 
 
@@ -2169,4 +2170,92 @@ func _ai_crisis() -> void:
 	if nsec > 0:
 		g._ai_crisis(k, true)
 		check("ia crise: pais estavel e rico lanca plano quinquenal", k.plan_left > 0)
+	g.load_state(blob)
+
+
+func _works() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var me: int = g.player_country
+	var c: Country = g.countries[me]
+	c.treasury = 100000000
+	c.works = []
+	var pid: int = c.province_ids[0]
+	var p: Province = g.provinces[pid]
+	var lv0: int = p.building_level("school")
+	var t0: int = c.treasury
+	check("obras: escola pode ser construida", g.can_build(pid, me, "school"))
+	g.apply_command({"type": "build", "province": pid, "kind": "school", "issuer": me})
+	check("obras: comando entra na fila (nao e instantaneo)", c.works.size() == 1 and p.building_level("school") == lv0 and c.treasury == t0)
+	check("obras: nao duplica a mesma obra", not g.can_build(pid, me, "school") and g.work_index(c, pid, "school") == 0)
+	var cap: int = g.work_capacity(c)
+	check("obras: capacidade base mais provincias", cap == g.WORK_BASE + c.province_ids.size() * g.WORK_PER_PROV + g.WORK_PER_SITE * g.bld_total(c, "worksite"))
+	# Avanca mes a mes: leva ao menos WORK_MIN_MONTHS e paga ouro conforme avanca.
+	var total: int = int(c.works[0][4])
+	var gold: int = int(c.works[0][5])
+	g._works_step(c)
+	check("obras: primeiro mes avanca sem concluir", c.works.size() == 1 and int(c.works[0][3]) > 0 and c.treasury < t0)
+	var months := 1
+	while c.works.size() > 0 and months < 60:
+		g._works_step(c)
+		months += 1
+	check("obras: leva ao menos 3 meses", months >= g.WORK_MIN_MONTHS)
+	check("obras: concluida sobe o nivel", p.building_level("school") == lv0 + 1)
+	check("obras: ouro total pago confere (custo da obra)", t0 - c.treasury == gold and total >= 2)
+	# Capacidade limita: muitas obras demoram mais; prioridade e cancelamento.
+	p.set_building_level("school", lv0)
+	c.works = []
+	var made := 0
+	for q in c.province_ids:
+		if made >= 6:
+			break
+		if g.can_build(q, me, "market"):
+			g.apply_command({"type": "build", "province": q, "kind": "market", "issuer": me})
+			made += 1
+	check("obras: varias obras na fila", c.works.size() == made and made >= 2)
+	if made >= 2:
+		var last_pid: int = int(c.works[made - 1][0])
+		g.apply_command({"type": "work_priority", "index": made - 1, "issuer": me})
+		check("obras: prioridade leva a obra ao inicio", int(c.works[0][0]) == last_pid)
+		g.apply_command({"type": "work_cancel", "index": 0, "issuer": me})
+		check("obras: cancelar remove da fila", c.works.size() == made - 1 and g.work_index(c, last_pid, "market") == -1)
+	# Fila sem ouro nao avanca.
+	var done0: int = int(c.works[0][3]) if c.works.size() > 0 else 0
+	c.treasury = 0
+	g._works_step(c)
+	check("obras: sem ouro a obra para", c.works.size() == 0 or int(c.works[0][3]) == done0)
+	# Perder a provincia derruba a obra.
+	c.treasury = 100000000
+	if c.works.size() > 0:
+		var wp: Province = g.provinces[int(c.works[0][0])]
+		var own0: int = wp.owner_id
+		wp.owner_id = (me + 1) % g.countries.size()
+		g._works_step(c)
+		check("obras: provincia perdida derruba a obra", g.work_index(c, wp.id, "market") == -1)
+		wp.owner_id = own0
+	# Canteiro de obras amplia a capacidade.
+	var cap0: int = g.work_capacity(c)
+	var sp: Province = g.provinces[c.province_ids[1]] if c.province_ids.size() > 1 else p
+	var sl0: int = sp.building_level("worksite")
+	sp.set_building_level("worksite", sl0 + 1)
+	check("obras: canteiro soma capacidade", g.work_capacity(c) == cap0 + g.WORK_PER_SITE)
+	sp.set_building_level("worksite", sl0)
+	# Persistencia.
+	g.apply_command({"type": "build", "province": pid, "kind": "school", "issuer": me})
+	var hh: int = g.state_hash()
+	var bl: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var n_w: int = c.works.size()
+	c.works = []
+	g.load_state(bl)
+	check("obras: fila persiste no save", g.countries[me].works.size() == n_w and n_w >= 1 and g.state_hash() == hh)
+	# IA tambem usa a fila.
+	var k: Country = null
+	for x in g.countries:
+		if x.is_alive() and x.id != me and not g.is_human(x.id) and x.province_ids.size() >= 3:
+			k = x
+			break
+	if k != null:
+		k.works = []
+		k.treasury = 100000000
+		g._ai_invest(k)
+		check("obras: IA enfileira em vez de construir na hora", k.works.size() > 0)
 	g.load_state(blob)

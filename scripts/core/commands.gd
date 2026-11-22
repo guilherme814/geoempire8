@@ -17,6 +17,8 @@ const SET_SPEED := "set_speed"
 const SET_TAX := "set_tax"
 const RECRUIT := "recruit"
 const BUILD := "build"
+const WORK_CANCEL := "work_cancel"
+const WORK_PRIORITY := "work_priority"
 const MOVE_ARMY := "move_army"
 const STOP_ARMY := "stop_army"
 const DISBAND_ARMY := "disband_army"
@@ -189,6 +191,14 @@ static func recruit(province: int) -> Dictionary:
 ## kind: "workshop" (+25% produção por nível) ou "barracks" (+1% mão de obra por nível).
 static func build(province: int, kind: String) -> Dictionary:
 	return {"type": BUILD, "province": province, "kind": kind}
+
+
+static func work_cancel(index: int) -> Dictionary:
+	return {"type": WORK_CANCEL, "index": index}
+
+
+static func work_priority(index: int) -> Dictionary:
+	return {"type": WORK_PRIORITY, "index": index}
 
 
 static func move_army(army: int, to_province: int) -> Dictionary:

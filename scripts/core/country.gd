@@ -57,6 +57,7 @@ var culture: int = -1             # cultura de Estado (índice em Cultures) (B22
 var faith: int = -1               # religião de Estado (B22)
 var culture_policy: int = 0       # 0 tolerância, 1 assimilação (B22)
 var faith_policy: int = 0         # 0 tolerância, 1 conversão (B22)
+var works: Array = []              # fila de obras (B26): [pid, tipo, nível-alvo, pontos feitos, pontos totais, ouro total]
 var poverty: int = 50             # % da população na miséria 0..100 (B13)
 var famine_pct: int = 0           # % das províncias em fome neste mês (B13)
 var admin: int = 0                # nível da administração pública 0..5 (B21)

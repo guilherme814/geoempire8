@@ -1114,11 +1114,26 @@ func apply_command(cmd: Dictionary) -> void:
 		var kind: String = str(cmd.get("kind", ""))
 		if not can_build(pid, issuer, kind):
 			return
-		var p := provinces[pid]
-		countries[issuer].treasury -= build_total_cost(p, kind)
-		p.set_building_level(kind, p.building_level(kind) + 1)
+		enqueue_work(countries[issuer], pid, kind)
 		Events.province_updated.emit(pid)
-		Events.treasury_changed.emit(issuer)
+
+	elif t == Cmd.WORK_CANCEL:
+		if issuer >= 0 and issuer < countries.size():
+			var wc: Country = countries[issuer]
+			var wi: int = int(cmd.get("index", -1))
+			if wi >= 0 and wi < wc.works.size():
+				var wpid: int = int(wc.works[wi][0])
+				wc.works.remove_at(wi)
+				Events.province_updated.emit(wpid)
+
+	elif t == Cmd.WORK_PRIORITY:
+		if issuer >= 0 and issuer < countries.size():
+			var wp: Country = countries[issuer]
+			var wj: int = int(cmd.get("index", -1))
+			if wj > 0 and wj < wp.works.size():
+				var we: Array = wp.works[wj]
+				wp.works.remove_at(wj)
+				wp.works.insert(0, we)
 
 	elif t == Cmd.MOVE_ARMY:
 		var a: Army = armies.get(int(cmd.get("army", -1)))
@@ -2413,6 +2428,87 @@ func build_total_cost(p: Province, kind: String) -> int:
 	return build_cost(p, kind) + build_material_cost(p, kind)
 
 
+## Setor de obras (B26a): as obras entram numa fila por país. Cada mês, a capacidade (pontos) é
+## distribuída em ordem de prioridade; cada obra avança no máximo total/WORK_MIN_MONTHS por mês e
+## paga o ouro proporcional ao progresso (se o tesouro não cobre, ela para). Canteiros de obras
+## aumentam a capacidade. Entrada: [pid, índice do tipo, nível-alvo, pontos feitos, pontos totais, ouro total].
+const WORK_BASE := 15              # pontos de obra por mês de qualquer Estado
+const WORK_PER_PROV := 1           # +1 por província
+const WORK_PER_SITE := 20          # +20 por nível de canteiro de obras
+const WORK_COST_DIV := 6           # pontos = custo em ouro / 6
+const WORK_MIN_MONTHS := 3         # nenhuma obra termina em menos de 3 meses
+const WORK_QUEUE_MAX := 16
+const WORK_AI_QUEUE := 4
+
+
+func work_kind(i: int) -> String:
+	var ks: Array = Province.BUILDINGS.keys()
+	return str(ks[i]) if i >= 0 and i < ks.size() else ""
+
+
+func work_capacity(c: Country) -> int:
+	return WORK_BASE + c.province_ids.size() * WORK_PER_PROV + WORK_PER_SITE * bld_total(c, "worksite")
+
+
+func work_points(p: Province, kind: String) -> int:
+	return maxi(2, build_total_cost(p, kind) / WORK_COST_DIV)
+
+
+## Índice da obra (província, tipo) na fila do país, ou -1.
+func work_index(c: Country, pid: int, kind: String) -> int:
+	var ki: int = Province.BUILDINGS.keys().find(kind)
+	for i in c.works.size():
+		var w: Array = c.works[i]
+		if int(w[0]) == pid and int(w[1]) == ki:
+			return i
+	return -1
+
+
+func enqueue_work(c: Country, pid: int, kind: String) -> void:
+	var p := provinces[pid]
+	var ki: int = Province.BUILDINGS.keys().find(kind)
+	c.works.append([pid, ki, p.building_level(kind) + 1, 0, work_points(p, kind), build_total_cost(p, kind)])
+
+
+## Soma de pontos por mês que a fila consegue usar (para a interface).
+func work_demand(c: Country) -> int:
+	var n := 0
+	for w in c.works:
+		n += mini(maxi(4, int(w[4]) / WORK_MIN_MONTHS), int(w[4]) - int(w[3]))
+	return n
+
+
+@warning_ignore("integer_division")
+func _works_step(c: Country) -> void:
+	if c.works.is_empty():
+		return
+	var cap: int = work_capacity(c)
+	var keep: Array = []
+	for w in c.works:
+		var pid: int = int(w[0])
+		var kind: String = work_kind(int(w[1]))
+		var p := provinces[pid]
+		if kind == "" or p.owner_id != c.id or p.building_level(kind) >= int(w[2]):
+			continue                       # província perdida ou obra obsoleta
+		var total: int = maxi(1, int(w[4]))
+		var done: int = int(w[3])
+		if cap > 0:
+			var step: int = mini(mini(cap, maxi(4, total / WORK_MIN_MONTHS)), total - done)
+			var gold: int = int(w[5]) * (done + step) / total - int(w[5]) * done / total
+			if step > 0 and c.treasury >= gold:
+				c.treasury -= gold
+				w[3] = done + step
+				cap -= step
+		if int(w[3]) >= total:
+			p.set_building_level(kind, int(w[2]))
+			Events.province_updated.emit(pid)
+			if c.id == player_country:
+				Events.notice.emit("Obra concluída: %s em %s (nível %d)." % [str(Province.BUILDINGS[kind]["name"]), p.name, int(w[2])])
+		else:
+			keep.append(w)
+	c.works = keep
+
+
 func can_build(pid: int, issuer: int, kind: String) -> bool:
 	if not Province.BUILDINGS.has(kind):
 		return false
@@ -2430,7 +2526,10 @@ func can_build(pid: int, issuer: int, kind: String) -> bool:
 		return false
 	if Province.FACTORIES.has(kind) and p.factory != "" and p.factory != kind:
 		return false   # uma fábrica por província
-	return countries[issuer].treasury >= build_total_cost(p, kind)
+	var ic: Country = countries[issuer]
+	if work_index(ic, pid, kind) >= 0 or ic.works.size() >= WORK_QUEUE_MAX:
+		return false   # já na fila / fila cheia (B26)
+	return ic.treasury >= build_total_cost(p, kind)
 
 
 # ---------------------------------------------------------------------------
@@ -2725,7 +2824,7 @@ func _advance_ai() -> void:
 			_auto_fleets(c)
 
 
-const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "hospital", "dock", "textile", "carpentry", "university",
+const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "worksite", "hospital", "dock", "textile", "carpentry", "university",
 	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery"]
 const AI_INVEST_RESERVE_MONTHS := 8
 const AI_MAX_METHOD := 1          # a IA só chega à Manufatura (a Mecanizada fica de vantagem do jogador)
@@ -2766,8 +2865,9 @@ func _ai_invest(c: Country) -> void:
 				var cost: int = build_total_cost(p, kind)
 				if c.treasury - cost < reserve:
 					continue
-				c.treasury -= cost
-				p.set_building_level(kind, level + 1)
+				if c.works.size() >= WORK_AI_QUEUE + c.province_ids.size() / 6:
+					return
+				enqueue_work(c, int(pid), kind)
 				budget -= 1
 				Events.province_updated.emit(int(pid))
 
@@ -3344,6 +3444,7 @@ func _country_month(c: Country) -> void:
 	if not is_human(c.id) and (clock.month + c.id) % 6 == 3 and c.culture_policy == 0 and c.stability >= 55 and minority_pct(c) >= 35 \
 			and c.treasury > 6 * order_cost(c, "cpolicy"):
 		_public_order(c, "cpolicy")          # a IA assimila minorias numerosas quando está estável
+	_works_step(c)
 	if not is_human(c.id):
 		_ai_crisis(c)
 	_bill_step(c)
@@ -4802,7 +4903,7 @@ func tech_gain(c: Country) -> int:
 	return b + b * c.research_pct / 20 + b * SCIENCE_ALLY_PCT * science_allies(c) / 100
 
 
-const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot"]
+const INFRA_UPKEEP_KINDS := ["hospital", "market", "dock", "library", "sanitation", "academy", "arsenal", "lab", "bank", "shipyard", "telegraph", "depot", "worksite"]
 
 
 func estimate_monthly(c: Country) -> Dictionary:
@@ -5771,6 +5872,8 @@ func state_hash() -> int:
 		h = _mix(h, c.rev_cd * 10 + c.rev_type)
 		h = _mix(h, c.admin * 1000 + c.anticorr)
 		h = _mix(h, c.poverty * 1000 + c.famine_pct)
+		for wk in c.works:
+			h = _mix(h, int(wk[0]) * 1000000 + int(wk[1]) * 10000 + int(wk[2]) * 1000 + int(wk[3]))
 		h = _mix(h, c.plan_sector * 100000 + c.plan_left * 1000 + c.plan_cd + c.sub_mask * 7919 + c.nat_mask * 104729 + c.mono_good * 1299709)
 		h = _mix(h, c.culture * 10000 + c.faith * 100 + c.culture_policy * 10 + c.faith_policy)
 		h = _mix(h, c.security * 1000000 + c.repress_left * 10000 + c.siege_left * 100 + c.order_cd + c.concede_cd * 1000)
@@ -5851,6 +5954,16 @@ func _country_seats() -> Array:
 	var out: Array = []
 	for c in countries:
 		out.append(c.seats.duplicate())
+	return out
+
+
+func _country_works() -> Array:
+	var out: Array = []
+	for c in countries:
+		var rows: Array = []
+		for w in c.works:
+			rows.append([int(w[0]), int(w[1]), int(w[2]), int(w[3]), int(w[4]), int(w[5])])
+		out.append(rows)
 	return out
 
 
@@ -5984,6 +6097,7 @@ func serialize_state() -> Dictionary:
 		"rev_cd": _country_ints("rev_cd"),
 		"security": _country_ints("security"),
 		"admin": _country_ints("admin"),
+		"works": _country_works(),
 		"poverty": _country_ints("poverty"),
 		"famine_pct": _country_ints("famine_pct"),
 		"plan_sector": _country_ints("plan_sector"),
@@ -6260,6 +6374,7 @@ func load_state(d: Dictionary) -> bool:
 	var rcd: Array = d.get("rev_cd", [])
 	var sec_a: Array = d.get("security", [])
 	var adm_a: Array = d.get("admin", [])
+	var wrk_a: Array = d.get("works", [])
 	var pov_a: Array = d.get("poverty", [])
 	var fam_a: Array = d.get("famine_pct", [])
 	var psec_a: Array = d.get("plan_sector", [])
@@ -6327,6 +6442,11 @@ func load_state(d: Dictionary) -> bool:
 		countries[i].rev_cd = int(rcd[i]) if i < rcd.size() else 0
 		countries[i].security = int(sec_a[i]) if i < sec_a.size() else 0
 		countries[i].admin = int(adm_a[i]) if i < adm_a.size() else 0
+		countries[i].works = []
+		if i < wrk_a.size() and wrk_a[i] is Array:
+			for wr in wrk_a[i]:
+				if wr is Array and (wr as Array).size() == 6:
+					countries[i].works.append([int(wr[0]), int(wr[1]), int(wr[2]), int(wr[3]), int(wr[4]), int(wr[5])])
 		countries[i].poverty = int(pov_a[i]) if i < pov_a.size() else 50
 		countries[i].famine_pct = int(fam_a[i]) if i < fam_a.size() else 0
 		countries[i].culture = int(ccu_a[i]) if i < ccu_a.size() else -1

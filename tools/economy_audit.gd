@@ -29,6 +29,7 @@ func _initialize() -> void:
 				vas += 1
 		print("GUERRA ano %2d | guerras ativas %d | vassalos %d | propostas de paz pendentes %d | exercitos %d" % [year, g.wars.size(), vas, g.peace_offers.size(), g.armies.size()])
 		_check(year, s, start)
+		_politics(year)
 	print("REVOLUCOES em 10 anos: %d (golpes %d)" % [g.chronicle.size(), g.chronicle.filter(func(e): return int(e[3]) == 1).size()])
 	print("--- alertas ---")
 	for a in alerts:
@@ -113,6 +114,48 @@ func _check(year: int, s: Dictionary, start: Dictionary) -> void:
 		alerts.append("ano %d: tesouro maximo explodiu (%d)" % [year, s["tr_max"]])
 	if int(s["un_max"]) > 20:
 		alerts.append("ano %d: desemprego fora de 0..20" % year)
+
+
+## Política (B25): pobreza, agitação, relógio da revolução e desfechos, por ano. Gera alertas de balanceamento.
+func _politics(year: int) -> void:
+	var pov: Array = []
+	var stab: Array = []
+	var clock_hi := 0
+	var rebel_p := 0
+	var prot_p := 0
+	var tot_p := 0
+	var n := 0
+	for c in g.countries:
+		if not c.is_alive():
+			continue
+		n += 1
+		pov.append(int(c.poverty))
+		stab.append(int(c.stability))
+		if c.rev_clock >= 6:
+			clock_hi += 1
+		for pid in c.province_ids:
+			tot_p += 1
+			var u: int = g.provinces[pid].unrest
+			if u >= 70:
+				rebel_p += 1
+			elif u >= 40:
+				prot_p += 1
+	pov.sort()
+	stab.sort()
+	var kinds := [0, 0, 0, 0, 0]
+	for e in g.chronicle:
+		var k: int = int(e[3])
+		if k >= 0 and k < 5:
+			kinds[k] += 1
+	print("POLITICA ano %2d | miseria min/med/max %d/%d/%d | estab min/med %d/%d | relogio>=6: %d de %d | provincias rebeldes %d protesto %d de %d | cronica golpe %d revol %d secessao %d guerra civil %d" % [year, pov[0], pov[pov.size() / 2], pov[-1], stab[0], stab[stab.size() / 2], clock_hi, n, rebel_p, prot_p, tot_p, kinds[1], kinds[2], kinds[3], kinds[4]])
+	if clock_hi * 5 > n:
+		alerts.append("ano %d: mais de 20%% dos paises com relogio da revolucao >= 6 (%d de %d)" % [year, clock_hi, n])
+	if rebel_p * 10 > tot_p:
+		alerts.append("ano %d: mais de 10%% das provincias em rebeliao (%d de %d)" % [year, rebel_p, tot_p])
+	if pov[pov.size() / 2] > 85:
+		alerts.append("ano %d: miseria mediana %d%% (>85)" % [year, pov[pov.size() / 2]])
+	if year == 10 and g.chronicle.size() > 20:
+		alerts.append("revolucoes demais em 10 anos: %d" % g.chronicle.size())
 
 
 func _worst() -> void:

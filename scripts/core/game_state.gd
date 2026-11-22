@@ -3609,7 +3609,7 @@ const FAMINE_PCT := 50           # abaixo disso (oferta/demanda) a região passa
 const POVERTY_LINE := 200            # padrão de vida (x10) em que a miséria some
 const POVERTY_SPAN := 130            # largura da faixa: sol = LINE-SPAN => 100% de pobres
 const POVERTY_WELFARE := [0, 8, 18]  # redução (pontos) por nível da assistência social
-const BIRTH_BASE := 135              # nascimentos por 100 mil por mês, sem pobreza
+const BIRTH_BASE := 120              # nascimentos por 100 mil por mês, sem pobreza
 const BIRTH_POOR := 40               # acréscimo com 100% de pobreza (famílias pobres têm mais filhos)
 const DEATH_BASE := 60               # mortes por 100 mil por mês, sem pobreza
 const DEATH_POOR := 60               # acréscimo com 100% de pobreza

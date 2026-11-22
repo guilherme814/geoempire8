@@ -94,9 +94,9 @@ const BUILDINGS := {
 	"school": {"tab": "gov", "name": "Escola", "cost": 120, "tech": 0, "desc": "Alfabetização"},
 	"university": {"tab": "gov", "name": "Universidade", "cost": 320, "tech": 1, "desc": "Alfabetização e pesquisa"},
 	"barracks": {"tab": "gov", "name": "Quartel", "cost": 100, "tech": 0, "desc": "Mão de obra militar +1%"},
-	"mine": {"tab": "res", "name": "Mina", "cost": 140, "tech": 0, "desc": "+35% carvão, ferro, sal, ouro"},
-	"farm": {"tab": "res", "name": "Fazenda", "cost": 110, "tech": 0, "desc": "+35% produção agrícola"},
-	"logging": {"tab": "res", "name": "Madeireira", "cost": 110, "tech": 0, "desc": "+35% madeira (ou madeira extra em florestas)"},
+	"mine": {"tab": "res", "name": "Mina", "cost": 140, "tech": 0, "desc": "+30% carvão, ferro, sal, ouro"},
+	"farm": {"tab": "res", "name": "Fazenda", "cost": 110, "tech": 0, "desc": "+30% produção agrícola"},
+	"logging": {"tab": "res", "name": "Madeireira", "cost": 110, "tech": 0, "desc": "+30% madeira (ou madeira extra em florestas)"},
 	"workshop": {"tab": "res", "name": "Oficina", "cost": 120, "tech": 0, "desc": "+25% produção do recurso"},
 	"textile": {"tab": "ind", "name": "Tecelagem", "cost": 150, "tech": 0, "desc": "Algodão + lã -> tecido"},
 	"paper": {"tab": "ind", "name": "Fábrica de papel", "cost": 170, "tech": 2, "desc": "Madeira -> papel (escolas, bibliotecas, bancos)"},
@@ -333,11 +333,14 @@ func _extraction_levels() -> Dictionary:
 	}
 
 
+const EXTRACT_BOOST := 30      # % por nível de mina/fazenda/madeireira (era 35; B25)
+
+
 @warning_ignore("integer_division")
 func _units_for(lv: Dictionary) -> int:
-	var boost: int = 25 * int(lv["workshop"]) + 35 * (int(lv["mine"]) + int(lv["farm"])) + 12 * int(lv["railway"])
+	var boost: int = 25 * int(lv["workshop"]) + EXTRACT_BOOST * (int(lv["mine"]) + int(lv["farm"])) + 12 * int(lv["railway"])
 	if resource_type == "timber":
-		boost += 35 * int(lv["logging"])
+		boost += EXTRACT_BOOST * int(lv["logging"])
 	if resource_type != "timber" and not (resource_type in MINE_RES):
 		boost += 25 * int(lv["irrigation"])
 	boost += 20 * int(lv["power_plant"])

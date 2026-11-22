@@ -1693,7 +1693,7 @@ func _revolutions() -> void:
 	c.rev_clock = 12
 	for pid in c.province_ids:
 		g.provinces[pid].unrest = 90
-	g._revolution(c, pol)
+	g._revolution(c, pol, 2)
 	check("revolucao troca o governo para republica", int(c.laws[gov]) == 2)
 	check("revolucao reinicia o parlamento", int(c.seats[0]) + int(c.seats[1]) + int(c.seats[2]) + int(c.seats[3]) + int(c.seats[4]) == 0 and c.elect_cd == 12)
 	check("revolucao zera relogio, dispersa rebeldes e cria carencia", c.rev_clock == 0 and c.rev_cd == g.REV_COOLDOWN and c.rev_type == 2 and int(g.unrest_counts(c)["rebel"]) == 0)

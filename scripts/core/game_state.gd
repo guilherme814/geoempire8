@@ -3273,6 +3273,62 @@ func _private_invest(c: Country) -> void:
 				Events.notice.emit("Capitalistas ampliaram a fábrica de %s (nível %d)." % [best.name, best.factory_level])
 
 
+## IA (B24): reage a crises e usa os instrumentos de B20-B23. Determinística (sem sorteios);
+## `force` ignora o escalonamento mensal (usado nos testes). Ordem de prioridade:
+## concessão -> estado de sítio -> repressão -> segurança -> assistência -> anticorrupção -> plano/subsídio.
+@warning_ignore("integer_division")
+func _ai_crisis(c: Country, force: bool = false) -> void:
+	if c.province_ids.is_empty():
+		return
+	var slot: int = (clock.month + c.id) % 6
+	var cost_ok := func(kind: String, mult: int, arg: int) -> bool:
+		return order_block_reason(c, kind, arg) == "" and c.treasury > mult * order_cost(c, kind, arg)
+	# 1. Crise aguda: relógio da revolução correndo.
+	if c.rev_clock >= 4 and c.rev_cd == 0:
+		if cost_ok.call("concede", 1, -1):
+			_public_order(c, "concede")
+			return
+		if c.rev_clock >= 8 and cost_ok.call("siege", 1, -1):
+			_public_order(c, "siege")
+			return
+		if c.rev_clock >= 5 and cost_ok.call("repress", 1, -1):
+			_public_order(c, "repress")
+			return
+	# 2. Prevenção, escalonada (a cada 6 meses por país).
+	if not force and slot != 1:
+		return
+	if c.stability < 40 and c.security < 2 and cost_ok.call("security", 4, -1):
+		_public_order(c, "security")
+	var wl: int = Government.level(c.budget_code, 3)
+	if c.poverty >= 60 and wl < 1 and c.stability < 60 and c.treasury > 6 * maxi(1, c.last_expense):
+		c.budget_code = Government.with_level(c.budget_code, 3, 1)       # assistência social "Normal"
+	elif c.poverty < 25 and wl > 0 and c.treasury < 2 * maxi(1, c.last_expense):
+		c.budget_code = Government.with_level(c.budget_code, 3, 0)
+	if corruption_of(c) >= 40 and cost_ok.call("anticorr", 4, -1):
+		_public_order(c, "anticorr")
+	if c.stability < 55:
+		return
+	# 3. Economia, só com o país estável e rico: plano quinquenal no maior setor e subsídio no segundo.
+	var best := -1
+	var best_n := 0
+	var second := -1
+	var second_n := 0
+	for si in Province.FACTORIES.size():
+		var n := sector_count(c, _sector_key(si))
+		if n > best_n:
+			second = best
+			second_n = best_n
+			best = si
+			best_n = n
+		elif n > second_n:
+			second = si
+			second_n = n
+	if best >= 0 and c.plan_left == 0 and cost_ok.call("plan", 6, best):
+		_public_order(c, "plan", best)
+	if second >= 0 and unemployment_pct(c) > UNEMP_BASE + 4 and (c.sub_mask >> second) & 1 == 0 and cost_ok.call("subsidy", 12, second):
+		_public_order(c, "subsidy", second)
+
+
 func _country_month(c: Country) -> void:
 	c.anticorr = maxi(0, c.anticorr - 1)
 	c.plan_cd = maxi(0, c.plan_cd - 1)
@@ -3288,6 +3344,8 @@ func _country_month(c: Country) -> void:
 	if not is_human(c.id) and (clock.month + c.id) % 6 == 3 and c.culture_policy == 0 and c.stability >= 55 and minority_pct(c) >= 35 \
 			and c.treasury > 6 * order_cost(c, "cpolicy"):
 		_public_order(c, "cpolicy")          # a IA assimila minorias numerosas quando está estável
+	if not is_human(c.id):
+		_ai_crisis(c)
 	_bill_step(c)
 	_group_step(c)
 	_election_step(c)

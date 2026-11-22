@@ -1,8 +1,13 @@
 {
- "version": "0.46.0",
- "title": "GeoEmpire 8 — v0.46.0 (Bem-estar B13)",
- "body": "## Pobreza, natalidade e mortalidade\n- Cada país tem agora um índice de **miséria** (% da população pobre), calculado pelo padrão de vida, pela **fome** nas províncias e pela **assistência social** (Reforçada reduz 18 pontos, Normal 8). Anda no máximo 3 pontos por mês.\n- **Demografia**: natalidade e mortalidade dependem da miséria (pobres têm mais filhos e vivem menos); hospitais e saneamento continuam reduzindo a mortalidade e a fome ainda freia o crescimento. O crescimento total fica próximo do anterior, mas países prósperos crescem mais rápido que os miseráveis.\n- **Política**: a miséria derruba a satisfação de camponeses e operários e alimenta o **socialismo**; prosperidade ajuda a estabilidade.\n- Nova tela em Política: **Pobreza e demografia** (miséria, natalidade e mortalidade por mil, crescimento líquido, Gini, fome e assistência).\n- Saves antigos funcionam (a miséria converge em poucos meses).",
+ "version": "0.47.0",
+ "title": "GeoEmpire 8 — v0.47.0 (IA em crise B24)",
+ "body": "## A IA reage a crises\n- Países da IA agora **respondem ao relógio da revolução**: concedem ao movimento dominante, decretam estado de sítio em crise grave ou reprimem, conforme o caso e o tesouro.\n- **Prevenção**: instáveis compram aparato de segurança; com miséria alta ligam a assistência social; com corrupção alta fazem campanha anticorrupção.\n- **Economia**: países estáveis e ricos lançam plano quinquenal no maior setor e subsidiam o segundo quando há desemprego.\n- Sem sorteios extras: o comportamento é determinístico (multiplayer seguro).",
  "history": [
+  {
+   "version": "0.46.0",
+   "title": "GeoEmpire 8 — v0.46.0 (Bem-estar B13)",
+   "body": "## Pobreza, natalidade e mortalidade\n- Cada país tem agora um índice de **miséria** (% da população pobre), calculado pelo padrão de vida, pela **fome** nas províncias e pela **assistência social** (Reforçada reduz 18 pontos, Normal 8). Anda no máximo 3 pontos por mês.\n- **Demografia**: natalidade e mortalidade dependem da miséria (pobres têm mais filhos e vivem menos); hospitais e saneamento continuam reduzindo a mortalidade e a fome ainda freia o crescimento. O crescimento total fica próximo do anterior, mas países prósperos crescem mais rápido que os miseráveis.\n- **Política**: a miséria derruba a satisfação de camponeses e operários e alimenta o **socialismo**; prosperidade ajuda a estabilidade.\n- Nova tela em Política: **Pobreza e demografia** (miséria, natalidade e mortalidade por mil, crescimento líquido, Gini, fome e assistência).\n- Saves antigos funcionam (a miséria converge em poucos meses)."
+  },
   {
    "version": "0.45.0",
    "title": "GeoEmpire 8 — v0.45.0 (Política B23)",

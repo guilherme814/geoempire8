@@ -48,7 +48,7 @@ Política
 | B21 | Burocracia: capacidade do Estado e corrupção | feita no código (v0.43.0): administração, corrupção, vazamento de arrecadação |
 | B22 | Cultura, religião e minorias; propaganda | feita no código (v0.44.0): culturas, religiões, minorias, assimilação/conversão, modos de mapa |
 | B23 | Política econômica avançada: planejamento, subsídios, monopólios, nacionalização | feita no código (v0.45.0): plano quinquenal, subsídios, estatização, monopólio estatal |
-| B24 | IA econômica e política reagindo a crises | pendente |
+| B24 | IA econômica e política reagindo a crises | feita no código (v0.47.0): concessão, sítio, repressão, segurança, assistência, anticorrupção, plano e subsídio pela IA |
 
 Fechamento
 | # | Etapa | Estado |

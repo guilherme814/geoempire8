@@ -688,6 +688,7 @@ func run_all() -> void:
 	_cultures()
 	_intervention()
 	_welfare()
+	_ai_crisis()
 	_money()
 
 
@@ -2119,4 +2120,53 @@ func _welfare() -> void:
 	c.famine_pct = 0
 	g.load_state(bl)
 	check("pobreza: persiste no save", g.countries[me].poverty == 37 and g.countries[me].famine_pct == 12 and g.state_hash() == hh)
+	g.load_state(blob)
+
+
+func _ai_crisis() -> void:
+	var blob: Dictionary = JSON.parse_string(JSON.stringify(g.serialize_state()))
+	var k: Country = null
+	for x in g.countries:
+		if x.is_alive() and x.id != g.player_country and not g.is_human(x.id) and x.province_ids.size() >= 2:
+			k = x
+			break
+	check("ia crise: ha pais de IA para testar", k != null)
+	if k == null:
+		return
+	k.treasury = 100000000
+	k.rev_cd = 0
+	k.concede_cd = 0
+	k.order_cd = 0
+	k.repress_left = 0
+	k.siege_left = 0
+	k.rev_clock = 6
+	k.radical[1] = 400
+	g._ai_crisis(k, true)
+	check("ia crise: concede ao movimento quando o relogio corre", k.concede_cd > 0 and k.rev_clock <= 3)
+	k.rev_clock = 9
+	g._ai_crisis(k, true)
+	check("ia crise: com concessao em carencia decreta sitio", k.siege_left > 0)
+	k.siege_left = 0
+	k.order_cd = 0
+	k.rev_clock = 5
+	g._ai_crisis(k, true)
+	check("ia crise: relogio 5 sem concessao reprime", k.repress_left > 0)
+	k.repress_left = 0
+	k.rev_clock = 0
+	k.stability = 30
+	k.security = 0
+	k.poverty = 80
+	k.budget_code = Government.with_level(k.budget_code, 3, 0)
+	g._ai_crisis(k, true)
+	check("ia crise: instavel compra seguranca", k.security >= 1)
+	check("ia crise: miseria alta liga a assistencia social", Government.level(k.budget_code, 3) >= 1)
+	k.stability = 80
+	k.plan_left = 0
+	k.plan_cd = 0
+	var nsec := 0
+	for si in Province.FACTORIES.size():
+		nsec += g.sector_count(k, g._sector_key(si))
+	if nsec > 0:
+		g._ai_crisis(k, true)
+		check("ia crise: pais estavel e rico lanca plano quinquenal", k.plan_left > 0)
 	g.load_state(blob)

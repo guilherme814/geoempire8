@@ -12,6 +12,7 @@ var _rails: Array = []     # [a, b, nível]
 var _roads: Array = []     # [a, b]
 var _t: float = 0.0
 var _timer: Timer
+var _dirty: bool = false
 
 
 func _ready() -> void:
@@ -23,7 +24,7 @@ func _ready() -> void:
 	_timer.start()
 	Events.month_changed.connect(func(_d): _rebuild())
 	Events.state_loaded.connect(_rebuild)
-	Events.province_updated.connect(func(_pid): _rebuild())
+	Events.province_updated.connect(func(_pid): _dirty = true)
 	_rebuild()
 
 
@@ -54,6 +55,9 @@ func _rebuild() -> void:
 
 
 func _tick() -> void:
+	if _dirty:
+		_dirty = false
+		_rebuild()
 	var mv := get_parent() as MapView
 	if mv != null and mv.zoom_level >= MIN_ZOOM and (not _rails.is_empty() or not _roads.is_empty()) and is_visible_in_tree():
 		_t = float(Time.get_ticks_msec()) * 0.001

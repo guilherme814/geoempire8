@@ -1824,6 +1824,17 @@ func _add_welfare_card(body: Control, c: Country) -> void:
 	var tl := UIKit.label("%d%%" % c.poverty, 14, col)
 	tl.custom_minimum_size = Vector2(110, 0)
 	row.add_child(tl)
+	var cls := [0, 0, 0, 0, 0, 0]
+	var cpops: Dictionary = Game.country_pops(c)
+	for pid in cpops.keys():
+		var arr: Array = cpops[pid]
+		for ci in mini(6, arr.size()):
+			cls[ci] += int(arr[ci])
+	var ccols := [Color(0.55, 0.75, 0.35), Color(0.85, 0.50, 0.30), Color(0.65, 0.45, 0.80), Color(0.90, 0.80, 0.35), Color(0.40, 0.65, 0.85), Color(0.80, 0.35, 0.35)]
+	var parts: Array = []
+	for ci in 6:
+		parts.append([CLASS_PT[ci], cls[ci], ccols[ci]])
+	card.add_child(MiniCharts.stack(parts))
 	var dm: Dictionary = Game.demography_pm(c)
 	var wl: int = Government.level(c.budget_code, 3)
 	var gini: int = int(Game.class_income(c)["gini"])
@@ -2084,7 +2095,14 @@ func _add_works_card(body: Control, c: Country) -> void:
 	var cap: int = Game.work_capacity(c)
 	var dem: int = Game.work_demand(c)
 	var col: Color = UIKit.WARN if dem > cap else UIKit.POS
-	card.add_child(UIKit.label("Capacidade: %d pontos/mês · demanda da fila: %d · canteiros de obras: %d níveis" % [cap, dem, Game.bld_total(c, "worksite")], 16, col))
+	var wrow := HBoxContainer.new()
+	wrow.add_theme_constant_override("separation", 12)
+	card.add_child(wrow)
+	wrow.add_child(MiniCharts.gauge(float(mini(dem, cap)), float(maxi(1, cap)), col, "%d%% da capacidade" % (dem * 100 / maxi(1, cap))))
+	var wl2 := UIKit.label("Capacidade: %d pontos/mês · demanda da fila: %d · canteiros de obras: %d níveis" % [cap, dem, Game.bld_total(c, "worksite")], 16, col)
+	wl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	wl2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrow.add_child(wl2)
 	var info := UIKit.label("Cada obra leva ao menos %d meses e paga o custo conforme avança; se faltar ouro, ela para. Construa canteiros de obras (Infraestrutura) para ampliar a capacidade (+%d por nível)." % [Game.WORK_MIN_MONTHS, Game.WORK_PER_SITE], 14, UIKit.TEXT_DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(info)

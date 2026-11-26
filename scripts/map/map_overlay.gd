@@ -101,16 +101,42 @@ func _fleet_layout() -> Array:
 	return out
 
 
-## Silhueta de navio (casco + duas velas) acima do marcador.
+## Silhueta de navio (F5): casco com convés e canhoneiras, três mastros com velas, galhardete na cor
+## do país e esteira de espuma na água.
 func _draw_ship_icon(r: Rect2, col: Color, z: float) -> void:
 	var u := r.size.x / 34.0
 	var base := Vector2(r.position.x + r.size.x * 0.5, r.position.y)
-	var hull := PackedVector2Array([base + Vector2(-11, -2) * u, base + Vector2(11, -2) * u, base + Vector2(7, -7) * u, base + Vector2(-7, -7) * u])
-	draw_colored_polygon(hull, Color(0.16, 0.1, 0.06))
-	draw_line(base + Vector2(-3, -7) * u, base + Vector2(-3, -16) * u, Color(0.16, 0.1, 0.06), 1.2 / z)
-	draw_line(base + Vector2(3, -7) * u, base + Vector2(3, -14) * u, Color(0.16, 0.1, 0.06), 1.2 / z)
-	draw_colored_polygon(PackedVector2Array([base + Vector2(-3, -15) * u, base + Vector2(-10, -8) * u, base + Vector2(-3, -8) * u]), Color(0.96, 0.93, 0.82))
-	draw_colored_polygon(PackedVector2Array([base + Vector2(3, -13) * u, base + Vector2(9, -8) * u, base + Vector2(3, -8) * u]), col.lightened(0.35))
+	var wood := Color(0.16, 0.1, 0.06)
+	for k in 3:                                                                           # esteira
+		draw_arc(base + Vector2((-9.0 + 9.0 * float(k)) * u, 1.5 * u), 4.0 * u, PI * 1.1, PI * 1.9, 6, Color(1, 1, 1, 0.55), 1.0 / z)
+	var hull := PackedVector2Array([base + Vector2(-12, -2) * u, base + Vector2(12, -2) * u, base + Vector2(8, -7) * u, base + Vector2(-8, -7) * u, base + Vector2(-13, -8) * u])
+	draw_colored_polygon(hull, wood)
+	draw_line(base + Vector2(-11, -5) * u, base + Vector2(10, -5) * u, Color(0.85, 0.75, 0.4, 0.8), 0.8 / z)
+	for k in 4:
+		draw_rect(Rect2(base + Vector2(-8.0 + 4.5 * float(k), -4.5) * u, Vector2(1.6, 1.2) * u), Color(0, 0, 0, 0.8))
+	for k in 3:
+		var mx: float = (-6.0 + 6.0 * float(k)) * u
+		var mh: float = (15.0 if k == 1 else 12.0) * u
+		draw_line(base + Vector2(mx, -7.0 * u), base + Vector2(mx, -7.0 * u - mh), wood, 1.2 / z)
+		draw_colored_polygon(PackedVector2Array([base + Vector2(mx - 0.5 * u, -7.0 * u - mh + 1.0 * u), base + Vector2(mx - 5.5 * u, -9.0 * u), base + Vector2(mx - 0.5 * u, -9.0 * u)]), Color(0.96, 0.93, 0.82))
+		draw_colored_polygon(PackedVector2Array([base + Vector2(mx + 0.5 * u, -7.0 * u - mh + 1.0 * u), base + Vector2(mx + 5.5 * u, -9.0 * u), base + Vector2(mx + 0.5 * u, -9.0 * u)]), Color(0.9, 0.87, 0.76))
+	draw_colored_polygon(PackedVector2Array([base + Vector2(0, -22) * u, base + Vector2(6, -21) * u, base + Vector2(0, -19.5) * u]), col.lightened(0.2))     # galhardete
+
+
+## Soldados e bandeira sobre o marcador do exército (F6): 1 a 3 silhuetas conforme o tamanho.
+func _draw_army_flair(r: Rect2, col: Color, regs: int, z: float) -> void:
+	var u := r.size.x / 34.0
+	var top := Vector2(r.position.x + r.size.x * 0.5, r.position.y)
+	draw_line(top + Vector2(-8, 0) * u, top + Vector2(-8, -17) * u, Color(0.25, 0.18, 0.1), 1.3 / z)
+	draw_colored_polygon(PackedVector2Array([top + Vector2(-8, -17) * u, top + Vector2(1, -15) * u, top + Vector2(-8, -11) * u]), col.lightened(0.15))
+	draw_circle(top + Vector2(-8, -17.5) * u, 1.1 * u, Color(0.9, 0.78, 0.3))
+	var n: int = 1 if regs < 5 else (2 if regs < 15 else 3)
+	for k in n:
+		var sx: float = (float(k) * 6.0 - float(n - 1) * 3.0 + 3.0) * u
+		draw_circle(top + Vector2(sx, -9.0 * u), 1.6 * u, Color(0.9, 0.75, 0.6))
+		draw_rect(Rect2(top + Vector2(sx - 1.6 * u, -7.5 * u), Vector2(3.2, 6.0) * u), col.darkened(0.15))
+		draw_line(top + Vector2(sx + 2.2 * u, -1.5 * u), top + Vector2(sx + 2.2 * u, -13.0 * u), Color(0.2, 0.2, 0.22), 0.9 / z)      # fuzil
+		draw_line(top + Vector2(sx - 3.5 * u, -1.3 * u), top + Vector2(sx + 3.5 * u, -1.3 * u), Color(0, 0, 0, 0.25), 0.8 / z)
 
 
 ## De longe, só mostra o que importa (seus exércitos/frotas e os de países em guerra com você).
@@ -233,6 +259,7 @@ func _draw() -> void:
 		var col := Color(0.5, 0.5, 0.5)
 		if a.owner_id >= 0 and a.owner_id < Game.countries.size():
 			col = Game.countries[a.owner_id].color
+		_draw_army_flair(r, col, a.regiments, z)
 		draw_rect(r.grow(1.5 / z), Color(0.96, 0.93, 0.82))
 		Flag.draw(self, r, Game.countries[a.owner_id].tag if a.owner_id >= 0 and a.owner_id < Game.countries.size() else "", col)
 		var is_sel := a.id == selected_army

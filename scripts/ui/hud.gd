@@ -537,7 +537,8 @@ func _refresh_build_panel() -> void:
 	if p == null or p.owner_id != me:
 		_build_head.text = head + "\nSelecione uma província sua para construir."
 		return
-	_build_head.text = head + "\nem %s" % p.name
+	var mc: Country = Game.countries[me]
+	_build_head.text = head + "\nem %s  ·  obras na fila %d/%d  ·  capacidade %d pts/mês (demanda %d)" % [p.name, mc.works.size(), Game.WORK_QUEUE_MAX, Game.work_capacity(mc), Game.work_demand(mc)]
 	_build_scroll.custom_minimum_size = Vector2(0, clampf(_root.size.y * 0.42, 220.0, 420.0))
 	for k in Province.BUILDINGS.keys():
 		var b: Dictionary = Province.BUILDINGS[k]
@@ -582,6 +583,16 @@ func _refresh_build_panel() -> void:
 		var sl := UIKit.label(" · ".join(stats), 14, UIKit.GOLD)
 		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info.add_child(sl)
+		var qi: int = Game.work_index(Game.countries[me], p.id, k)
+		if qi >= 0:
+			var qw: Array = Game.countries[me].works[qi]
+			var left: int = int(qw[4]) - int(qw[3])
+			var per: int = maxi(1, mini(Game.work_capacity(Game.countries[me]), maxi(4, int(qw[4]) / Game.WORK_MIN_MONTHS)))
+			var qrow := HBoxContainer.new()
+			qrow.add_theme_constant_override("separation", 8)
+			info.add_child(qrow)
+			qrow.add_child(UIKit.bar(float(int(qw[3])), float(maxi(1, int(qw[4]))), UIKit.GOLD, 10.0))
+			qrow.add_child(UIKit.label("posição %d na fila · ~%d meses" % [qi + 1, (left + per - 1) / per + qi], 13, UIKit.TEXT_DIM))
 		var btn := _make_button("", Vector2(140, 52))
 		btn.add_theme_font_size_override("font_size", 16)
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER

@@ -54,6 +54,7 @@ var _fx: UnrestFx
 var _bfx: BuildingFx
 var _cfx: CityFx
 var _rfx: RoadFx
+var _tfx: TerrainFx
 var _unrest_sig := 0
 
 
@@ -95,6 +96,8 @@ func _ready() -> void:
 
 	_fx = UnrestFx.new()
 	add_child(_fx)
+	_tfx = TerrainFx.new()
+	add_child(_tfx)
 	_rfx = RoadFx.new()
 	add_child(_rfx)
 	_cfx = CityFx.new()

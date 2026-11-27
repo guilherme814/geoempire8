@@ -285,6 +285,8 @@ func _build_top_bar() -> void:
 	_add_chip(row, "tech", "bulb", "Tecnologia: libera indústrias avançadas")
 	_add_chip(row, "stab", "shield", "Estabilidade interna: abaixo de 40% a arrecadação cai")
 	_add_chip(row, "army", "sword", "Regimentos e mão de obra disponível")
+	_add_chip(row, "pov", "tent", "Miséria: % da população pobre. Alimenta o socialismo e a agitação")
+	_add_chip(row, "works", "hammer", "Obras na fila e uso da capacidade do setor de obras")
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2698,7 +2700,21 @@ func _refresh_top() -> void:
 		tech_sub = "%d%% da pesquisa" % mini(100, c.tech_pts * 100 / Techs.cost(c.researching))
 	_set_chip("tech", "Nível %d" % c.tech_level(), tech_sub)
 	var sc: Color = _sat_color(c.stability)
-	_set_chip("stab", "%d%%" % c.stability, "estabilidade", UIKit.TEXT_DIM, sc)
+	var uc: Dictionary = Game.unrest_counts(c)
+	var unrest_sub := "estabilidade"
+	var unrest_col: Color = UIKit.TEXT_DIM
+	if int(uc["rebel"]) > 0:
+		unrest_sub = "%d em rebelião" % int(uc["rebel"])
+		unrest_col = UIKit.NEG
+	elif int(uc["prone"]) + int(uc["protest"]) > 0:
+		unrest_sub = "%d em protesto" % (int(uc["prone"]) + int(uc["protest"]))
+		unrest_col = UIKit.WARN
+	_set_chip("stab", "%d%%" % c.stability, unrest_sub, unrest_col, sc)
+	var pcol: Color = UIKit.NEG if c.poverty >= 60 else (UIKit.WARN if c.poverty >= 30 else UIKit.POS)
+	_set_chip("pov", "%d%%" % c.poverty, "miséria" if c.famine_pct == 0 else "fome em %d%%" % c.famine_pct, UIKit.NEG if c.famine_pct > 0 else UIKit.TEXT_DIM, pcol)
+	var wdem: int = Game.work_demand(c)
+	var wcap: int = Game.work_capacity(c)
+	_set_chip("works", "%d/%d" % [c.works.size(), Game.WORK_QUEUE_MAX], "%d%% da capacidade" % (wdem * 100 / maxi(1, wcap)), UIKit.WARN if wdem > wcap else UIKit.TEXT_DIM)
 	_set_chip("army", "%d reg." % int(e["regiments"]), "MO %s" % _fmt_pop(Game.manpower_of(c.id)))
 	_date_label.text = Game.clock.format()
 	var s := clampi(Game.speed, 0, _speed_buttons.size() - 1)

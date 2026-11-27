@@ -1,8 +1,13 @@
 {
- "version": "0.51.0",
- "title": "GeoEmpire 8 — v0.51.0 (Gráficos de obras B26c)",
- "body": "## Edifícios à vista\n- **Mapa**: com bastante zoom (e qualidade gráfica Média ou Alta), cada província mostra silhuetas das suas construções: fábricas (chaminés = nível, cor = setor), casas (mercado, bairros, prefeitura, bancos, capital), porto, ferrovia e **guindastes com anel de progresso** nas obras em andamento.\n- **Cartão da província**: ganhou uma cena ilustrada no topo, com céu e solo conforme o terreno e cada edifício desenhado (fábricas, minas, fazendas, madeireiras, escolas, hospitais, portos, estações, ferrovia e canteiro de obras).\n- Detalhe de cada construção mostra os pontos de obra e a capacidade do país.\n- Só desenha o que está na tela (no máximo 160 províncias) para não pesar.",
+ "version": "0.52.0",
+ "title": "GeoEmpire 8 — v0.52.0 (Gráficos em 11 fases)",
+ "body": "## Mapa e telas bem mais detalhados\n- **F1 Edifícios**: sombras, fumaça animada nas chaminés, janelas acesas, telhados por setor, navio balançando no porto, guindaste girando, trem nos trilhos (com mais zoom) e torre com relógio nos bancos.\n- **F2 Cena da província**: sol, nuvens, pássaros, relevo em duas camadas, neve no inverno, relva ao vento e animações em fábricas, porto e guindaste.\n- **F3 Cidades**: silhuetas por porte (população), capitais com palácio e bandeira.\n- **F4 Ferrovias e estradas**: trilhos duplos com dormentes entre províncias vizinhas, estradas de terra tracejadas e trens.\n- **F5/F6 Navios e exércitos**: navios de três mastros com esteira e galhardete; exércitos com soldados e bandeira.\n- **F7 Terreno**: montanhas com neve, colinas, florestas, selva, dunas, juncos e tufos desenhados dentro de cada província.\n- **F8 Construção**: painel mostra fila, capacidade, posição e prazo estimado de cada obra.\n- **F9 Clima**: neve, chuva tropical, poeira e vento (qualidade Alta).\n- **F10 Gráficos**: barra empilhada das classes sociais e medidor da capacidade de obras.\n- **F11**: a IA agora também constrói ferrovias.\n- Os efeitos pesados só aparecem com zoom e em qualidade gráfica Média/Alta.",
  "history": [
+  {
+   "version": "0.51.0",
+   "title": "GeoEmpire 8 — v0.51.0 (Gráficos de obras B26c)",
+   "body": "## Edifícios à vista\n- **Mapa**: com bastante zoom (e qualidade gráfica Média ou Alta), cada província mostra silhuetas das suas construções: fábricas (chaminés = nível, cor = setor), casas (mercado, bairros, prefeitura, bancos, capital), porto, ferrovia e **guindastes com anel de progresso** nas obras em andamento.\n- **Cartão da província**: ganhou uma cena ilustrada no topo, com céu e solo conforme o terreno e cada edifício desenhado (fábricas, minas, fazendas, madeireiras, escolas, hospitais, portos, estações, ferrovia e canteiro de obras).\n- Detalhe de cada construção mostra os pontos de obra e a capacidade do país.\n- Só desenha o que está na tela (no máximo 160 províncias) para não pesar."
+  },
   {
    "version": "0.50.0",
    "title": "GeoEmpire 8 — v0.50.0 (Setor de obras B26)",

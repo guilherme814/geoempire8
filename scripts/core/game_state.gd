@@ -2825,7 +2825,7 @@ func _advance_ai() -> void:
 
 
 const AI_BUILD_ORDER := ["farm", "mine", "logging", "school", "market", "worksite", "hospital", "dock", "textile", "carpentry", "university",
-	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "depot", "paper", "machinery", "glassworks", "housing", "city_hall", "station", "chemical"]
+	"library", "bank", "irrigation", "sanitation", "academy", "lab", "telegraph", "power_plant", "railway", "depot", "paper", "machinery", "glassworks", "housing", "city_hall", "station", "chemical"]
 const AI_INVEST_RESERVE_MONTHS := 8
 const AI_MAX_METHOD := 1          # a IA só chega à Manufatura (a Mecanizada fica de vantagem do jogador)
 

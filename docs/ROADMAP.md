@@ -57,6 +57,7 @@ Fechamento
 | B26a | Setor de obras: fila, capacidade, canteiro de obras | feita no código (v0.50.0) |
 | B26b | Estruturas novas: vidraçaria, química, bairro operário, prefeitura, estação | feita no código (v0.50.0) |
 | B26c | Gráficos: edifícios no mapa, cartão de província ilustrado, painel de obras | feita no código (v0.51.0): mapa, cena da província, guindaste de obras; não visto em aparelho |
+| B27 | Gráficos em 11 fases (F1–F11): edifícios, cena, cidades, ferrovias, navios, exércitos, terreno, painel, clima, gráficos, IA de ferrovias | feita no código (v0.52.0); não visto em aparelho |
 
 ## Trilha C — Nova HUD (referência visual enviada em 20/11/2026)
 
